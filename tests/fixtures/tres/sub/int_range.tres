@@ -1,0 +1,6 @@
+[gd_resource type="Script" format=3]
+
+[resource]
+script = ExtResource("1")
+min = 0
+max = 2

@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local env/config (commit the *.example templates, never the real files)
+viewer.env
+extract.env
+
+# Editor / OS junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

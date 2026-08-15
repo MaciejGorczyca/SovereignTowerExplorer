@@ -1,0 +1,392 @@
+# Sovereign Tower Explorer — repo guide
+
+Static, dependency-free viewer for the game data of *Sovereign Tower*,
+extracted from the decompiled Godot project. Ships six tabs in one shell:
+**Dialogues** (the "ink" story — the original explorer), **Quests** (312 quest
+contracts + unexpected outcomes), **Inventory** (all 154 equipment resources),
+**Knights** (the 24 playable knights), **Special** (the 71 `SpecialInstruction`
+game-director switches) and **Audiences** (the 511 narrated scenes + the 34
+`AudienceRequest` resources that unlock them). It walks the **compiled ink
+JSON** directly
+(no `.ink` source exists — see `../research/ink_research/REPORT.md` §1 for the extraction
+chain), merges the quest/inventory/knight/special/audience resource catalogs built by
+`quest_data.py` / `inventory_data.py` / `knights_data.py` / `special_data.py` /
+`audience_data.py`,
+and outputs a self-contained static site you can `http.server` and open in a
+browser.
+
+> Deep structural notes on the ink format live in `../research/ink_research/REPORT.md` — read it for
+> *why* the data looks the way it does. This file is the operational guide.
+
+---
+
+## Layout
+
+```
+/app                          repo root (see ../README.md for the full map)
+  explorer/                   THIS FOLDER — the shipped product
+    build_app.py            one build pass: ink stories (in-memory extraction or
+                            --from-disk) + the five data passes -> dist/; modes:
+                            --extract-ink [dir] (decode only), --save-ink [dir]
+    ink_extract.py          standalone extractor: Godot .res -> master.ink.json
+                            (+ per-knot readable txt dumps); CLI + importable
+    quest_data.py           quest resources / enums / 6-locale text -> dist/quests.json
+    inventory_data.py       equipment resources + buy/quest/ink sources -> dist/inventory.json
+    knights_data.py         the 24 knights + dialogue/quest/ink links -> dist/knights.json
+    special_data.py         SpecialInstruction catalog joins -> dist/special.json
+    audience_data.py        audience + audience-request catalog joins -> dist/audiences.json
+    web/                    frontend source assets (edited here)
+      index.html
+      app.js                all UI logic (vanilla JS, no build step)
+      style.css
+    dist/                   GENERATED — self-contained site, safe to delete & rebuild
+      index.html            copies of web/*           (fetch ./index.json)
+      app.js                copies of web/*
+      style.css
+      index.json            en metadata + dialogue tokens (≈3.3 MB)
+      quests.json           quest resources, enums, 6-locale loc table (≈1.6 MB)
+      inventory.json        all equipment + buy/quest/ink sources
+      knights.json          the 24 playable knights + dialogue/quest/ink links
+      special.json          the SpecialInstruction catalog (knot/quest/knight joins)
+      audiences.json        the audience + audience-request catalog (knot/quest/request joins)
+      locales/{fr,de,cmn,ja,ko}.json   dialogue-token overrides (≈2.7–2.9 MB each)
+    viewer.env              OPTIONAL KEY=VALUE config (see "Paths/config" below)
+  ../game/                   game data (SovereignTowerCode, saved_games, optional
+                             InkExtracted/en) + extract_save.py
+  ../research/               ink_research/REPORT.md — the compiled-ink-format "WHY" doc
+```
+
+## Ink source: in-memory by default, on-disk optional
+
+`build_app.py` decodes the compiled ink stories **in-memory** straight from the game's
+`.res` chain (`game/SovereignTowerCode/story/<locale>/*.import` → `.godot/imported/*.res`,
+same decoding as `ink_extract.py`) — no `master.ink.json` files need to exist on disk,
+and nothing is persisted by a plain build (requires pip `zstandard`; hard error if missing).
+
+- `--from-disk` — read `<ink_root>/<locale>/master.ink.json` instead (e.g. the user
+  provided extracted knots by placing them under `game/InkExtracted/`). Missing locales
+  are skipped with a warning.
+- `--extract-ink [dir]` — skip the build; decode the 6 locales and write
+  `<dir>/<locale>/master.ink.json` (default `../game/InkExtracted`), then exit. Same output
+  as `ink_extract.py`, `python3 ink_extract.py` (standalone CLI, same defaults).
+- `--save-ink [dir]` — build, then also write the extracted `master.ink.json` files
+  (default `../game/InkExtracted`). Use this if you want to *keep* extracted knots in
+  `game/` for agent queries.
+
+The build also runs the resource passes over the Godot tree (`quest_data.py`,
+`inventory_data.py`, `knights_data.py` from `build_app.py`) plus a final
+`special_data.py` pass that joins the ink story, the quest rewards and the knight
+evolution blocks into `dist/special.json`, and an `audience_data.py` pass that
+joins the audience resources, the audience requests and the quest follow-up /
+request-reward links into `dist/audiences.json`. The build only needs the compiled ink
+JSON (`INK_ROOT`) plus the game root (`GAME_ROOT`) as inputs.
+
+Deploy the whole `dist/` directory anywhere; the UI fetches `index.json` and `locales/*.json`
+via URL-relative paths, so no server logic is required (GitHub Pages, `file://`, anything).
+
+---
+
+## Pipeline
+
+```
+../game/SovereignTowerCode/story/* + .godot/imported/*.res   (in-memory default)
+  or  ../game/InkExtracted/<locale>/master.ink.json          (--from-disk)
+       │  build_app.py (single pass per locale)
+       ▼
+dist/index.json       en: 922 knots, 91 speakers, 1,368 variables, 3,477 choices
+dist/locales/*.json   only the per-knot dialogue token arrays for non-en locales
+```
+
+Knot identity and metadata (speakers, vars, funcs, categories) are **locale-independent** —
+only the dialogue text changes. So `index.json` holds everything and each non-`en`
+locale ships as a bare `{knotName: [tokens]}` override, lazy-loaded when the user
+switches language. Token sets are identical across locales; this was verified.
+
+### Token encoding (`build_app.py` docstring)
+Compact arrays to keep JSON small:
+
+| code | meaning |
+|---|---|
+| `["0", text, speaker?]` | dialogue text; `speaker` = active `Locutor` arg ("" = none) |
+| `["1", marker]` | `(BREAK_n)` / `(NO_CLICK)` split out of text runs |
+| `["2", label, [req...], flg?, dest?, [eff...]]` | player choice + conditional-var gates (e.g. `gideon_romanced`, `!flag`) + resolved destination + consequence fn calls. Function requirements (`RequiresFunds` etc.) are **not** duplicated here — they live only as `["3"]` flow tokens above the choice, keeping their args. `dest` is a real divert target, or the sentinel `(end)` / `(options)` when the choice closes the dialogue / re-offers the option list. `eff` = non-presentation game-state fn calls the choice triggers (e.g. `UpdateSovereignValue`, `UnlockQuest`); they appear **only** in the card, not replayed in the flow. |
+| `["3", name, [args...]]` | game/ink function call (args from the eval stack) |
+| `["3", "set:"+kind, [target, rhs?]]` | variable write: `VAR=` / `temp=` / `list=`. `target` is the variable name; `rhs` (when the compiler emits an eval frame before the write) is the assigned value as an infix expression, e.g. [`"highest", "audacious_value"`] or [`"is_tyran_highest", "tyrannic_value == highest"`]. Param-declaration writes (function params, stitch-local temp re-decls) carry no `rhs`. |
+| `["4", target]` | divert (`->`) |
+| `["5", stitch]` | stitch section header |
+| `["6", instruction]` | `>>>` game instruction line |
+| `["7", [vars...], expr?]` | conditional branch gate: `{var: …}` ink check (`c:true` divert) that picks which dialogue variant plays; rendered as `if var` / `unless var` chips. Each var carries its own `!` prefix (per-operand negation, so `a && !b` renders correctly). When the condition uses operators, `expr` is the full infix form (e.g. `"kind_value > highest"`) and the gate renders as a single `if <expr>` chip. |
+
+### How the walker works (the important part)
+- A knot is `[[main-content…], {stitches…, "#f":1, "#n":…}]`. `ink_container()` splits
+  content vs. named children; the walker is a **linear eval-stack emulation**, mirroring
+  the compiled execution order (this is also what the now-removed per-knot txt dumps in
+  `InkExtracted/*/knots/` showed — they're regenerable via `ink_extract.py`).
+- **Speakers** are resolved via the exact pattern `ev → {"VAR?": X} → {"f()": "Locutor"} → out`
+  — the `VAR?` arg *before* a `Locutor` call is the speaker. This is the only reliable way to
+  attribute lines; the old txt dumps showed bare `// Locutor()` with no arg. Works for all 6 locales.
+- **Choice labels** are assembled from `str … /str` blocks (label text is emitted *inside* the
+  `ev` frame). Requirements (`Requires*`, `HintSat`, …) called inside that `str` block are
+  attached to the following `["2" …]` choice as `req`s.
+- **`out` does not close the `ev` frame.** In ink, `out` ends a *function-call* evaluation; the
+  enclosing `ev` frame stays open until its matching `/ev`. The walker honours this, so a choice
+  condition that mixes function calls (`Requires*`, `HintModification`, …) with real `VAR?`
+  checks keeps its full condition (e.g. `epicrates_plan_known && golden_key_acquired &&
+  !corrupted_sovereign`). Negation is tracked **per operand** — a frame-wide `!` flag would
+  wrongly negate *every* var of `a && !b`.
+- **Choice destinations** are resolved from the choice's `c-N` redirect stub. A stub that
+  diverts somewhere meaningful gives a real target (e.g. `lie`, `follow_up`); a stub that ends
+  the dialogue (`end` / `->->` opcode) gives the sentinel `(end)`; a stub that self-loops back
+  to the option list (the "pick another option" pattern) gives `(options)`.
+- **Choice effects** (`eff`): game-state fn calls *inside* the choice's stub (`Update*`,
+  `UnlockQuest`, `AddFunds`, …) are attached to the choice. Presentation-only calls (`Locutor`,
+  `SwapExpression`, `FlashScreen`, `TriggerCustomAnimation`, `SetBackground`, …) are excluded
+  from `eff` and instead kept inline in the flow under the "technical" toggle.
+- **`present ink function` flag** (`knot.fn`): a knot is an ink-function when its container's
+  *last element* is `{"#f": 1}`. Count here is **327**, vs. the report's 297 — the report only
+  counted flat functions and missed container-style ones flagged the same way. 327 is correct.
+- Marker regex strips `(BREAK_n)` / `(NO_CLICK)` out of text into `["1" …]` tokens.
+
+### Known modelling choices / limitations
+- **Linear per-stitch render, not a flow tree.** Conditional temp branches (`g-0`, `g-1`, …)
+  aren't nested into branch trees; they're walked inline. Branch **gates** (`{var: …}` checks,
+  the `ev VAR? /ev` → `{"->": ".^.b", "c": true}` pattern) *are* surfaced as `["7" …]` condition
+  tokens at the point the branch forks — the game reads these variables to pick a variant, so the
+  viewer shows them (default on, under the "branch conditions" technical toggle). You get the
+  chronological dump of *all* reachable lines, matching the original txt dumps. Building a true
+  branch tree out of the numbered containers is future work if ever needed.
+- **Choice-label duplication.** A narrated line followed by an identical `[ label ]` appears
+  twice (once as `["0"…]`, once as `["2"…]`). Faithful to the source; intentional.
+- **Variable read/write is semantic, not just structural.** The compiler only emits
+  state-mutating calls as `VAR?` reads (there is no matching `VAR=`), so the walker
+  attributes *writes* from the game-API call slots: `UpdateSovereignValue(Kind, -1)`,
+  `UpdateSatisfaction(Nobles, 5)`, `UnlockQuest(...)`, etc. mark their slot-0 argument
+  as written (see `WRITE_SLOT0_FUNCS` in `build_app.py`). A slot only counts when it
+  was pushed as a real variable reference — literal constants like `UpdateFunds(500)`
+  are never mislabelled. This is why `Kind` correctly shows reads *and* writes.
+- `["3", "set:"+kind, [name]]` tokens for `VAR=`/`temp=`/`list=` are emitted to show state
+  writes inline (the second element is the assigned value when an eval frame precedes the
+  write); they're hidden by the UI's "hide technical" toggle together with funcs,
+  markers, and stitch headers.
+- **Synthetic destination sentinels.** `(end)` and `(options)` are not real stitches — they are
+  reader-facing markers for compiler stubs that close the dialogue or re-offer options, and are
+  rendered as plain, non-clickable "→ dialogue ends" / "→ more options" spans.
+- `window.stExplorer = { renderDialogue, tokensOf }` is exported from `dist/app.js`
+  (top-level, last line) purely for headless smoke-testing. Harmless, but delete if you want a
+  squeaky-clean global scope.
+
+---
+
+## Paths / config (no container paths hardcoded)
+
+Resolution priority, higher wins:
+
+1. CLI args — build: `python build_app.py <ink_root> <out_dir> [game_root]`
+        · quests: `python quest_data.py <game_root> [quest_out]` · inventory: `python inventory_data.py <game_root> [out]`
+        · knights: `python knights_data.py <game_root> [out]` · special: `python special_data.py <game_root> [out]`
+        (special reads `index.json`/`quests.json`/`knights.json` from `[out]`, so run it after those)
+2. Environment vars — `INK_ROOT`, `INK_OUT`, `GAME_ROOT` (build) · `GAME_ROOT`, `QUEST_OUT` (quest data)
+        · `INK_SOURCE`, `INK_OUT` (extract)
+3. Config file — `viewer.env` (build/quests, shared keys) / `extract.env` (ink_extract.py), `KEY=VALUE`, next to each script
+4. Portable defaults:
+   - build: ink stories in-memory from `../game/SovereignTowerCode` (see "Ink source"),
+     output = `./dist`; `--from-disk` reads `../game/InkExtracted` instead
+   - quest data: game root = `../game/SovereignTowerCode`, output = `./dist/quests.json`
+   - extract (`./ink_extract.py`): source = `../game/SovereignTowerCode`,
+     output = `../game/InkExtracted` (both script-relative)
+
+Relative values in CLI/env/.env resolve against the **working directory**; use absolute paths
+(Windows: `C:\…`) for anything you want CWD-independent. `Path` handles both platforms.
+
+`build_app.py` and `quest_data.py` share the `GAME_ROOT` / viewer.env key pair: a quest-data pass
+runs inside every `build_app.py` build, so both scripts agree on where `SovereignTowerCode` lives
+without duplicating config. You can also run `quest_data.py` standalone to regenerate
+`quests.json` into any location.
+
+Example `viewer.env` (any of the keys can be omitted — the portable defaults above already
+point into the repo's `game/` folder):
+```
+INK_ROOT = /app/game/InkExtracted
+INK_OUT  = /app/explorer/dist
+GAME_ROOT = /app/game/SovereignTowerCode
+QUEST_OUT = /app/explorer/dist/quests.json
+```
+
+---
+
+## Build & run
+
+> Quick-start, full argument reference and troubleshooting live in `BUILD.md`.
+> `python3 build_app.py --help` prints the same reference plus the exact paths
+> the build would use on your machine.
+
+```bash
+python3 build_app.py                       # rebuild dist/ from ../game/InkExtracted
+cd dist && python3 -m http.server 8000     # open http://localhost:8000
+```
+
+`build_app.py` depends only on the Python stdlib **except the default in-memory ink
+extraction**, which needs pip `zstandard` (hard error with install hint if missing —
+the game's `.res` files are ZSTD-compressed). `--from-disk` builds stay stdlib-only.
+
+### Rebuild from scratch (fresh checkout)
+1. Build: `python3 build_app.py` — extracts all 6 locales in-memory from
+   `../game/SovereignTowerCode` and regenerates `dist/` in one pass.
+   Alternative: provide extracted knots yourself — `python3 build_app.py --extract-ink`
+   (or `python3 ink_extract.py`) writes `game/InkExtracted/*/master.ink.json`, then
+   keep them in `game/` and build with `--from-disk` (stdlib-only path).
+2. Serve `dist/`.
+
+---
+
+## Frontend internals (web/app.js)
+
+Single-page, zero deps. State lives in one `state` object passed through
+`renderResults()` → `visibleKnots()` (filtering) → category-grouped cards.
+Per-card searchable text is cached in `_hcache`. Highlighting is substring-based (922 knots,
+fine for pure client-side search; no FTS needed at this scale).
+
+Filters (sidebar): text search, speaker, category (17 auto-classified via `classify()`),
+variable (read / write / either), **function/requirement** (any game-API call
+`RequiresTag`, `RequiresFunds`, `HintSat`, `UpdateSovereignValue`, …) with an optional
+**argument/value filter**: pick a function, then its first argument (the tag, e.g. `Kind`),
+then an operator (`=`, `<`, `≤`, `>`, `≥`) and a value to compare against the call's numeric
+argument — e.g. `RequiresTag` + `Kind` + `≥` + `2` finds every knot requiring Kind *at least* 2.
+The arg/value inputs are suggestion lists (`datalist`s) built from the actual call sites in
+`index.json`, so only real tags/values are offered. Blank arg = any first argument; blank value
+= presence-only (the original function filter). Works for write calls too, e.g.
+`UpdateSovereignValue` + `Kind` + `>` + `0` to find where Kind is *raised*,
+only-with-choices, hide game-function knots.
+
+A **"Where it comes from"** filter group selects knots by their cross-dataset
+links (the reverse maps `knotAudiences`/`knotFuQuests`/`knotIncoming`/
+`knotUnlocks`/`knotSpecials`/`knotItems`/`knotKnights` built from
+`audiences.json`, `quests.json`, `special.json`, `inventory.json` and
+`knights.json`): played-as-an-audience, fires-after-a-quest,
+reached-from-other-knots, unlocks-a-quest, emits-a-special-instruction,
+grants/removes-items, appears-in-knight-dialogue — plus dropdown selects for
+the audience **type** (folder), the audience **NPC**, the **quest** that fires
+the knot and the **special instruction** it emits. Knot cards carry badges for
+these links too (audience ×N, unlocks N, special ×N, knight ×N), so e.g.
+`grest_first_grievance` is immediately identifiable as a *doleances* audience
+starring Roland.
+
+Detail drawer starts with a **"What happens"** summary: every game-state change
+the knot makes, decoded — sovereign stats, funds, taxes, satisfaction, servant
+romance, tag unlocks, knight recruitment/demission/death, county rallies /
+quest failures, ultimatums, doleances, equipment give/remove, quest unlocks,
+`SpecialInstruction` (with the special-conditions catalog note) and **every
+variable/flag write**, whether it appears inline in the flow, inside a choice's
+effects (`eff`), or is set by passing it as a divert/stitch parameter. Each
+flag write carries a "read in N ink knots" ripple list (the long-term
+consequences), cross-linking into any of the six tabs. Then the full dialogue
+render (`renderDialogue`) with colored speaker labels,
+choice boxes with requirement tags, a resolved-destination line ("→ …" link when the choice
+diverts, "→ dialogue ends" / "→ more options" when it closes or re-offers), and a
+consequences strip listing the game-state calls the choice triggers. A set of
+**technical-layer checkboxes** controls what extra plumbing is shown: diverts (jump
+targets), stitch headers (branch/checkpoint names, rendered as markdown-style `##` headers),
+`(BREAK_n)`/`(NO_CLICK)` markers, branch conditions (`{var: …}` gates — the game reads these
+variables to pick a dialogue variant), and **function calls** broken out
+into five sub-categories — presentation (`SwapExpression`, `Apparition`, `FlashScreen`, …),
+sound (`InstructionSound`), var writes (`set VAR`), requirements (`Requires*`, `HintSat`), and
+game-state (`UpdateFunds`, `UnlockQuest`, …). These prefs are persisted in `localStorage`
+(`st_tower_ink_show`) and survive refreshes / sessions. Clicking a variable chip applies that
+variable filter; diverts link to other knots; the locale `<select>` swaps `LOC` overrides live.
+
+CSS: `style.css`, dark theme, one `@media` breakpoint for mobile.
+
+### Adding a locale
+1. In-memory mode picks up any locale whose `.res` import exists under `game/`; for
+   `--from-disk`, ensure `../game/InkExtracted/<loc>/master.ink.json` exists (write via
+   `python3 build_app.py --extract-ink` or `ink_extract.py`).
+2. Append the code to the `LOCALES` tuple in `build_app.py` (order matters: first is used for
+   `index.json` metadata — keep `"en"` first).
+3. Add an `<option>` in `web/index.html` + `dist` rebuild.
+
+### Adding a filter facet
+Extend `state` in `web/app.js`, add the matching UI element in `web/index.html`, and add the
+predicate inside `visibleKnots()`. Then `python build_app.py` (only copies web assets + data;
+data pass is cached-free and full each time).
+
+---
+
+## Verification quickies
+
+- Rebuild idempotent: `rm -rf dist && python3 build_app.py` regenerates everything including
+  the `web/*` copies.
+- JS syntax: `node --check dist/app.js`.
+- Headless smoke test of the renderer (works with a tiny DOM stub): load `dist/index.json`,
+  set `k.name`, call `stExplorer.renderDialogue(k, fakeDiv)`; expect zero throws across all
+  922 knots, 18,977 text lines, 3,477 choices rendered.
+- Locale parity: `fr.json` key count == `index.json` knot count (922).
+
+## Test suite
+
+`tests/` is a stdlib-only `unittest` suite that locks the current behaviour in
+so the build can be refactored (split into smaller modules) without breaking
+anything. After a behaviour-preserving refactor, this suite must stay green.
+
+Run the whole thing (a few seconds for the fast layers, tens of seconds total —
+the only slow parts are the data passes and the full-build golden test, both of
+which print their wall time in the runner's per-module timing table at the end):
+
+```bash
+cd /app/explorer
+python3 tests/run_tests.py            # everything (prints per-module wall times)
+python3 tests/run_tests.py test_helpers   # filter to one module (substring match)
+```
+
+Speed notes: the data passes cache their parsed `.tres` / `.gd` files per process
+(`TresFile.load`, keyed on path + mtime/size), so repeated passes inside one build
+or one test run don't re-read the game tree. `test_data_passes` builds each pass
+exactly once and shares it across its test classes instead of re-running the full
+tree walk per test.
+
+Layers (each also runs standalone: `python3 tests/test_walker.py`, …):
+
+| file | what it locks in | needs |
+|---|---|---|
+| `test_helpers.py` | pure helpers of `build_app.py`: `tail_path`, `classify`, `parse_flags`, `expr_to_infix`, token folding, `resolve_paths`… | nothing |
+| `test_walker.py` | the compiled-ink Walker's exact token output on verbatim real-game knots (speaker attribution, if/else gates, choice dest/effects, `UnlockQuest` semantic writes) | nothing (fixtures in `tests/fixtures/ink_knots.py`) |
+| `test_tresfile.py` | `quest_data.py`'s `.tres`/enum parsing on self-contained fixtures | nothing |
+| `test_dist_conformance.py` | schema + cross-dataset invariants of the shipped `dist/` (token encoding, stats self-consistency, locale knot-set parity, id maps) | checked-in `dist/` only |
+| `test_data_passes.py` | the five data passes over the real game root at the documented volumes (312 quests, 154 items, 24 knights, 71 specials, 511 audiences) | `../game/SovereignTowerCode` (skips if absent) |
+| `test_build_golden.py` | a **fresh build is byte-identical to the checked-in `dist/`** — the highest-value regression net for a refactor | game root + pip `zstandard` (skips if absent) |
+| `test_frontend.py` + `frontend_smoke.js` | `node --check dist/app.js` + boots the full app in a VM with a minimal DOM stub, renders every tab, and calls `renderDialogue()` across all 922 knots expecting zero throws | node (skips if absent) |
+
+Guidelines:
+- `dist/` is the golden reference for `test_build_golden.py`; when data changes
+  *intentionally*, rebuild `dist/` and commit the new golden in the same change.
+- The suite deliberately avoids third-party test runners (no pytest), matching
+  the project's no-runtime-deps philosophy.
+- Known data quirks the suite acknowledges (documented in the tests):
+  per-knot token sequences differ from `en` in ~100-200 knots per locale (the
+  translators restructured lines/markers), and 4 secret quest loc keys are
+  untranslated.
+
+---
+
+## Data at a glance (en)
+
+| | |
+|---|---|
+| knots | 922 (327 compiled as ink functions) |
+| text | 18,977 lines / ≈1.1 M chars across all knots/stitches |
+| choices | 3,477 (all with a resolved destination; 1,046 with consequences) |
+| speakers | 91 (resolved via `Locutor` eval-stack pattern) |
+| variables | 1,368 (298 declared + list items / conditionals read) |
+| categories | 17 auto-classified (grievance, affinity, quest, ending, …) |
+| locales | en / fr / de / cmn / ja / ko, structurally identical |
+
+`index.json` also carries `listDefs` (the 22 game dictionaries: CHARACTERS, EXPRESSIONS, …),
+a `funcs` map (function name → knot count, for the function/requirement filter) and a
+`stats` block for the header bar.
+
+The other data files (loaded by the other five tabs) are: `quests.json` (312 quests,
+90 unexpected outcomes, 69 modifier variants, 511 audiences, 306 ink-unlocked),
+`inventory.json` (154 items, 71 quest-linked, 24 ink-unlocked), `knights.json` (24
+knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
+`special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
+12 knight evolutions) and `audiences.json` (511 audiences: 18 with firing
+conditions, 60 fired after quests, 4 knotless; 34 audience requests).
