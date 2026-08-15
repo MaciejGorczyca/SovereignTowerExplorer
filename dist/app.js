@@ -69,6 +69,93 @@ function saveHideFn() {
   try { localStorage.setItem(HIDEFN_KEY, state.hideFn ? "1" : "0"); } catch (err) {}
 }
 
+// collapsible drawer-section state (persisted in localStorage)
+const CSEC_KEY = "st_tower_csec";
+function loadCollapsedSecs() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(CSEC_KEY));
+    if (Array.isArray(arr)) return new Set(arr.filter((x) => typeof x === "string"));
+  } catch (err) {}
+  return new Set();
+}
+const collapsedSecs = loadCollapsedSecs();
+function saveCollapsedSecs() {
+  try { localStorage.setItem(CSEC_KEY, JSON.stringify([...collapsedSecs])); } catch (err) {}
+}
+// stable per-section key: title with trailing "(<digits> …)" counts stripped,
+// so "Appears in dialogue (5 knots)" and "Modifiers (variants 3)" are stable.
+function secKey(title) {
+  return String(title || "").trim().toLowerCase().replace(/\s*\(\s*\d+[^)]*\)\s*$/, "").trim();
+}
+// section headers: 0 = top level (h4.qsec, div.sec), 1 = sub (h4.qsec.small)
+function secLevel(node) {
+  if (node.nodeType !== 1) return -1;
+  if (node.classList.contains("qsec")) return node.classList.contains("small") ? 1 : 0;
+  if (node.classList.contains("sec")) return 0;
+  return -1;
+}
+// nodes that must never be absorbed into a section body (knot drawer: the
+// technical-layer bar and the dialogue itself stay always visible)
+function isSecBoundary(node) {
+  return node.nodeType === 1 && (node.classList.contains("techbar") || node.classList.contains("dial"));
+}
+// split a list of sibling nodes into sections: each header of `level` starts a
+// section whose body is the following siblings up to the next header; boundary
+// nodes and anything before the first header stay as bare items.
+function groupSections(children, level) {
+  const out = [];
+  let cur = null;
+  for (const node of children) {
+    if (secLevel(node) === level) {
+      if (cur) out.push(cur);
+      cur = { h: node, body: [] };
+    } else if (isSecBoundary(node)) {
+      if (cur) out.push(cur);
+      cur = null;
+      out.push({ bare: node });
+    } else if (cur) {
+      cur.body.push(node);
+    } else {
+      out.push({ bare: node });
+    }
+  }
+  if (cur) out.push(cur);
+  return out;
+}
+function buildSectionWrap(header, body) {
+  const key = secKey(header.textContent);
+  const wrap = document.createElement("div");
+  wrap.className = "secwrap";
+  header.classList.add("csec-h");
+  if (collapsedSecs.has(key)) wrap.classList.add("collapsed");
+  header.addEventListener("click", () => {
+    const collapsed = wrap.classList.toggle("collapsed");
+    if (collapsed) collapsedSecs.add(key); else collapsedSecs.delete(key);
+    saveCollapsedSecs();
+  });
+  wrap.appendChild(header);
+  const bodyEl = document.createElement("div");
+  bodyEl.className = "secbody";
+  for (const n of body) bodyEl.appendChild(n);
+  wrap.appendChild(bodyEl);
+  return wrap;
+}
+// turn a freshly-built drawer panel's flat headers into collapsible segments.
+function enhanceSections(panel) {
+  const top = groupSections(Array.from(panel.children), 0);
+  panel.innerHTML = "";
+  for (const item of top) {
+    if (item.bare) { panel.appendChild(item.bare); continue; }
+    const sub = groupSections(item.body, 1);
+    const body = [];
+    for (const s of sub) {
+      if (s.bare) body.push(s.bare);
+      else body.push(buildSectionWrap(s.h, s.body));
+    }
+    panel.appendChild(buildSectionWrap(item.h, body));
+  }
+}
+
 let state = {
   q: "", spk: "", cat: "", varName: "", varUse: "either",
   fn: "", fnArg: "", fnOp: "=", fnVal: "", hasCh: false, hideFn: loadHideFn(), locale: "en",
@@ -1110,10 +1197,10 @@ function originSection(name) {
     add(`Reached from knots: <span class="readers">${chips}</span>`);
   }
   if (!box.childNodes.length) return null;
-  const wrap = document.createElement("div");
-  wrap.appendChild(sec);
-  wrap.appendChild(box);
-  return wrap;
+  const frag = document.createDocumentFragment();
+  frag.appendChild(sec);
+  frag.appendChild(box);
+  return frag;
 }
 
 function openDetail(name) {
@@ -1210,6 +1297,7 @@ function openDetail(name) {
   dial.id = "dial";
   panel.appendChild(dial);
   renderDial(name);
+  enhanceSections(panel);
 
   $("drawer").hidden = false;
   document.body.style.overflow = "hidden";
@@ -2248,6 +2336,8 @@ function openQuestDetail(id) {
     });
   }
 
+  enhanceSections(panel);
+
   $("drawer").hidden = false;
   document.body.style.overflow = "hidden";
 }
@@ -2691,6 +2781,8 @@ function openInvDetail(stem) {
     });
   }
 
+  enhanceSections(panel);
+
   $("drawer").hidden = false;
   document.body.style.overflow = "hidden";
 }
@@ -3117,6 +3209,8 @@ function openKnightDetail(stem) {
     });
   }
 
+  enhanceSections(panel);
+
   panel.scrollTop = 0;
   $("drawer").hidden = false;
   document.body.style.overflow = "hidden";
@@ -3314,6 +3408,8 @@ function openSpecialDetail(name) {
       go("quest", q);
     });
   }
+
+  enhanceSections(panel);
 
   panel.scrollTop = 0;
   $("drawer").hidden = false;
@@ -3633,6 +3729,8 @@ function openAudienceDetail(stem) {
     }
   }
 
+  enhanceSections(panel);
+
   panel.scrollTop = 0;
   $("drawer").hidden = false;
   document.body.style.overflow = "hidden";
@@ -3728,6 +3826,8 @@ function openRequestDetail(stem) {
     d.innerHTML = r.q.map((q) => questLink(q)).join(" · ");
     panel.appendChild(d);
   }
+
+  enhanceSections(panel);
 
   panel.scrollTop = 0;
   $("drawer").hidden = false;

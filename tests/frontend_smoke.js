@@ -71,6 +71,15 @@ class El {
   click() {}
 }
 
+// DocumentFragment stub: the app uses it to append a section header + its body
+// as siblings in the knot drawer.
+class Frag {
+  constructor() { this.children = []; }
+  get childNodes() { return this.children; }
+  appendChild(c) { if (c != null) this.children.push(c); return c; }
+  remove() {}
+}
+
 const elById = new Map();
 const documentStub = {
   getElementById: (id) => {
@@ -78,6 +87,7 @@ const documentStub = {
     return elById.get(id);
   },
   createElement: (t) => new El(t),
+  createDocumentFragment: () => new Frag(),
   querySelector: () => new El("div"),
   querySelectorAll: () => [],
   addEventListener: () => {},

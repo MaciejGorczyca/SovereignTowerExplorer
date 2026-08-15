@@ -383,8 +383,16 @@ the single best feature of this app:
   `build_audiences()` per test method). `run_tests.py` prints a per-module
   wall-time table. Suite ~1min+ → sub-40s sandbox (≈5s CPU, rest is cold I/O);
   the fast layers stay <2s. Build unchanged byte-for-byte (golden test green).
-  Data passes: `quest_data.py`, `inventory_data.py`, `audience_data.py`,
-  `knights_data.py`, `evolution_finder.py`, `tests/`. No `dist/` change.
+   Data passes: `quest_data.py`, `inventory_data.py`, `audience_data.py`,
+   `knights_data.py`, `evolution_finder.py`, `tests/`. No `dist/` change.
+- Collapsible drawer sections (2026-08-15): every detail drawer (knot, quest,
+  inventory, knight, special, audience, request) now groups each section header
+  (`h4.qsec` / `div.sec`, incl. nested `qsec small` sub-headers) with its
+  following content into a click-to-collapse `.secwrap` block. Collapsed state is
+  keyed by normalized section title and persisted in `localStorage`
+  (`st_tower_csec`), so it survives refreshes and re-opens. Frontend-only
+  (`web/app.js` + `web/style.css`), dist rebuilt, smoke test DOM stub gained a
+  `createDocumentFragment`, all 86 tests green.
 
 ---
 

@@ -285,6 +285,14 @@ a.knightlink { color: var(--acc); text-decoration: underline; cursor: pointer; }
   color: var(--mut); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
 }
 .qsec::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* ---- collapsible drawer sections ---- */
+.csec-h { cursor: pointer; user-select: none; }
+.csec-h::before { content: "▾"; color: var(--acc); font-size: 10px; flex: none; }
+.secwrap.collapsed .csec-h::before { content: "▸"; }
+.csec-h:hover { color: var(--txt); }
+.secwrap.collapsed .secbody { display: none; }
+
 #drawerpanel h5 { margin: 14px 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--mut); }
 .qtable { width: 100%; border-collapse: collapse; font-size: 13px; margin: 2px 0 6px; }
 .qtable td { padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
