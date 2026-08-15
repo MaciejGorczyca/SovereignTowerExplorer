@@ -682,7 +682,6 @@ const STATE_FNS = {
   CountyQuestFailed:         { icon: "❌", v: -1, label: "County quest failed" },
   MajorCharacterIntroduction: { icon: "👤", v: -1, label: "Introduces character" },
   NewCharacterRomanced:      { icon: "♡", v: -1, label: "New romance" },
-  AddDoleanceForNextCycle:   { icon: "📜", v: -1, label: "Adds doleance" },
   InjectMurderedKnight:      { icon: "🗡", v: -1, label: "Injects murdered knight" },
   KillKnight:                { icon: "💀", v: -1, label: "Kills knight" },
   LocationDestroyed:         { icon: "💥", v: -1, label: "Destroys location" },
@@ -722,6 +721,11 @@ function whatHappensFacts(k) {
         const mapped = knightIndex().get(String(a0).toUpperCase());
         add({ k: "knight", stem: mapped || String(a0), delta: args[1] != null ? String(args[1]) : "" });
       }
+    } else if (fn === "AddDoleanceForNextCycle") {
+      // arg 0 is the audience resource stem played next cycle, arg 1 its type
+      const stem = args[0] != null ? String(args[0]) : "";
+      const type = args[1] != null ? String(args[1]) : "";
+      if (stem && stem !== "false" && stem !== "true") { note(stem); add({ k: "doleance", stem, type }); }
     } else if (fn.startsWith("set:")) {
       const v = args[0];
       if (v != null && !String(v).startsWith("$")) { note(v); add({ k: "set", var: String(v), value: args[1], temp: fn === "set:temp=" }); }
@@ -867,6 +871,16 @@ function whatFactRow(f) {
     ic = "♡";
     const d = f.delta && f.delta !== "0" ? ` <span class="comma">${f.delta > 0 ? "+" + f.delta : f.delta}</span>` : "";
     body = `<div>Changes ${knightLink(f.stem)} affinity${d}</div>`;
+  } else if (f.k === "doleance") {
+    ic = "📜";
+    const aud = f.stem && AUDIENCE && AUDIENCE.audiences[f.stem];
+    const stemLink = aud
+      ? `<a class="audiencelink" data-aud="${esc(f.stem)}" title="open audience ${esc(f.stem)}">${esc(f.stem)}</a>`
+      : esc(f.stem);
+    const plays = aud && aud.k && INDEX.knots[aud.k]
+      ? ` <span class="mut">→ plays <a class="knotlink" data-knot="${esc(aud.k)}">${esc(aud.k)}</a></span>`
+      : "";
+    body = `<div>Adds doleance (${stemLink}${f.type ? ", " + esc(f.type) : ""})${plays}</div>`;
   } else if (f.k === "set") {
     ic = "✎";
     const mark = f.param ? ' <span class="mut">(via divert)</span>' : (f.temp ? ' <span class="mut">(temp)</span>' : "");
@@ -894,6 +908,7 @@ function whatFactRow(f) {
 let _knotAud = null;   // knot -> [{stem, f, c, rq}]
 let _knotFu = null;    // knot -> [{qid, kind}]  (kind: success/failure/unexpected)
 let _knotIn = null;    // knot -> [incoming diverting knot names]
+let _doleance = null;  // audience stem -> [{knot, type}] scheduling it next cycle
 
 function knotAudiences() {
   if (!_knotAud && AUDIENCE) {
@@ -941,6 +956,30 @@ function knotIncoming() {
     }
   }
   return _knotIn || new Map();
+}
+// audience stem -> [{knot, type}] — knots scheduling that audience for the next
+// cycle via AddDoleanceForNextCycle(stem, type) (flow-level and choice effects).
+function doleanceSchedulers() {
+  if (_doleance) return _doleance;
+  _doleance = new Map();
+  if (!INDEX) return _doleance;
+  const rec = (fn, args, knot) => {
+    if (fn !== "AddDoleanceForNextCycle" || !Array.isArray(args) || !args.length) return;
+    const stem = String(args[0]);
+    if (!stem || stem === "false" || stem === "true") return;
+    if (!_doleance.has(stem)) _doleance.set(stem, []);
+    _doleance.get(stem).push({ knot, type: args[1] != null ? String(args[1]) : "" });
+  };
+  for (const [name, k] of Object.entries(INDEX.knots)) {
+    for (const t of k.lines || []) {
+      if (!Array.isArray(t)) continue;
+      if (t[0] === "3") rec(t[1], t[2] || [], name);
+      else if (t[0] === "2" && Array.isArray(t[5])) {
+        for (const e of t[5]) if (Array.isArray(e)) rec(e[0], Array.isArray(e[1]) ? e[1] : [], name);
+      }
+    }
+  }
+  return _doleance;
 }
 // knot -> [quest ids it unlocks] (from quests.json unlock_knots)
 let _knotUq = null;
@@ -1052,7 +1091,15 @@ function originSection(name) {
       const nm = a.c.length ? a.c.map(tkey).join(", ") : a.stem;
       const folder = a.f || a.stem;
       const reqs = a.rq.length ? ` <span class="mut">· ${a.rq.map(audienceReqText).join(", ")}</span>` : "";
-      add(`Played as <b>${esc(folder)}</b> audience <b>${esc(nm)}</b>${reqs}`);
+      const scheds = doleanceSchedulers().get(a.stem);
+      if (scheds && scheds.length) {
+        const from = scheds.map((s) => INDEX.knots[s.knot]
+          ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
+          : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance audience <b>${esc(nm)}</b>${reqs}`);
+      } else {
+        add(`Played as <b>${esc(folder)}</b> audience <b>${esc(nm)}</b>${reqs}`);
+      }
     }
   }
   const inc = (knotIncoming().get(name) || []).slice(0, 24);
@@ -3542,6 +3589,17 @@ function openAudienceDetail(stem) {
     d.className = "qdesc";
     d.textContent = a.c.map((c) => tkey(c) || c).join(", ");
     panel.appendChild(d);
+  }
+
+  const scheds = doleanceSchedulers().get(stem);
+  if (scheds && scheds.length) {
+    section("Scheduled as doleance by");
+    const w = document.createElement("div");
+    w.className = "qdesc";
+    w.innerHTML = scheds.map((s) => INDEX.knots[s.knot]
+      ? `<a class="knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a> <span class="muted">(${esc(s.type)})</span>`
+      : `${esc(s.knot)} <span class="muted">(${esc(s.type)})</span>`).join(" · ");
+    panel.appendChild(w);
   }
 
   if (a.rq && a.rq.length) {
