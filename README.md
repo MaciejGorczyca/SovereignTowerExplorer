@@ -271,6 +271,19 @@ these links too (audience ×N, unlocks N, special ×N, knight ×N), so e.g.
 `grest_first_grievance` is immediately identifiable as a *doleances* audience
 starring Roland.
 
+A **"Chain of events"** section (when the knot is part of a sequence) lays out
+the narrative order the knot plays in as a horizontal flow, current knot
+highlighted: doleance scheduling (`AddDoleanceForNextCycle` → the audience it
+queues for next cycle, of any type) and quest-success follow-up audiences
+(unlocking knot → the audience played when the quest succeeds) are followed as
+unambiguous single hops; where the chain branches (multiple outcomes, the
+Gavault/Groveshire shared choice root, candidacies/grievance intros fired
+alongside) the spine stops and the options are listed as **Earlier events** /
+**Next events** chips. Failure/unexpected follow-ups are alternate branches, so
+`county_quest_enberg_first_audience → county_quest_enberg_audience_2 →
+county_quest_enberg_audience_3_interrogation` reads in order, with the final
+audience plus the gothild candidacy / Enberg grievance intro as next options.
+
 Detail drawer starts with a **"What happens"** summary: every game-state change
 the knot makes, decoded — sovereign stats, funds, taxes, satisfaction, servant
 romance, tag unlocks, knight recruitment/demission/death, county rallies /

@@ -273,6 +273,11 @@ a.knightlink { color: var(--acc); text-decoration: underline; cursor: pointer; }
   background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 0 6px;
 }
 .knotlink:hover { color: var(--acc); border-color: var(--acc); }
+/* ---- chain of events (knot drawer) ---- */
+.chain { display: flex; flex-wrap: wrap; gap: 6px 4px; align-items: center; font-family: var(--mono); font-size: 11px; }
+.chain-step { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chain-arrow { color: var(--acc); font-size: 11px; flex: none; }
+.chain-cur { color: var(--txt); background: var(--panel2); border: 1px solid var(--acc); border-radius: 5px; padding: 0 6px; font-family: var(--mono); white-space: nowrap; }
 .questlink {
   color: var(--green); border-bottom: 1px dotted currentColor; cursor: pointer;
 }

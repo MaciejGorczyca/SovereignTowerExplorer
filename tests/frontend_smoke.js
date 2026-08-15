@@ -215,6 +215,23 @@ waitReady().then(() => {
   if (!(byAudF > 0) || !(byAudC > 0)) throw new Error("audience type/NPC filters matched nothing");
   if (!(srcUq > 0) || !(srcSp > 0) || !(srcKn > 0)) throw new Error("unlocks/special/knight source filters matched nothing");
   if (!inGrest) throw new Error("grest_first_grievance knot not in the audience-type result set");
+  // Chain of events: doleance + quest-success edges must put the enberg county
+  // quest line in order (first_audience → audience_2 → audience_3_interrogation)
+  // and leave the final audience in the branch options.
+  const chain1 = vm.runInContext("knotChain('county_quest_enberg_first_audience')", sandbox);
+  if (chain1.before.length !== 0 ||
+      chain1.after[0] !== "county_quest_enberg_audience_2" ||
+      chain1.after[1] !== "county_quest_enberg_audience_3_interrogation") {
+    throw new Error("chain first_audience wrong: " + JSON.stringify(chain1));
+  }
+  const chain3 = vm.runInContext("knotChain('county_quest_enberg_audience_3_interrogation')", sandbox);
+  if (chain3.before[0] !== "county_quest_enberg_first_audience" ||
+      chain3.before[1] !== "county_quest_enberg_audience_2" ||
+      !chain3.nextTips.includes("county_quest_enberg_audience_final")) {
+    throw new Error("chain audience_3_interrogation wrong: " + JSON.stringify(chain3));
+  }
+  const chainPlain = vm.runInContext("(() => { const c = knotChain('grest_first_grievance'); return c.before.length + c.after.length + c.prevTips.length + c.nextTips.length; })()", sandbox);
+  if (chainPlain !== 0) throw new Error("chain rendered for an unrelated knot: " + chainPlain);
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));

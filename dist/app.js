@@ -1068,6 +1068,114 @@ function doleanceSchedulers() {
   }
   return _doleance;
 }
+// ---------------------------------------------------------------------------
+// chain of events — the narrative sequence a knot belongs to. Primary edges:
+// doleance scheduling (AddDoleanceForNextCycle → the scheduled audience knot)
+// and quest-success follow-up audiences (unlocking knot → follow-up audience).
+// Failure/unexpected follow-ups are alternate branches, not the primary chain.
+// ---------------------------------------------------------------------------
+let _chain = null; // { next: Map(knot -> Set(knot)), prev: Map(knot -> Set(knot)) }
+function chainEdges() {
+  if (_chain) return _chain;
+  _chain = { next: new Map(), prev: new Map() };
+  const add = (from, to) => {
+    if (!from || !to || from === to) return;
+    if (!INDEX || !INDEX.knots[from] || !INDEX.knots[to]) return;
+    if (!_chain.next.has(from)) _chain.next.set(from, new Set());
+    _chain.next.get(from).add(to);
+    if (!_chain.prev.has(to)) _chain.prev.set(to, new Set());
+    _chain.prev.get(to).add(from);
+  };
+  if (AUDIENCE) {
+    for (const [stem, scheds] of doleanceSchedulers()) {
+      const a = AUDIENCE.audiences[stem];
+      if (!a || !a.k) continue;
+      for (const s of scheds) add(s.knot, a.k);
+    }
+  }
+  if (QUEST) {
+    for (const [knot, qids] of knotUnlocks()) {
+      for (const qid of qids) {
+        const q = QUEST.quests[qid];
+        if (!q) continue;
+        const stem = (q.fu || [])[0];
+        const a = stem && AUDIENCE && AUDIENCE.audiences[stem];
+        if (a && a.k) add(knot, a.k);
+      }
+    }
+  }
+  return _chain;
+}
+// knot -> { before, after, nextTips, prevTips } — the linear spine of the
+// sequence the knot belongs to (following unambiguous single hops) plus the
+// branch options where the spine stops. All orderings run earliest → latest.
+function knotChain(name, maxLen) {
+  const lim = maxLen || 8;
+  const { next, prev } = chainEdges();
+  const before = [];
+  let c = name;
+  const seen = new Set([name]);
+  while (before.length < lim) {
+    const preds = prev.get(c);
+    if (!preds || preds.size !== 1) break;
+    const p = [...preds][0];
+    if (seen.has(p)) break;
+    seen.add(p); before.push(p); c = p;
+  }
+  before.reverse();
+  const after = [];
+  c = name; seen.clear(); seen.add(name);
+  while (after.length < lim) {
+    const succs = next.get(c);
+    if (!succs || succs.size !== 1) break;
+    const s = [...succs][0];
+    if (seen.has(s)) break;
+    seen.add(s); after.push(s); c = s;
+  }
+  const nextTips = [...(next.get(c) || [])].filter((t) => !after.includes(t) && t !== name);
+  const prevTips = [...(prev.get(before.length ? before[0] : name) || [])].filter((t) => !before.includes(t) && t !== name);
+  return { before, after, nextTips, prevTips };
+}
+// "Chain of events" drawer section (knot): the sequenced spine with the current
+// knot highlighted, plus alternate earlier/next options where the spine branches.
+function chainSection(name) {
+  const ch = knotChain(name);
+  const spine = [...ch.before, name, ...ch.after];
+  if (spine.length <= 1 && !ch.prevTips.length && !ch.nextTips.length) return null;
+  const sec = document.createElement("div");
+  sec.className = "sec";
+  sec.textContent = "Chain of events";
+  sec.title = "The narrative sequence this knot belongs to, in play order: what queues it (doleance scheduling) and the quest-success follow-up audiences it leads to.";
+  const box = document.createElement("div");
+  box.className = "what";
+  const flow = document.createElement("div");
+  flow.className = "chain";
+  flow.innerHTML = spine.map((n) => {
+    if (n === name) return `<span class="chain-cur">${esc(n)}</span>`;
+    return `<a class="chain-step knotlink" data-knot="${esc(n)}">${esc(n)}</a>`;
+  }).join('<span class="chain-arrow">→</span>');
+  box.appendChild(flow);
+  const addTips = (label, tips) => {
+    if (!tips.length) return;
+    const row = document.createElement("div");
+    row.className = "what-row";
+    const chips = tips.map((n) => (INDEX && INDEX.knots[n]
+      ? `<a class="chip knobtn knotlink" data-knot="${esc(n)}">${esc(n)}</a>`
+      : `<span class="chip">${esc(n)}</span>`)).join(" ");
+    row.innerHTML = `<span class="what-ic">➥</span><span class="what-body"><b>${esc(label)}:</b> ${chips}</span>`;
+    box.appendChild(row);
+  };
+  addTips("Earlier events", ch.prevTips);
+  addTips("Next events", ch.nextTips);
+  const hint = document.createElement("div");
+  hint.className = "what-hint";
+  hint.textContent = "Sequenced from doleance scheduling (AddDoleanceForNextCycle) and quest-success follow-up audiences; failure/unexpected branches appear as options.";
+  box.appendChild(hint);
+  const frag = document.createDocumentFragment();
+  frag.appendChild(sec);
+  frag.appendChild(box);
+  return frag;
+}
 // knot -> [quest ids it unlocks] (from quests.json unlock_knots)
 let _knotUq = null;
 function knotUnlocks() {
@@ -1225,6 +1333,9 @@ function openDetail(name) {
 
   const origin = originSection(name);
   if (origin) panel.appendChild(origin);
+
+  const chain = chainSection(name);
+  if (chain) panel.appendChild(chain);
 
   const facts = whatHappensFacts(k);
   if (facts.length) {

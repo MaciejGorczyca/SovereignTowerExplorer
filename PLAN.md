@@ -390,9 +390,28 @@ the single best feature of this app:
   (`h4.qsec` / `div.sec`, incl. nested `qsec small` sub-headers) with its
   following content into a click-to-collapse `.secwrap` block. Collapsed state is
   keyed by normalized section title and persisted in `localStorage`
-  (`st_tower_csec`), so it survives refreshes and re-opens. Frontend-only
-  (`web/app.js` + `web/style.css`), dist rebuilt, smoke test DOM stub gained a
-  `createDocumentFragment`, all 86 tests green.
+   (`st_tower_csec`), so it survives refreshes and re-opens. Frontend-only
+   (`web/app.js` + `web/style.css`), dist rebuilt, smoke test DOM stub gained a
+   `createDocumentFragment`, all 86 tests green.
+- "Chain of events" in the knot drawer (2026-08-15): the knot detail panel now
+  shows the **narrative sequence** the knot belongs to, answering "what happens
+  before/after this scene" for the county-quest / scripted / grievance /
+  candidacy chains the cross-referencing work had already linked. A new
+  `chainEdges()` map builds directed knot→knot edges from the two real
+  sequencing mechanisms in the data — doleance scheduling
+  (`AddDoleanceForNextCycle` → the scheduled audience's knot, any type) and
+  quest-success follow-up audiences (unlocking knot → `fu[0]` audience knot)
+  — and `knotChain()` walks unambiguous single hops both ways to produce a
+  linear spine (earliest → latest, current highlighted), stopping at branch
+  points where the alternatives are listed as **Earlier events** / **Next
+  events** chips (failure/unexpected follow-ups and the Gavault/Groveshire
+  shared choice root stay as options rather than tangling the spine). E.g.
+  `county_quest_enberg_first_audience → county_quest_enberg_audience_2 →
+  county_quest_enberg_audience_3_interrogation` renders in order, with the
+  final audience + gothild candidacy + Enberg grievance intro as next options.
+  Frontend-only (`web/app.js` + `web/style.css`), dist rebuilt, smoke test
+  locks the enberg chain order (and that unrelated knots get no chain), all
+  86 tests green.
 
 ---
 
