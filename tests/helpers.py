@@ -1,12 +1,17 @@
 """Shared helpers for the explorer test suite (paths, loaders, guards)."""
 import json
+import os
 import sys
 from pathlib import Path
 
 TESTS = Path(__file__).resolve().parent
 EXPLORER = TESTS.parent
 GAME_ROOT = EXPLORER.parent / "game" / "SovereignTowerCode"
-DIST = EXPLORER / "dist"
+
+# Reference dist/ to validate against. Defaults to the checked-in one; override
+# with EXPLORER_DIST to test the build against another branch/commit's dist/
+# (see tests/check_dist_ref.py).
+DIST = Path(os.environ.get("EXPLORER_DIST") or (EXPLORER / "dist"))
 
 for _p in (str(TESTS), str(EXPLORER)):
     if _p not in sys.path:
