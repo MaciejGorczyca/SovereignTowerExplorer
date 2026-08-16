@@ -416,4 +416,6 @@ The other data files (loaded by the other five tabs) are: `quests.json` (312 que
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
 12 knight evolutions, 23 with effect cross-links) and `audiences.json` (511 audiences: 18 with firing
-conditions, 61 fired after quests, 4 knotless; 34 audience requests).
+conditions, 20 director-scheduled (serpent-knight reset, civil wars, act-ending victories, Arlin
+act intros, Rupin's corruption-gated grievances), 61 fired after quests, 4 knotless; 34 audience
+requests).

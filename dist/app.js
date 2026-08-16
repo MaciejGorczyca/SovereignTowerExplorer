@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [] });
     }
   }
   return _knotAud || new Map();
@@ -1399,6 +1399,7 @@ function originSection(name) {
       const cyc = a.cyc && a.cyc.length
         ? ` <span class="mut">· hardcoded to play at cycle ${a.cyc.join("/")} (scripted into the cycle timeline — fires regardless of player actions)</span>`
         : "";
+      const dir = a.dir.length ? ` <span class="mut">· ${a.dir.map(esc).join("; ")}</span>` : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
@@ -1407,9 +1408,9 @@ function originSection(name) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}`);
       }
     }
   }
@@ -3840,6 +3841,7 @@ function aHaystack(stem, a) {
     if (q) h.push(tkey(q.n));
   }
   if (a.cyc && a.cyc.length) h.push("cycle " + a.cyc.join(" "));
+  for (const d of a.dir || []) h.push(d);
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -4057,6 +4059,14 @@ function openAudienceDetail(stem) {
     w.className = "qdesc";
     w.innerHTML = [...new Set(spBy)].map((n) => `<a class="speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" · ");
     panel.appendChild(w);
+  }
+
+  if (a.dir && a.dir.length) {
+    section("Directed by the cycle director");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    d.innerHTML = a.dir.map(esc).join("<br>");
+    panel.appendChild(d);
   }
 
   if (a.cyc && a.cyc.length) {

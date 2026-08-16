@@ -522,6 +522,20 @@ the single best feature of this app:
   Inventory / Knights / Special / Audiences tabs keep the name-only `questLink`)
   + a `.questlink .qid` muted-mono style (`web/style.css`). Frontend-only; all 88
   tests green.
+- Director-scheduled audiences (2026-08-16): the 20 narrated scenes the
+  `CyclesManager` game-director schedules (channel 8 of the audience-condition
+  research) now carry real source notes instead of showing nothing. New
+  `quest_data.py` `load_director_audiences()` parses the `CyclesManager` node of
+  `systems/autoloads/cycles_manager.tscn` (serpent-knight reset, the 4 civil-war
+  revolts, the act-1/2/3 ending victories, Arlin's act-2/3 intros, Rupin's 10
+  corruption-gated grievances) and bakes human-readable "Director scene: …" notes
+  into a per-audience `dir` field (`quests.json` + `audiences.json`, still
+  byte-equal); the civil-war thresholds are parsed live from `cycles_manager.gd`
+  (`≤ 18/20/22` at cycles 24/29/34). The Audiences drawer gains a "Directed by
+  the cycle director" section, the Dialogues knot "Where it comes from" rows show
+  the notes inline, and audience search includes them. Stats + `with_director`;
+  tests lock the 20-stem set, the threshold text and the JSON schema; all 89
+  tests green.
 
 
 ---

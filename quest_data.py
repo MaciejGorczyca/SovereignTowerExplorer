@@ -604,17 +604,200 @@ def _decode_requirements(filer, idx, reqs):
     return out
 
 
+def _civil_war_thresholds():
+    """Parse cycles_manager.gd's civil-war gate: [(cycle, satisfaction threshold)].
+
+    The director checks the lowest population satisfaction each cycle transition
+    but only acts on the cycles in `civil_war_cycle_checks` ({24: 18, 29: 20,
+    34: 22} via the const thresholds).
+    """
+    gd = os.path.join(GAME, "systems/autoloads/cycles_manager.gd")
+    if not os.path.exists(gd):
+        return []
+    text = open(gd, encoding="utf-8").read()
+    consts = {
+        m.group(1): int(m.group(2))
+        for m in re.finditer(r"const\s+(CIVIL_WAR_THRESHOLD_VALUE_\w+)\s*=\s*(\d+)", text)
+    }
+    m = re.search(r"civil_war_cycle_checks\s*=\s*\{(.*?)\}", text, re.S)
+    if not m:
+        return []
+    out = []
+    for pm in re.finditer(r"(\d+)\s*:\s*(CIVIL_WAR_THRESHOLD_VALUE_\w+)", m.group(1)):
+        if pm.group(2) in consts:
+            out.append((int(pm.group(1)), consts[pm.group(2)]))
+    return sorted(out)
+
+
+def load_director_audiences():
+    """Parse the CyclesManager "director" audiences -> {audience stem: [notes]}.
+
+    These narrated scenes are scheduled by the game director (the CyclesManager
+    node of systems/autoloads/cycles_manager.tscn) rather than by quests, ink
+    doleance calls, requests or special instructions:
+
+    - `serpent_knight_audience`            — reset when the story goes back in time
+    - `civil_war_{people,nobles,merchants,scholars}` — act-3 population revolts,
+      gated by the satisfaction thresholds of cycles_manager.gd
+    - `act_{1,2}_endng_audience` + `act_3_ending_audience` — the act-finale
+      victory scenes that switch acts
+    - `arlin_act_{2,3}_intro`              — scheduled right after the act switch
+    - `rupin_audiences`                    — corruption-level-gated grievances
+
+    Values are baked human-readable "Director scene: …" notes (same convention
+    as special.json's `cond`), one per audience.
+    """
+    tscn = os.path.join(GAME, "systems/autoloads/cycles_manager.tscn")
+    if not os.path.exists(tscn):
+        return {}
+    director = {}
+
+    def _stem(path):
+        if path.startswith("res://"):
+            path = path[6:]
+        return os.path.splitext(os.path.basename(path))[0]
+
+    lines = open(tscn, encoding="utf-8").read().splitlines()
+    ext = {}
+    for m in re.finditer(r'\[ext_resource type="[^"]*"[^]]*path="([^"]+)"[^]]*id="(\d+)"\]',
+                         "\n".join(lines)):
+        ext[m.group(2)] = _stem(m.group(1))
+
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith('[node name="CyclesManager"'):
+            start = i + 1
+            break
+    if start is None:
+        return {}
+    end = len(lines)
+    for i in range(start, len(lines)):
+        if lines[i].strip().startswith("["):
+            end = i
+            break
+
+    props = {}
+    i = start
+    while i < end:
+        line = lines[i].strip()
+        m = re.match(r"^([A-Za-z0-9_]+)\s*=\s*(.*)$", line)
+        if not m:
+            i += 1
+            continue
+        key, val = m.group(1), m.group(2).strip()
+        j = i + 1
+        depth = 0
+        in_str = False
+        for ch in val:
+            if ch == '"':
+                in_str = not in_str
+            elif in_str:
+                continue
+            elif ch in "[{(":
+                depth += 1
+            elif ch in "]})":
+                depth -= 1
+        while depth > 0 and j < end:
+            val += "\n" + lines[j].strip()
+            for ch in lines[j]:
+                if ch == '"':
+                    in_str = not in_str
+                elif in_str:
+                    continue
+                elif ch in "[{(":
+                    depth += 1
+                elif ch in "]})":
+                    depth -= 1
+            j += 1
+        props[key] = val
+        i = max(j, i + 1)
+
+    def refstem(tok):
+        m = re.match(r'ExtResource\("([^"]+)"\)', tok.strip())
+        return ext.get(m.group(1)) if m else None
+
+    serp = refstem(props.get("serpent_knight_audience", ""))
+    if serp:
+        director[serp] = [
+            "Director scene: the serpent-knight reset — placed into cycle 0 when "
+            "the story returns to the act beginning and re-scheduled on "
+            "time-travel while the variable serpent_knight_met is false and no "
+            "brimwood trial is ongoing (brimwood_trial_ongoing)."
+        ]
+
+    for key, label in (("civil_war_people", "people"), ("civil_war_nobles", "nobles"),
+                       ("civil_war_merchants", "merchants"), ("civil_war_scholars", "scholars")):
+        stem = refstem(props.get(key, ""))
+        if stem:
+            cw_thresholds = _civil_war_thresholds()
+            if cw_thresholds:
+                checks = ", ".join("≤ %d at cycle %d" % (v, c) for c, v in cw_thresholds)
+            else:
+                checks = "≤ 18 at cycle 24, ≤ 20 at cycle 29, ≤ 22 at cycle 34"
+            director[stem] = [
+                "Director scene: civil war — fires during a cycle fill in act 3 when the %s "
+                "hold the lowest satisfaction among the not-yet-triggered populations and "
+                "it falls to the threshold (%s)." % (label, checks)
+            ]
+
+    act_end_notes = {
+        "act_1_endng_audience": "Director scene: act 1 ending — fires on the dragon-knight "
+                                "ultimatum victory, then switches the game to act 2.",
+        "act_2_endng_audience": "Director scene: act 2 ending — fires on the kingslayer "
+                                "ultimatum victory, then switches the game to act 3.",
+        "act_3_ending_audience": "Director scene: act 3 ending / game finale — fires on the "
+                                 "emperor ultimatum victory to end the game.",
+    }
+    for key, note in act_end_notes.items():
+        stem = refstem(props.get(key, ""))
+        if stem:
+            director[stem] = [note]
+
+    arlin_notes = {
+        "arlin_act_2_intro": "Director scene: Arlin's act 2 introduction — scheduled right "
+                             "after the act 1 ending fires (dragon-knight ultimatum victory).",
+        "arlin_act_3_intro": "Director scene: Arlin's act 3 introduction — scheduled right "
+                             "after the act 2 ending fires (kingslayer ultimatum victory).",
+    }
+    for key, note in arlin_notes.items():
+        stem = refstem(props.get(key, ""))
+        if stem:
+            director[stem] = [note]
+
+    rupin = props.get("rupin_audiences", "").strip()
+    if rupin.startswith("{") and rupin.endswith("}"):
+        rupin = rupin[1:-1]
+        entries = []
+        for chunk in TresFile._split_top(rupin):
+            if ":" not in chunk:
+                continue
+            k, v = chunk.split(":", 1)
+            stem = refstem(k)
+            if stem and v.strip().isdigit():
+                entries.append((int(v.strip()), stem))
+        for level, stem in sorted(entries):
+            director[stem] = [
+                "Director scene: Rupin's criminal-underworld cycle — plays during a cycle "
+                "fill once the corruption level reaches %d (after the variable "
+                "arlin_speech_about_rupin_heard is true)." % level
+            ]
+
+    return director
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
-    keys], rq: [decoded requirements]} — the reverse lookup the knot drawer
-    needs ("how does this knot fire, and under what conditions?").
+    keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director
+    notes} — the reverse lookup the knot drawer needs ("how does this knot
+    fire, and under what conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
         return catalog
     cycles = load_cycle_schedule()
+    director = load_director_audiences()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -636,7 +819,11 @@ def load_audience_catalog(idx):
             reqs = _decode_requirements(tf, idx, tf.props.get("requirements", []))
             if reqs:
                 entry["rq"] = reqs
-            catalog[os.path.splitext(fn)[0]] = entry
+            stem = os.path.splitext(fn)[0]
+            dirn = director.get(stem)
+            if dirn:
+                entry["dir"] = dirn
+            catalog[stem] = entry
     return catalog
 
 

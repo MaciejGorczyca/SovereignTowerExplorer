@@ -235,6 +235,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(st["audiences"], 511)
         self.assertEqual(st["requests"], 34)
         self.assertEqual(st["with_conditions"], 18)
+        self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["knotless"], 4)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
@@ -261,6 +262,35 @@ class AudiencesDataPassTest(unittest.TestCase):
                 self.assertIn(rq[0], ("KAT", "KDEAD", "KABS", "VAR", "APLAY"),
                               (stem, rq))
                 self.assertEqual(len(rq), 3 if rq[0] == "VAR" else 2, (stem, rq))
+
+    def test_director_sources(self):
+        aud = _passes()["audiences"]
+        # the CyclesManager director covers the 10 rupin grievances, the 4 civil
+        # wars, the serpent-knight reset, both Arlin act intros and the 3
+        # act-ending victories
+        for stem in (
+            "scriptedquest_civil_war_event_people_revolt",
+            "scriptedquest_civil_war_event_nobles_revolt",
+            "scriptedquest_civil_war_event_merchants_revolt",
+            "scriptedquest_civil_war_event_scholars_revolt",
+            "scriptedquest_the_serpent_knight_back_in_time",
+            "arlin_introduction_to_act_2", "arlin_introduction_to_act_3",
+            "rupin_criminal_underground_grievance_1",
+            "rupin_criminal_underground_grievance_10",
+            "dragon_knight_ultimatum_victory", "kingslayer_ultimatum_victory",
+            "ultimatum_emperor_victory",
+        ):
+            with self.subTest(audience=stem):
+                notes = aud["audiences"][stem].get("dir", [])
+                self.assertEqual(len(notes), 1)
+                self.assertTrue(notes[0].startswith("Director scene"), notes)
+        cw = aud["audiences"]["scriptedquest_civil_war_event_people_revolt"]["dir"][0]
+        self.assertIn("act 3", cw)
+        self.assertIn("18 at cycle 24", cw)
+        self.assertIn("34", cw)
+        self.assertIn("people", cw)
+        rupin = aud["audiences"]["rupin_criminal_underground_grievance_10"]["dir"][0]
+        self.assertIn("corruption level reaches 20", rupin)
 
     def test_requests_resolve(self):
         aud = _passes()["audiences"]

@@ -189,6 +189,9 @@ class DatasetsTest(unittest.TestCase):
                         self.assertEqual(len(rq), 3)
                     else:
                         self.assertEqual(len(rq), 2)
+                for d in a.get("dir", []):
+                    self.assertIsInstance(d, str)
+                    self.assertTrue(d)
 
     def test_audiences_json_schema(self):
         aud = self.audiences

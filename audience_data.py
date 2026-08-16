@@ -191,6 +191,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
             "audiences": len(audiences),
             "requests": len(requests),
             "with_conditions": sum(1 for a in audiences.values() if a.get("rq")),
+            "with_director": sum(1 for a in audiences.values() if a.get("dir")),
             "knotless": len(knotless),
             "fires_after_quests": len(rev["qf"]),
         },
@@ -201,6 +202,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     print(f"Audiences: {data['stats']['audiences']} catalogued · "
           f"{data['stats']['with_conditions']} with conditions · "
+          f"{data['stats']['with_director']} director-scheduled · "
           f"{data['stats']['requests']} requests · "
           f"{data['stats']['fires_after_quests']} fired after quests · "
           f"{data['stats']['knotless']} without an ink knot")
