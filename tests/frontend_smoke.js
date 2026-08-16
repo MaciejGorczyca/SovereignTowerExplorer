@@ -193,6 +193,22 @@ waitReady().then(() => {
   vm.runInContext("renderAudienceResults()", sandbox);
   vm.runInContext("openAudienceDetail(Object.keys(AUDIENCE.audiences)[0])", sandbox);
   vm.runInContext("openRequestDetail(Object.keys(AUDIENCE.requests)[0])", sandbox);
+  // channel 10: knight death-follow-up audiences carry a dd link and search in
+  // the audience haystack (both tabs consume the reversed field)
+  const ddCount = vm.runInContext("AUDIENCE.stats.with_death_followup", sandbox);
+  if (ddCount !== 7) throw new Error("with_death_followup != 7: " + ddCount);
+  const ddUrsula = vm.runInContext(
+    "AUDIENCE.audiences['ursula_new_gimmick_low_corruption'].dd", sandbox);
+  if (!ddUrsula || ddUrsula.length !== 1 || ddUrsula[0][0] !== "ursule" ||
+      ddUrsula[0][1] !== "death") {
+    throw new Error("ursula gimmick dd wrong: " + JSON.stringify(ddUrsula));
+  }
+  const ddInKnot = vm.runInContext(
+    "(() => { const r = knotAudiences().get('ursula_new_gimmick_low_corruption'); return r ? (r[0] && r[0].dd) : undefined; })()", sandbox);
+  if (!ddInKnot || !ddInKnot.length) throw new Error("dd not carried into knotAudiences");
+  if (!vm.runInContext("ahay('ursula_new_gimmick_low_corruption', AUDIENCE.audiences['ursula_new_gimmick_low_corruption']).indexOf('ursule') >= 0", sandbox)) {
+    throw new Error("death-follow-up knight not in audience haystack");
+  }
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE
   // dataset (knotAudiences/knotFuQuests) — open one that has both audiences and
   // follow-up quests to keep that re-pointing locked in.

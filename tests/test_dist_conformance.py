@@ -192,6 +192,10 @@ class DatasetsTest(unittest.TestCase):
                 for d in a.get("dir", []):
                     self.assertIsInstance(d, str)
                     self.assertTrue(d)
+                for d in a.get("dd", []):
+                    self.assertEqual(len(d), 2)
+                    self.assertIsInstance(d[0], str)
+                    self.assertIn(d[1], ("death", "demission"))
 
     def test_audiences_json_schema(self):
         aud = self.audiences

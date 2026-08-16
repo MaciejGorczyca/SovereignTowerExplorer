@@ -903,13 +903,43 @@ def load_special_interventions():
     return out
 
 
+def load_knight_death_followups():
+    """Parse content/character_descriptors/knights/*.tres -> {audience stem: [[knight, "death"]]}.
+
+    A knight lists the narrated scenes that play when it dies
+    (`death_follow_up_audiences_names`); `knight.gd:die()` emits the selected
+    follow-up audience for the next cycle (`get_death_follow_up_dialogue()`,
+    knight.gd:139-152, erasing it from played_audiences so it can re-fire).
+    Per-knight overrides change which of the listed scenes actually plays:
+    Ursule (ursula.gd:47-62) picks the low/mid/high-corruption variant by her
+    death count (corruption_thresholds 1/3/5, ursula.gd:15-20) or, while on the
+    kingslayer ultimatum quest, always the high one; Gideon (gideon.gd:24-28)
+    suppresses his follow-up while he is the traitor during an AUDIENCE phase.
+    Values are `[knight_stem, "death"]` pairs so the same field can later carry
+    demissions (`"demission"`, E4).
+    """
+    d = f"{GAME}/content/character_descriptors/knights"
+    out = {}
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tres"):
+            continue
+        knight = os.path.splitext(fn)[0]
+        tf = TresFile.load(os.path.join(d, fn), d)
+        for aud in tf.props.get("death_follow_up_audiences_names", []) or []:
+            out.setdefault(aud, []).append([knight, "death"])
+    return out
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
-    special-intervention notes} — the reverse lookup the knot drawer needs
-    ("how does this knot fire, and under what conditions?").
+    special-intervention notes, dd: knight death-follow-up links} — the reverse
+    lookup the knot drawer needs ("how does this knot fire, and under what
+    conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
@@ -917,6 +947,7 @@ def load_audience_catalog(idx):
     cycles = load_cycle_schedule()
     director = load_director_audiences()
     interventions = load_special_interventions()
+    death_followups = load_knight_death_followups()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -945,6 +976,9 @@ def load_audience_catalog(idx):
             inotes = interventions.get(entry["k"])
             if inotes:
                 entry["dir"] = (entry.get("dir") or []) + list(inotes)
+            dde = death_followups.get(stem)
+            if dde:
+                entry["dd"] = list(dde)
             catalog[stem] = entry
     return catalog
 

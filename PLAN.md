@@ -560,6 +560,26 @@ the single best feature of this app:
   (343 no-info before → 28 covered, 246 still no-info: filler 236 + doleances
   minus the covered plots, demissions, death-follow-ups). Tests: new
   `test_intervention_sources` + `with_intervention` assertion; 90 tests green.
+- Knight death follow-ups (2026-08-16): channel 10 of the audience-condition
+  research — the narrated scenes that play when a knight dies. New
+  `quest_data.py` `load_knight_death_followups()` parses each knight
+  descriptor's `death_follow_up_audiences_names`
+  (`content/character_descriptors/knights/*.tres`) and reverse-maps them onto
+  the audience catalog as a new `dd` field (`[[knight_stem, "death"], …]`, the
+  same field E4 will later extend with `"demission"` entries). Covers the 7
+  `*_death_announcement` / `ursula_new_gimmick_*` audiences — angelica, gideon,
+  goberto and gwendan each announce their own death, while Ursule's three
+  new-gimmick scenes are the corruption-tiered variants (low/mid/high by death
+  count, or the high one during the kingslayer-ultimatum quest) her script
+  (`ursula.gd:47`) picks from. Gideon suppresses his while he is the traitor
+  during an AUDIENCE phase (`gideon.gd:24`); the scenes are queued for the next
+  cycle and erased from `played_audiences` first so they can re-fire
+  (knight.gd:139-152). The Audiences drawer gains a "Fires when a knight dies"
+  section, the Dialogues knot "Where it comes from" rows append a
+  "fires when <knight> dies" suffix, and audience search indexes the knight
+  names. Stats + `with_death_followup` (7). Tests: `test_death_followup_sources`
+  + `dd` schema assertions in both conformance tests + smoke assertions; 91
+  tests green.
 
 
 ---

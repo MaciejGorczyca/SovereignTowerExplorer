@@ -420,5 +420,6 @@ conditions, 20 director-scheduled (serpent-knight reset, civil wars, act-ending 
 act intros, Rupin's corruption-gated grievances), 28 special interventions (the ultimatum second
 encounters, the king/dragon allied plots, the traitor's-plot intro + murder, Dulahan's human form,
 Victoria's betrayal, the nobles' cycle-zero intro, the wolf candidacy, Arlin's reunited-roundtable
-reaction, the 15 courier scenes), 61 fired after quests, 4 knotless; 34 audience
+reaction, the 15 courier scenes), 7 knight death follow-ups (the death announcements of angelica,
+gideon, goberto, gwendan + Ursule's corruption-tiered new-gimmick variants), 61 fired after quests, 4 knotless; 34 audience
 requests).

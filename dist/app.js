@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [] });
     }
   }
   return _knotAud || new Map();
@@ -1400,6 +1400,9 @@ function originSection(name) {
         ? ` <span class="mut">· hardcoded to play at cycle ${a.cyc.join("/")} (scripted into the cycle timeline — fires regardless of player actions)</span>`
         : "";
       const dir = a.dir.length ? ` <span class="mut">· ${a.dir.map(esc).join("; ")}</span>` : "";
+      const dd = a.dd && a.dd.length
+        ? ` <span class="mut">· fires when ${a.dd.map((d) => kName(d[0])).join(", ")} ${a.dd.every((d) => d[1] === "death") ? "dies" : "leaves the roundtable"}</span>`
+        : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
@@ -1408,9 +1411,9 @@ function originSection(name) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}`);
       }
     }
   }
@@ -3842,6 +3845,7 @@ function aHaystack(stem, a) {
   }
   if (a.cyc && a.cyc.length) h.push("cycle " + a.cyc.join(" "));
   for (const d of a.dir || []) h.push(d);
+  for (const d of a.dd || []) h.push(d[0], kName(d[0]), d[1], "dies");
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -4083,6 +4087,18 @@ function openAudienceDetail(stem) {
     d.className = "qdesc";
     d.innerHTML = a.rq.map(audienceReqText).join("<br>");
     panel.appendChild(d);
+  }
+
+  if (a.dd && a.dd.length) {
+    section("Fires when a knight dies");
+    const w = document.createElement("div");
+    w.className = "qdesc";
+    w.innerHTML = a.dd.map((d) => {
+      const [kstem] = d;
+      const who = (KNIGHTS && KNIGHTS.knights[kstem]) ? knightLink(kstem) : esc(kName(kstem));
+      return `Fires when ${who} dies — queued for the next cycle by the death follow-up (the scene is erased from played_audiences first so it can re-fire).`;
+    }).join("<br>");
+    panel.appendChild(w);
   }
 
   if (fu.length) {

@@ -327,6 +327,30 @@ class AudiencesDataPassTest(unittest.TestCase):
         courier = aud["audiences"]["brizh_grievance_the_courier_bringing_quests_15"]["dir"][0]
         self.assertIn("act 3", courier)
 
+    def test_death_followup_sources(self):
+        aud = _passes()["audiences"]
+        knights = _passes()["knights"]
+        # channel 10: the knight resources' death_follow_up_audiences_names
+        self.assertEqual(aud["stats"]["with_death_followup"], 7)
+        for stem, knight in (
+            ("angelica_death_announcement", "angelica"),
+            ("gideon_death_announcement", "gideon"),
+            ("goberto_death_announcement", "goberto"),
+            ("gwendan_death_announcement", "gwendan"),
+            ("ursula_new_gimmick_low_corruption", "ursule"),
+            ("ursula_new_gimmick_mid_corruption", "ursule"),
+            ("ursula_new_gimmick_high_corruption", "ursule"),
+        ):
+            with self.subTest(audience=stem):
+                dd = aud["audiences"][stem].get("dd", [])
+                self.assertTrue(any(d == [knight, "death"] for d in dd), (stem, dd))
+        self.assertTrue(aud["audiences"]["ursula_new_gimmick_high_corruption"]["dd"],
+                        "ursule gimmick variants come from the knight descriptor")
+        for stem, a in aud["audiences"].items():
+            for d in a.get("dd", []):
+                self.assertEqual(d[1], "death", (stem, d))
+                self.assertIn(d[0], knights["knights"], (stem, d))
+
     def test_requests_resolve(self):
         aud = _passes()["audiences"]
         for stem, r in aud["requests"].items():
