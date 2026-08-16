@@ -1885,6 +1885,10 @@ function knightLink(stem) {
   return esc(s);
 }
 // render an argument that may be a quest id, an equipment item or a knight
+function specialLink(key, text) {
+  return `<a class="speciallink" data-special="${esc(key)}">${esc(text == null ? key : text)}</a>`;
+}
+
 function linkArg(a) {
   const s = String(a);
   if (QUEST && QUEST.quests[s]) return questLink(s);
@@ -1894,6 +1898,8 @@ function linkArg(a) {
   if (kstem) return knightLink(kstem);
   if (AUDIENCE && AUDIENCE.requests[s]) return requestLink(s);
   if (AUDIENCE && AUDIENCE.audiences[s]) return audienceLink(s);
+  const up = s.toUpperCase();
+  if (SPECIAL && SPECIAL.instructions[up]) return specialLink(up, s);
   return esc(s);
 }
 
