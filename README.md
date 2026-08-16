@@ -260,7 +260,8 @@ only-with-choices, hide game-function knots.
 
 A **"Where it comes from"** filter group selects knots by their cross-dataset
 links (the reverse maps `knotAudiences`/`knotFuQuests`/`knotIncoming`/
-`knotUnlocks`/`knotSpecials`/`knotItems`/`knotKnights` built from
+`knotUnlocks`/`knotSpecials`/`knotItems`/`knotKnights`/`knotSpecialTriggers`
+built from
 `audiences.json`, `quests.json`, `special.json`, `inventory.json` and
 `knights.json`): played-as-an-audience, fires-after-a-quest,
 reached-from-other-knots, unlocks-a-quest, emits-a-special-instruction,
@@ -269,7 +270,12 @@ the audience **type** (folder), the audience **NPC**, the **quest** that fires
 the knot and the **special instruction** it emits. Knot cards carry badges for
 these links too (audience ×N, unlocks N, special ×N, knight ×N), so e.g.
 `grest_first_grievance` is immediately identifiable as a *doleances* audience
-starring Roland.
+starring Roland. The knot drawer's origin section additionally lists the
+**special instructions that unlock or divert to the knot** ("Fires when the
+special instruction X is triggered" — the reverse of the Special tab's
+`dlg`/`goto` links, so `gideon_victoria_dead_reaction` now states that
+`GIDEON_VICTORIA_DEAD` must fire first), and audience rows show the **cycle** a
+scripted scene is hardcoded into.
 
 A **"Chain of events"** section (when the knot is part of a sequence) lays out
 the narrative order the knot plays in as a horizontal flow, current knot
@@ -402,4 +408,4 @@ The other data files (loaded by the other five tabs) are: `quests.json` (312 que
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
 12 knight evolutions, 20 with effect cross-links) and `audiences.json` (511 audiences: 18 with firing
-conditions, 60 fired after quests, 4 knotless; 34 audience requests).
+conditions, 61 fired after quests, 4 knotless; 34 audience requests).

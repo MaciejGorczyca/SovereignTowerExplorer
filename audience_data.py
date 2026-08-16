@@ -146,7 +146,23 @@ def _quest_fired_audiences(quests_data):
             stem = uo.get("fu")
             if stem:
                 out[stem].append({"q": qid, "k": "unexpected"})
-    return {stem: entries for stem, entries in out.items() if entries}
+        for mo in (q.get("mo") or []):
+            for stem in (mo.get("unfu") or []):
+                if stem:
+                    out[stem].append({"q": qid, "k": "unexpected"})
+    return {stem: _dedupe_qf(entries) for stem, entries in out.items() if entries}
+
+
+def _dedupe_qf(entries):
+    seen = set()
+    uniq = []
+    for e in entries:
+        key = (e["q"], e["k"])
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(e)
+    return uniq
 
 
 def build_audiences(out_dir, quests_data, index, game_root=None):

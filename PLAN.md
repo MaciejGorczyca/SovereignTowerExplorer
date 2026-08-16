@@ -457,6 +457,25 @@ the single best feature of this app:
   Dialogues / Knights / Audiences, e.g. `GIDEON_VICTORIA_DEAD` →
   `gideon_victoria_dead_reaction` and `VICTORIA_DEAD` → Victoria. Full rebuild;
   all 90 tests green.
+- Firing conditions / "how to proc" reverse links (2026-08-16): the audience tab
+  now knows the **hardcoded cycle** each scripted scene plays in
+  (`quest_data.py` parses `content/cycles/cycle_*.tres` into a per-audience
+  `cyc`, e.g. `scriptedquest_assassination_attempt` → cycle 7; audience cards
+  carry a "cycle N" badge and the drawer explains the hardcoding). Quest data
+  previously dropped the follow-up audiences of *modifier* unexpected outcomes —
+  `quest_data.py` now resolves each modifier `unexpected_outcomes`'
+  `follow_up_audience` (`mo.unfu`, e.g. `contract_cleankeeper_goose_part_two`
+  → `chester_candidacy`), and `audience_data.py` folds them into the
+  "which quest fires this audience" reverse map (fires-after-quests 60 → 61),
+  so the `candidature_chester` line now links back to its goose quest chain.
+  Finally, the Dialogues drawer's "Where it comes from" gained a reverse
+  special-link row via a new `knotSpecialTriggers()` map: knots that a
+  `SpecialInstruction` unlocks (`dlg`) or diverts to (`goto`) now say "Fires
+  when the special instruction X is triggered", so
+  `gideon_victoria_dead_reaction` correctly requires `GIDEON_VICTORIA_DEAD`
+  (previously the *special* knew it unlocked the knot but the *knot* gave no
+  clue what fires it). Full rebuild; smoke test locks cycle + reverse-special +
+  modifier-follow-up; all 88 tests green.
 
 ---
 

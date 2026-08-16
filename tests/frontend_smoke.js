@@ -265,6 +265,25 @@ waitReady().then(() => {
   if (!/Grants audience request/.test(wfr) || !/data-req="bettie_request_victoria"/.test(wfr)) {
     throw new Error("What happens request fact row not clickable: " + wfr);
   }
+  // Firing conditions / "how to proc" cross-links:
+  // 1. special-instruction reverse links — the knot that a special unlocks
+  //    must surface the trigger (GIDEON_VICTORIA_DEAD -> gideon_victoria_dead_reaction).
+  const spTrig = vm.runInContext("knotSpecialTriggers().get('gideon_victoria_dead_reaction') || []", sandbox);
+  if (!spTrig.includes("GIDEON_VICTORIA_DEAD")) {
+    throw new Error("knot special-trigger reverse link missing: " + JSON.stringify(spTrig));
+  }
+  // 2. cycle scheduling — scripted audiences hardcoded into a cycle resource
+  //    (scriptedquest_assassination_attempt is placed in cycle 7) and the
+  //    reverse "modifier unexpected outcome follow-up" quest→audience link
+  //    (contract_cleankeeper_goose_part_two's modifier -> chester_candidacy).
+  const cyc = vm.runInContext("AUDIENCE.audiences.scriptedquest_assassination_attempt.cyc", sandbox);
+  if (!cyc || !cyc.includes(7)) {
+    throw new Error("cycle scheduling missing for scriptedquest_assassination_attempt: " + JSON.stringify(cyc));
+  }
+  const chesterFu = vm.runInContext("AUDIENCE.rev.qf.chester_candidacy || []", sandbox);
+  if (!chesterFu.some((f) => f.q === "contract_cleankeeper_goose_part_two" && f.k === "unexpected")) {
+    throw new Error("modifier unexpected follow-up missing for chester_candidacy: " + JSON.stringify(chesterFu));
+  }
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));

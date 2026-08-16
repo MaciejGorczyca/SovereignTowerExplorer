@@ -233,6 +233,7 @@ a.knotlink { color: var(--blue); text-decoration: underline; cursor: pointer; }
 .badge.alias { color: #b691d8; border-color: #433a55; background: #261f33; }
 .badge.req { color: #b691d8; border-color: #433a55; background: #261f33; }
 .badge.aud { color: var(--blue); }
+.badge.cyc { color: #78c2e7; border-color: #25455c; background: #152a3a; }
 .badge.knotless { opacity: 0.55; }
 a.audiencelink { color: var(--blue); text-decoration: underline; cursor: pointer; }
 a.reqlink { color: #b691d8; text-decoration: underline; cursor: pointer; }

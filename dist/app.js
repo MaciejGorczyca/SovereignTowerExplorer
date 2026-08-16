@@ -1059,6 +1059,12 @@ function knotFuQuests() {
         const a = uo.fu && AUDIENCE.audiences[uo.fu];
         if (a && a.k) push(a.k, qid, "unexpected");
       }
+      for (const mo of q.mo || []) {
+        for (const stem of mo.unfu || []) {
+          const a = AUDIENCE.audiences[stem];
+          if (a && a.k) push(a.k, qid, "unexpected");
+        }
+      }
     }
   }
   return _knotFu || new Map();
@@ -1271,6 +1277,24 @@ function knotSpecials() {
   }
   return _knotSp || new Map();
 }
+// knot -> [special instruction keys that unlock it as a special dialogue (dlg)
+// or divert to it (goto)] — "what makes this knot fire" reverse links.
+let _knotSpTrig = null;
+function knotSpecialTriggers() {
+  if (!_knotSpTrig && SPECIAL) {
+    _knotSpTrig = new Map();
+    const push = (kn, name) => {
+      if (!INDEX.knots[kn]) return;
+      if (!_knotSpTrig.has(kn)) _knotSpTrig.set(kn, []);
+      _knotSpTrig.get(kn).push(name);
+    };
+    for (const [name, i] of Object.entries(SPECIAL.instructions)) {
+      for (const kn of i.dlg || []) push(kn, name);
+      for (const kn of i.goto || []) push(kn, name);
+    }
+  }
+  return _knotSpTrig || new Map();
+}
 // knot -> [{stem, op}] items the knot grants (op "grant") or removes (op "remove")
 let _knotIt = null;
 function knotItems() {
@@ -1328,7 +1352,7 @@ function originSection(name) {
   const sec = document.createElement("div");
   sec.className = "sec";
   sec.textContent = "Where it comes from";
-  sec.title = "What activates this knot: the quests that fire it as a follow-up audience, the audience resources that play it (with their conditions), and the ink knots that divert into it.";
+  sec.title = "What activates this knot: the special instructions that unlock/divert to it, the quests that fire it as a follow-up audience, the audience resources that play it (with their conditions and cycle scheduling), and the ink knots that divert into it.";
   const box = document.createElement("div");
   box.className = "what";
   const add = (body) => {
@@ -1351,16 +1375,22 @@ function originSection(name) {
       const nm = a.c.length ? a.c.map(tkey).join(", ") : a.stem;
       const folder = a.f || a.stem;
       const reqs = a.rq.length ? ` <span class="mut">· ${a.rq.map(audienceReqText).join(", ")}</span>` : "";
+      const cyc = a.cyc && a.cyc.length ? ` <span class="mut">· scheduled at cycle ${a.cyc.join("/")}</span>` : "";
       const scheds = doleanceSchedulers().get(a.stem);
       if (scheds && scheds.length) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance audience <b>${esc(nm)}</b>${reqs}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance audience <b>${esc(nm)}</b>${reqs}${cyc}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> audience <b>${esc(nm)}</b>${reqs}`);
+        add(`Played as <b>${esc(folder)}</b> audience <b>${esc(nm)}</b>${reqs}${cyc}`);
       }
     }
+  }
+  const spTrig = knotSpecialTriggers().get(name);
+  if (spTrig && spTrig.length) {
+    const chips = [...new Set(spTrig)].map((n) => `<a class="chip speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" ");
+    add(`Fires when the <b>special instruction</b> <span class="readers">${chips}</span> is triggered (unlocks/diverts this knot)`);
   }
   const inc = (knotIncoming().get(name) || []).slice(0, 24);
   if (inc.length) {
@@ -3753,6 +3783,7 @@ function aHaystack(stem, a) {
     const q = QUEST && QUEST.quests[f.q];
     if (q) h.push(tkey(q.n));
   }
+  if (a.cyc && a.cyc.length) h.push("cycle " + a.cyc.join(" "));
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -3826,6 +3857,9 @@ function audCard(stem, a) {
   el.tabIndex = 0;
   const badges = [];
   badges.push(`<span class="badge aud">${esc(a.f)}</span>`);
+  if (a.cyc && a.cyc.length) {
+    badges.push(`<span class="badge cyc" title="hardcoded to play at cycle ${esc(a.cyc.join("/"))}">cycle ${esc(a.cyc.join("/"))}</span>`);
+  }
   if ((a.rq || []).length) {
     badges.push(`<span class="badge sp-quest" title="${esc(a.rq.map(audienceReqText).join(", "))}">${a.rq.length} condition${a.rq.length > 1 ? "s" : ""}</span>`);
   }
@@ -3958,6 +3992,14 @@ function openAudienceDetail(stem) {
       ? `<a class="knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a> <span class="muted">(${esc(s.type)})</span>`
       : `${esc(s.knot)} <span class="muted">(${esc(s.type)})</span>`).join(" · ");
     panel.appendChild(w);
+  }
+
+  if (a.cyc && a.cyc.length) {
+    section("Hardcoded to play at cycle");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    d.textContent = `This scene is scripted into the cycle timeline (cycle ${a.cyc.join(", ")}) — it fires at that point regardless of player actions.`;
+    panel.appendChild(d);
   }
 
   if (a.rq && a.rq.length) {

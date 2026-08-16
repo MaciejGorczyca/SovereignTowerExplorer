@@ -552,6 +552,30 @@ def _ref_stem(ref, filer):
     return os.path.splitext(os.path.basename(p))[0]
 
 
+def load_cycle_schedule():
+    """Parse content/cycles/cycle_*.tres -> {audience stem: [cycle indexes]}.
+
+    The cycle resources hard-code which narrated scenes play at which cycle
+    (e.g. scriptedquest_assassination_attempt is placed in cycle_7), which is
+    the "fires on a specific cycle" information for scripted events.
+    """
+    out = {}
+    d = f"{GAME}/content/cycles"
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        m = re.match(r"cycle_(\d+)\.tres", fn)
+        if not m:
+            continue
+        cidx = int(m.group(1))
+        tf = TresFile.load(os.path.join(d, fn), d)
+        for a in tf.props.get("audiences", []):
+            stem = _ref_stem(a, tf)
+            if stem:
+                out.setdefault(stem, []).append(cidx)
+    return out
+
+
 def _decode_requirements(filer, idx, reqs):
     """Decode an Audience's `requirements` (list of AudienceRequirement
     sub-resources) into compact JSON lists for the frontend:
@@ -590,6 +614,7 @@ def load_audience_catalog(idx):
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
         return catalog
+    cycles = load_cycle_schedule()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -605,6 +630,9 @@ def load_audience_catalog(idx):
                 "f": os.path.basename(root),
                 "c": [c for c in chars if c],
             }
+            cyc = cycles.get(os.path.splitext(fn)[0])
+            if cyc:
+                entry["cyc"] = sorted(cyc)
             reqs = _decode_requirements(tf, idx, tf.props.get("requirements", []))
             if reqs:
                 entry["rq"] = reqs
@@ -829,6 +857,22 @@ def load_quests():
                         so_path = f"{GAME}/{so_path[6:]}"
                     mo["un"].append(refname(so_path) if so_path else None)
                 mo["un"] = [u for u in mo["un"] if u]
+                # modifier unexpected outcomes can carry their own follow-up
+                # audience (e.g. contract_cleankeeper_goose_part_two's modifier
+                # outcomes -> chester_candidacy, which plays candidature_chester).
+                un_fu = []
+                for x in it["unexpected_outcomes"]:
+                    so_path = tf.ext_path(x["_ext"]) if isinstance(x, dict) and "_ext" in x else None
+                    if so_path and so_path.startswith("res://"):
+                        so_path = f"{GAME}/{so_path[6:]}"
+                    if so_path:
+                        sotf = TresFile.load(so_path, os.path.dirname(so_path))
+                        fu = sotf.props.get("follow_up_audience")
+                        if fu:
+                            un_fu.append(refname(resolve_quest_ref(fu, sotf)) if fu not in (None, "null") else None)
+                un_fu = [u for u in un_fu if u]
+                if un_fu:
+                    mo["unfu"] = un_fu
             q["mo"].append(mo)
             for iu, ustem in enumerate(mo.get("un", [])):
                 unlocks.setdefault(ustem, []).append([qid, i + 1])
