@@ -3458,6 +3458,17 @@ function sHaystack(name, i) {
   const h = [name, i.signal || "", i.note || "", i.knight ? sOwner(i.knight) : "", i.knight || ""];
   for (const k of i.knots || []) h.push(k);
   for (const q of i.quests || []) h.push(q + " " + (QUEST && QUEST.quests[q] ? tkey(QUEST.quests[q].n) : ""));
+  for (const k of i.dlg || []) h.push(k);
+  for (const k of i.goto || []) h.push(k);
+  for (const a of i.auds || []) {
+    h.push(a);
+    const au = AUDIENCE && AUDIENCE.audiences[a];
+    if (au) for (const c of au.c || []) h.push(tkey(c));
+    for (const f of (AUDIENCE && AUDIENCE.rev.qf && AUDIENCE.rev.qf[a]) || []) h.push(f.q);
+  }
+  for (const c of i.affects || []) h.push(c, sOwner(c));
+  for (const v of i.vars || []) h.push(v);
+  if (i.ending) h.push(i.ending);
   return h.join(" ").toLowerCase();
 }
 const _shair = new Map();
@@ -3497,6 +3508,10 @@ function renderSpecialResults() {
     if (i.knight) badges.push(`<span class="badge sp-quest">evolution · ${esc(sOwner(i.knight))}</span>`);
     if ((i.knots || []).length) badges.push(`<span class="badge sp-ink">ink ${i.knots.length}</span>`);
     if ((i.quests || []).length) badges.push(`<span class="badge sp-meals">quests ${i.quests.length}</span>`);
+    if ((i.dlg || []).length) badges.push(`<span class="badge sp-ink">unlocks ${i.dlg.length}</span>`);
+    if ((i.goto || []).length) badges.push(`<span class="badge sp-ink">diverts ${i.goto.length}</span>`);
+    if ((i.auds || []).length) badges.push(`<span class="badge aud" title="${esc(i.auds.join(", "))}">audiences ${i.auds.length}</span>`);
+    if ((i.affects || []).length) badges.push(`<span class="badge sp-quest" title="affects ${esc(i.affects.map(sOwner).join(", "))}">affects ${i.affects.length}</span>`);
     if (i.signal) badges.push(`<span class="badge quiet">${esc(i.signal)}</span>`);
     const open = () => go("special", name);
     el.innerHTML = `
@@ -3568,6 +3583,65 @@ function openSpecialDetail(name) {
     const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Granted by (quests)"; panel.appendChild(h);
     const d = document.createElement("div"); d.className = "qdesc";
     d.innerHTML = i.quests.map((q) => questLink(q)).join(" · ");
+    panel.appendChild(d);
+  }
+
+  if ((i.dlg || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Unlocks special dialogue (knots)"; panel.appendChild(h);
+    const w = document.createElement("div"); w.className = "chips knotchips";
+    for (const kn of i.dlg) {
+      const a = document.createElement("a");
+      a.className = "chip knobtn";
+      a.href = "#";
+      a.textContent = kn;
+      a.dataset.knot = kn;
+      a.addEventListener("click", (e) => { e.preventDefault(); if (INDEX.knots[kn]) go("knot", kn); });
+      w.appendChild(a);
+    }
+    panel.appendChild(w);
+  }
+
+  if ((i.goto || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Diverts to (ink knots)"; panel.appendChild(h);
+    const w = document.createElement("div"); w.className = "chips knotchips";
+    for (const kn of i.goto) {
+      if (!INDEX.knots[kn]) continue;
+      const a = document.createElement("a");
+      a.className = "chip knobtn";
+      a.href = "#";
+      a.textContent = kn;
+      a.dataset.knot = kn;
+      a.addEventListener("click", (e) => { e.preventDefault(); go("knot", kn); });
+      w.appendChild(a);
+    }
+    panel.appendChild(w);
+  }
+
+  if (i.ending) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Ending path"; panel.appendChild(h);
+    const d = document.createElement("div"); d.className = "qdesc";
+    d.textContent = i.ending;
+    panel.appendChild(d);
+  }
+
+  if ((i.affects || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Affects (characters)"; panel.appendChild(h);
+    const d = document.createElement("div"); d.className = "qdesc";
+    d.innerHTML = i.affects.map((c) => knightLink(c)).join(" · ");
+    panel.appendChild(d);
+  }
+
+  if ((i.auds || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Schedules (audiences)"; panel.appendChild(h);
+    const d = document.createElement("div"); d.className = "qdesc";
+    d.innerHTML = i.auds.map(audienceLink).join(" · ");
+    panel.appendChild(d);
+  }
+
+  if ((i.vars || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Sets story variables"; panel.appendChild(h);
+    const d = document.createElement("div"); d.className = "qdesc";
+    d.textContent = i.vars.join(", ");
     panel.appendChild(d);
   }
 

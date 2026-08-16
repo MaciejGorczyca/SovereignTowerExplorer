@@ -401,5 +401,5 @@ The other data files (loaded by the other five tabs) are: `quests.json` (312 que
 `inventory.json` (154 items, 71 quest-linked, 24 ink-unlocked), `knights.json` (24
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
-12 knight evolutions) and `audiences.json` (511 audiences: 18 with firing
+12 knight evolutions, 20 with effect cross-links) and `audiences.json` (511 audiences: 18 with firing
 conditions, 60 fired after quests, 4 knotless; 34 audience requests).

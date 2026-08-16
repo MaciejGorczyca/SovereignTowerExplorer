@@ -441,6 +441,22 @@ the single best feature of this app:
   existing `requestLink()`/`reqlink` plumbing. The "What happens" section also
   lists such rewards (`Grants audience request …`) as a `📣` fact row. All
   frontend; dist rebuilt, all 88 tests green.
+- Special effect cross-links (2026-08-16): the Special tab's cards and drawers
+  now surface what each `SpecialInstruction` *does*, not just the signal name.
+  `special_data.py` decodes each match-case body in
+  `special_instruction_manager.gd` — `unlock_special_dialogue` (→ the ink knot it
+  unlocks, via the owning knight's `specd` map), `StoryController.goto` (→ knot,
+  resolved through the `SpecialInstructionManager` exports in
+  `story_controller.tscn`), `audience_unlocked_for_next_cycle` /
+  `add_audience_in_x_cycle` (→ audience resources), `get_knight_from_name` /
+  `trigger_dialogues_unlock_for_knight` (→ affected characters), `set_variable`
+  and `EndingManager.Endings.*` — and emits them as new `dlg` / `goto` / `auds` /
+  `affects` / `vars` / `ending` fields (+ `linked` stat). Frontend: card badges
+  and drawer sections (unlocks special dialogue, diverts to, schedules audiences,
+  affects characters, sets story variables, ending path) all cross-link to
+  Dialogues / Knights / Audiences, e.g. `GIDEON_VICTORIA_DEAD` →
+  `gideon_victoria_dead_reaction` and `VICTORIA_DEAD` → Victoria. Full rebuild;
+  all 90 tests green.
 
 ---
 

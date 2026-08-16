@@ -23,8 +23,26 @@ falls back to a humanised signal name (or the raw instruction name).
 
 Output shape (dist/special.json):
   instructions:  { "<UPPER_NAME>": {knots: [..], quests: [..],
-                                     signal: str, knight: str, note: str} }
+                                     signal: str, knight: str, note: str,
+                                     dlg: [..], goto: [..], auds: [..],
+                                     affects: [..], vars: [..], ending: str} }
   stats:         header counts
+
+The cross-link fields beyond `knots`/`quests` are decoded from the manager's
+match-case bodies:
+
+  dlg      ink knots this instruction unlocks as a special dialogue
+           (GIDEON_VICTORIA_DEAD -> gideon_victoria_dead_reaction, via the
+           owning knight's `specd` map)
+  goto     ink knots the instruction diverts to (StoryController.goto targets,
+           resolved through the exported StringName in story_controller.tscn)
+  auds     audience resources the instruction schedules/unlocks (add_audience
+           / audience_unlocked_for_next_cycle, resolved via the tscn exports)
+  affects  knight/character stems the instruction targets directly
+           (get_knight_from_name, trigger_dialogues_unlock_for_knight, the
+           character of an unlock_special_dialogue)
+  vars     story variables the instruction writes (StoryController.set_variable)
+  ending   ending path switched to (EndingManager.Endings.X)
 """
 
 import collections
@@ -51,38 +69,136 @@ def set_special_root(root):
 
 INSTRUCTION_CASE = re.compile(r'^\s*&\s*"([^"]+)"\s*:\s*$')
 SIGNAL_EMIT = re.compile(r"SignalsEventBus\.(\w+)\.emit\b")
+# effect patterns mined from each match-case body:
+DLG_EMIT = re.compile(r'SignalsEventBus\.unlock_special_dialogue\.emit\(\s*&\s*"([^"]+)"\s*,\s*&\s*"([^"]+)"\s*\)')
+GOTO_CALL = re.compile(r"StoryController\.goto\(\s*(\w+)\s*,")
+AUD_NEXT = re.compile(r"SignalsEventBus\.audience_unlocked_for_next_cycle\.emit\(\s*(\w+)\s*\)")
+AUD_ADD = re.compile(r"GameState\.cycles_manager\.add_audience_in_x_cycle\(\s*(\w+)\s*\)")
+KL_EMIT = re.compile(r'SignalsEventBus\.trigger_dialogues_unlock_for_knight\.emit\(\s*"([^"]+)"\s*\)')
+KN_FROM = re.compile(r'get_knight_from_name\(\s*"([^"]+)"\s*\)')
+SET_VAR = re.compile(r'StoryController\.set_variable\(\s*"([^"]+)"\s*')
+ENDING = re.compile(r"EndingManager\.Endings\.(\w+)")
+IS_DEAD = re.compile(r"\.is_dead\s*=\s*true")
+
+EXT_RESOURCE = re.compile(r'\[ext_resource[^\]]*path="([^"]+)"[^\]]*id="(\d+)"\]')
+SCENE_PROP = re.compile(r'(\w+)\s*=\s*(ExtResource\("(\d+)"\)|&"([^"]+)")')
 
 
 def load_special_instructions():
-    """Parse special_instruction_manager.gd's match table -> {NAME: first signal}.
+    """Parse special_instruction_manager.gd's match table -> {NAME: effect dict}.
 
-    Best-effort: each `&"NAME":` case is followed by handler statements; the
-    first SignalsEventBus.<signal>.emit found inside a case names its signal.
+    Returns {NAME: {signal, dlgs, gotos, aud_next, aud_add, kls, knfs, vars,
+    endings, killed, body}} where the first signal names the SignalsEventBus
+    signal emitted by the case, and the rest are the raw tokens/patterns that
+    build_special turns into cross-links.
     """
     path = f"{GAME}/systems/autoloads/special_instruction_manager.gd"
     if not os.path.exists(path):
         return {}
     out = {}
     cur = None
+    body = []
     for line in open(path, encoding="utf-8"):
         m = INSTRUCTION_CASE.match(line)
         if m:
+            if cur is not None:
+                out[cur] = {"body": "\n".join(body)}
             cur = m.group(1).upper()
-            out.setdefault(cur, "")
+            body = []
             continue
-        if cur is None:
+        if cur is not None:
+            body.append(line.rstrip("\n"))
+    if cur is not None:
+        out[cur] = {"body": "\n".join(body)}
+    for name, info in out.items():
+        b = info["body"]
+        sm = SIGNAL_EMIT.search(b)
+        info["signal"] = sm.group(1) if sm else ""
+        info["dlgs"] = DLG_EMIT.findall(b)
+        info["gotos"] = GOTO_CALL.findall(b)
+        info["aud_next"] = AUD_NEXT.findall(b)
+        info["aud_add"] = AUD_ADD.findall(b)
+        info["kls"] = KL_EMIT.findall(b)
+        info["knfs"] = KN_FROM.findall(b)
+        info["vars"] = SET_VAR.findall(b)
+        info["endings"] = ENDING.findall(b)
+        info["killed"] = bool(IS_DEAD.search(b))
+    return out
+
+
+def load_manager_exports():
+    """Resolve SpecialInstructionManager's exported vars via story_controller.tscn.
+
+    The manager .gd references plain @export vars (follow_up_if_ursule_present,
+    southbay_divert_if_tarcus_present, rupin_apologies, epicrate_first_*, ...);
+    their actual values live on the SpecialInstructionManager node of the scene.
+    Returns {var: {"kind": "knot|aud|knight", "value": name-or-stem}}.
+    """
+    path = f"{GAME}/systems/autoloads/story_controller.tscn"
+    if not os.path.exists(path):
+        return {}
+    ext = {}
+    props = {}
+    node = False
+    for raw in open(path, encoding="utf-8"):
+        line = raw.strip()
+        m = EXT_RESOURCE.match(line)
+        if m:
+            ext[m.group(2)] = m.group(1)
             continue
-        if out[cur]:
+        if line.startswith('[node name="SpecialInstructionManager"'):
+            node = True
             continue
-        sm = SIGNAL_EMIT.search(line)
-        if sm:
-            out[cur] = sm.group(1)
+        if node:
+            if line.startswith("["):
+                break
+            m = SCENE_PROP.match(line)
+            if m:
+                props[m.group(1)] = m.group(2)
+    out = {}
+    for var, val in props.items():
+        m = re.match(r'&"([^"]+)"', val)
+        if m:
+            out[var] = {"kind": "knot", "value": m.group(1)}
+            continue
+        m = re.match(r'ExtResource\("(\d+)"\)', val)
+        if m:
+            p = ext.get(m.group(1), "")
+            stem = os.path.splitext(os.path.basename(p))[0]
+            if "/content/audiences/" in p:
+                out[var] = {"kind": "aud", "value": stem}
+            elif "character_descriptors/knights/" in p:
+                out[var] = {"kind": "knight", "value": stem}
     return out
 
 
 def _humanize(signal):
     words = [w for w in re.split(r"[_ ]+", signal) if w and w not in ("set", "triggered")]
     return " ".join(w[:1].upper() + w[1:] for w in words) if words else signal
+
+
+def _effect_note(name, signal, dlg, goto, auds, affects, vars_written, endings,
+                 body, killed, kls):
+    """Human summary of what the instruction does, from its parsed effects."""
+    parts = []
+    if killed:
+        who = " ".join(a.title() for a in affects)
+        parts.append("Marks %s dead" % who)
+    if dlg:
+        parts.append("Unlocks special dialogue%s" % (" (%s)" % ", ".join(sorted(dlg))))
+    if kls:
+        parts.append("Unlocks dialogues for %s" % ", ".join(sorted(k.title() for k in kls)))
+    if goto:
+        parts.append("Diverts to %s" % ", ".join(sorted(goto)))
+    if auds:
+        parts.append("Schedules audience(s): %s" % ", ".join(sorted(auds)))
+    if endings:
+        parts.append("Switches to the %s ending path" % endings[0])
+    if vars_written:
+        parts.append("Sets story vars %s" % ", ".join(vars_written))
+    if parts:
+        return "; ".join(parts)
+    return ""
 
 
 def _knight_evo_notes(knights):
@@ -154,14 +270,65 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
                         quest_map[str(r["v"]).upper()].append(qid)
 
     evo_notes = _knight_evo_notes((knights_data or {}).get("knights"))
-    instr_source = dict(load_special_instructions())
+    instr_source = load_special_instructions()
+    exports = load_manager_exports()
+    all_knots = set(index.get("knots") or {}) if index else set()
+
+    def _affect_char(name):
+        return name.strip().lower()
+
+    def _resolve_dlg_knot(char, key):
+        """unlock_special_dialogue(char, key) -> the ink knot it unlocks, via the
+        owning knight's specd map (gideon_victoria_dead -> gideon_victoria_dead_reaction)."""
+        stem = _affect_char(char)
+        k = (knights_data or {}).get("knights", {}).get(stem)
+        if k:
+            knot = (k.get("specd") or {}).get(key)
+            if knot in all_knots:
+                return knot
+        return key if key in all_knots else None
+
+    def _resolve_export(var, kind):
+        e = exports.get(var)
+        if e and e["kind"] == kind:
+            return e["value"]
+        return None
 
     # union of every instruction name we know about (manager + ink + quests)
     names = set(instr_source) | set(knot_map) | set(quest_map) | set(evo_notes)
     instructions = {}
     for name in sorted(names):
-        signal = instr_source.get(name) or ""
+        info = instr_source.get(name) or {}
+        signal = info.get("signal") or ""
+        body = info.get("body") or ""
+
+        dlg = []
+        goto = []
+        auds = []
+        affects = []
+        for char, key in info.get("dlgs") or []:
+            knot = _resolve_dlg_knot(char, key)
+            if knot:
+                dlg.append(knot)
+            affects.append(_affect_char(char))
+        for var in info.get("gotos") or []:
+            knot = _resolve_export(var, "knot")
+            if knot and knot in all_knots:
+                goto.append(knot)
+        for var in info.get("aud_next") or info.get("aud_add") or []:
+            stem = _resolve_export(var, "aud")
+            if stem:
+                auds.append(stem)
+        for provoke in (info.get("kls") or []) + (info.get("knfs") or []):
+            affects.append(_affect_char(provoke))
+        vars_written = sorted(set(info.get("vars") or []))
+        endings = info.get("endings") or []
+
         note = evo_notes.get(name)
+        if not note and (dlg or goto or auds or affects or vars_written or endings):
+            note = _effect_note(name, signal, dlg, goto, auds, affects,
+                                vars_written, endings, body, bool(info.get("killed")),
+                                info.get("kls") or [])
         if not note and signal:
             note = _humanize(signal)
         if not note:
@@ -175,6 +342,18 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
             inst["quests"] = sorted(set(quest_map[name]))
         if note:
             inst["note"] = note
+        if dlg:
+            inst["dlg"] = sorted(set(dlg))
+        if goto:
+            inst["goto"] = sorted(set(goto))
+        if auds:
+            inst["auds"] = sorted(set(auds))
+        if affects:
+            inst["affects"] = sorted(set(affects))
+        if vars_written:
+            inst["vars"] = vars_written
+        if endings:
+            inst["ending"] = endings[0]
         if name in evo_notes:
             # find the owning knight for cross-linking
             for kname, kdata in (knights_data or {}).get("knights", {}).items():
@@ -183,6 +362,8 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
                     break
         instructions[name] = inst
 
+    stats_links = sum(1 for i in instructions.values()
+                      if any(i.get(f) for f in ("dlg", "goto", "auds", "affects", "vars", "ending")))
     data = {
         "instructions": instructions,
         "stats": {
@@ -190,6 +371,7 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
             "in_ink": len(knot_map),
             "in_quests": len(quest_map),
             "knights": len(evo_notes),
+            "linked": stats_links,
         },
     }
     out_path = Path(out_dir) / "special.json"

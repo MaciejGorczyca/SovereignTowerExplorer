@@ -129,6 +129,7 @@ class DatasetsTest(unittest.TestCase):
         cls.knights = load_dist("knights.json")
         cls.special = load_dist("special.json")
         cls.audiences = load_dist("audiences.json")
+        cls.index = load_dist("index.json")
 
     def test_quests_schema(self):
         q = self.quests
@@ -234,9 +235,21 @@ class DatasetsTest(unittest.TestCase):
         for name, inst in s["instructions"].items():
             with self.subTest(instruction=name):
                 for key, kind in (("knots", list), ("quests", list),
-                                  ("signal", str), ("note", str), ("knight", str)):
+                                  ("signal", str), ("note", str), ("knight", str),
+                                  ("dlg", list), ("goto", list), ("auds", list),
+                                  ("affects", list), ("vars", list), ("ending", str)):
                     if key in inst:
                         self.assertTrue(isinstance(inst[key], kind), key)
+        # new cross-link fields resolve into the other datasets where present
+        for name, inst in s["instructions"].items():
+            with self.subTest(instruction=name):
+                for k in inst.get("dlg", []) + inst.get("goto", []):
+                    self.assertIn(k, self.index["knots"], (name, k))
+                for a in inst.get("auds", []):
+                    self.assertIn(a, self.audiences["audiences"], (name, a))
+                for c in inst.get("affects", []):
+                    found = any(c == km["stem"] for km in self.knights["knights"].values())
+                    self.assertTrue(found, (name, c))
 
 
 if __name__ == "__main__":

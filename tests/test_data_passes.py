@@ -198,6 +198,21 @@ class SpecialDataPassTest(unittest.TestCase):
                 self.assertIn(q, self.quests["quests"], (name, q))
             for k in inst.get("knots", []):
                 self.assertIn(k, self.index["knots"], (name, k))
+            for k in inst.get("dlg", []):
+                self.assertIn(k, self.index["knots"], (name, k))
+            for k in inst.get("goto", []):
+                self.assertIn(k, self.index["knots"], (name, k))
+            for a in inst.get("auds", []):
+                self.assertIn(a, self.quests["audiences"], (name, a))
+            for c in inst.get("affects", []):
+                self.assertIn(c, self.knights["knights"], (name, c))
+        # the specific case the UI now cross-links
+        g = special["instructions"]["GIDEON_VICTORIA_DEAD"]
+        self.assertEqual(g["dlg"], ["gideon_victoria_dead_reaction"])
+        self.assertIn("gideon", g["affects"])
+        v = special["instructions"]["VICTORIA_DEAD"]
+        self.assertEqual(v["affects"], ["victoria"])
+        self.assertIn("dead", v["note"].lower())
 
 
 @unittest.skipUnless(game_available(), "game/SovereignTowerCode not present")
