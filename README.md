@@ -421,5 +421,7 @@ act intros, Rupin's corruption-gated grievances), 28 special interventions (the 
 encounters, the king/dragon allied plots, the traitor's-plot intro + murder, Dulahan's human form,
 Victoria's betrayal, the nobles' cycle-zero intro, the wolf candidacy, Arlin's reunited-roundtable
 reaction, the 15 courier scenes), 7 knight death follow-ups (the death announcements of angelica,
-gideon, goberto, gwendan + Ursule's corruption-tiered new-gimmick variants), 61 fired after quests, 4 knotless; 34 audience
+gideon, goberto, gwendan + Ursule's corruption-tiered new-gimmick variants), 29 knight demissions
+(the 24 `knight_leaving_*` demission scenes + the variant forms Arron's Dragonheart,
+Dulahan human/possessed, Edith possessed and Gwendan's reformed humble candidacy each use), 61 fired after quests, 4 knotless; 34 audience
 requests).

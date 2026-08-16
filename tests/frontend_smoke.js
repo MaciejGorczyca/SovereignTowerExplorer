@@ -209,6 +209,28 @@ waitReady().then(() => {
   if (!vm.runInContext("ahay('ursula_new_gimmick_low_corruption', AUDIENCE.audiences['ursula_new_gimmick_low_corruption']).indexOf('ursule') >= 0", sandbox)) {
     throw new Error("death-follow-up knight not in audience haystack");
   }
+  // channel 11: knight demission audiences carry a dd "demission" link (with
+  // the per-knight variant label) and index in the audience haystack too
+  const demCount = vm.runInContext("AUDIENCE.stats.with_demission", sandbox);
+  if (demCount !== 29) throw new Error("with_demission != 29: " + demCount);
+  const ddAlwena = vm.runInContext("AUDIENCE.audiences['knight_leaving_alwena'].dd", sandbox);
+  if (!ddAlwena || ddAlwena.length !== 1 || ddAlwena[0].length !== 2 ||
+      ddAlwena[0][0] !== "alwena" || ddAlwena[0][1] !== "demission") {
+    throw new Error("knight_leaving_alwena dd wrong: " + JSON.stringify(ddAlwena));
+  }
+  const ddGwendan = vm.runInContext("AUDIENCE.audiences['gwendan_humble_candidacy'].dd", sandbox);
+  if (!ddGwendan || ddGwendan[0].length !== 3 || ddGwendan[0][0] !== "gwendan" ||
+      ddGwendan[0][2] !== "humbled") {
+    throw new Error("gwendan demission variant wrong: " + JSON.stringify(ddGwendan));
+  }
+  if (!vm.runInContext("(() => { const r = knotAudiences().get('knight_leaving_alwena'); return r ? (r[0] && r[0].dd.length) : 0; })()", sandbox)) {
+    throw new Error("demission dd not carried into knotAudiences");
+  }
+  if (!vm.runInContext("ahay('knight_leaving_alwena', AUDIENCE.audiences['knight_leaving_alwena']).indexOf('leaves the roundtable') >= 0", sandbox)) {
+    throw new Error("demission knight not in audience haystack");
+  }
+  // drawer rendering must not throw on a demission variant either
+  vm.runInContext("openAudienceDetail('knight_leaving_arron_dragonheart')", sandbox);
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE
   // dataset (knotAudiences/knotFuQuests) — open one that has both audiences and
   // follow-up quests to keep that re-pointing locked in.

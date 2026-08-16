@@ -580,6 +580,33 @@ the single best feature of this app:
   names. Stats + `with_death_followup` (7). Tests: `test_death_followup_sources`
   + `dd` schema assertions in both conformance tests + smoke assertions; 91
   tests green.
+- Knight demissions (2026-08-16): channel 11 of the audience-condition
+  research — the narrated scenes that play when a knight leaves the
+  roundtable. New `quest_data.py` `load_knight_demissions()` parses every
+  descriptor's `roundtable_demission_audience_name`
+  (`content/character_descriptors/knights/*.tres`) and reverse-maps it onto the
+  audience catalog as `dd: [knight, "demission"]` entries (the same field E3
+  fills with `"death"`), plus the per-knight variant fields whose subclasses
+  override `get_demission_path()` (knight.gd:196) while the knight is in a
+  special state: arron.gd:143 `_violent` (Dragonheart form), dulahan.gd:116
+  `_human` / `_possessed` (human body vs cursed helmet), edith.gd:81
+  `_possessed`, gwendan.gd:161 `_humbled` (her reformed humble candidacy, which
+  lives in content/audiences/candidacies). Each variant entry carries an
+  optional third `[knight, "demission", label]` element ("violent"/"human"/
+  "possessed"/"humbled"). At the next cycle reset once the knight's affinity
+  hits its demission threshold, `check_for_demission()` (knight.gd:183) queues
+  the chosen scene (no `played_audiences` erase — a demission plays once).
+  Covers all 24 base `knight_leaving_*` scenes + the 5 variants = 29 audiences
+  (the straggler `knight_leaving_gwendan_humble.tres` has no field pointing at
+  it and stays source-less). The Audiences drawer's dd block now splits into
+  "Fires when a knight dies" vs "Fires when a knight leaves the roundtable"
+  (with the variant note), the Dialogues knot "Where it comes from" rows
+  render "fires when <knight> leaves…", and audience search indexes the knight
+  names + "leaves the roundtable". Stats + `with_demission` (29);
+  `with_death_followup` redefined to count only `"death"` dd entries so the two
+  channels stay distinct. Tests: `test_demission_sources` + `dd` schema allows
+  the `(2,3)`-length entries in both conformance tests + smoke assertions; 92
+  tests green.
 
 
 ---

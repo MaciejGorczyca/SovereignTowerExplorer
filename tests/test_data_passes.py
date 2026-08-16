@@ -348,8 +348,39 @@ class AudiencesDataPassTest(unittest.TestCase):
                         "ursule gimmick variants come from the knight descriptor")
         for stem, a in aud["audiences"].items():
             for d in a.get("dd", []):
-                self.assertEqual(d[1], "death", (stem, d))
+                self.assertIn(d[1], ("death", "demission"), (stem, d))
                 self.assertIn(d[0], knights["knights"], (stem, d))
+
+    def test_demission_sources(self):
+        aud = _passes()["audiences"]
+        knights = _passes()["knights"]
+        # channel 11: the knight descriptors' roundtable_demission_audience_*
+        # fields reverse-map onto the leaving-the-roundtable audiences
+        self.assertEqual(aud["stats"]["with_demission"], 29)
+        for stem, knight in (
+            ("knight_leaving_alwena", "alwena"),
+            ("knight_leaving_zolta", "zolta"),
+            ("knight_leaving_the_wolf", "the_wolf"),
+            ("knight_leaving_ursula", "ursule"),
+            ("knight_leaving_epicrates", "epicrate"),
+        ):
+            with self.subTest(audience=stem):
+                dd = aud["audiences"][stem].get("dd", [])
+                self.assertTrue(any(d[0] == knight and d[1] == "demission"
+                                    for d in dd), (stem, dd))
+        variants = {
+            "knight_leaving_arron_dragonheart": ("arron", "violent"),
+            "knight_leaving_dulahan_human": ("dulahan", "human"),
+            "knight_leaving_dulahan_cursed_helmet": ("dulahan", "possessed"),
+            "knight_leaving_edith_possessed": ("edith", "possessed"),
+            "gwendan_humble_candidacy": ("gwendan", "humbled"),
+        }
+        for stem, (knight, variant) in variants.items():
+            with self.subTest(audience=stem):
+                dd = aud["audiences"][stem].get("dd", [])
+                self.assertTrue(any(len(d) == 3 and d[0] == knight
+                                    and d[1] == "demission" and d[2] == variant
+                                    for d in dd), (stem, dd, aud["audiences"][stem]))
 
     def test_requests_resolve(self):
         aud = _passes()["audiences"]

@@ -1358,6 +1358,13 @@ function knotKnights() {
   }
   return _knotKn || new Map();
 }
+// human-readable suffix for a knight demission dd variant (third element)
+const DEMISSION_VARIANT = {
+  "violent": " (Arron's violent Dragonheart form)",
+  "human": " (Dulahan's human form)",
+  "possessed": " (possessed / cursed-helmet form)",
+  "humbled": " (Gwendan's reformed humble candidacy)",
+};
 // human-readable rendering of a decoded audience requirement
 function audienceReqText(r) {
   const tag = r[0];
@@ -1401,7 +1408,7 @@ function originSection(name) {
         : "";
       const dir = a.dir.length ? ` <span class="mut">· ${a.dir.map(esc).join("; ")}</span>` : "";
       const dd = a.dd && a.dd.length
-        ? ` <span class="mut">· fires when ${a.dd.map((d) => kName(d[0])).join(", ")} ${a.dd.every((d) => d[1] === "death") ? "dies" : "leaves the roundtable"}</span>`
+        ? ` <span class="mut">· fires when ${a.dd.map((d) => `${kName(d[0])} ${d[1] === "death" ? "dies" : "leaves"}${DEMISSION_VARIANT[d[2]] || ""}`).join(", ")}</span>`
         : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
@@ -3845,7 +3852,10 @@ function aHaystack(stem, a) {
   }
   if (a.cyc && a.cyc.length) h.push("cycle " + a.cyc.join(" "));
   for (const d of a.dir || []) h.push(d);
-  for (const d of a.dd || []) h.push(d[0], kName(d[0]), d[1], "dies");
+  for (const d of a.dd || []) {
+    h.push(d[0], kName(d[0]), d[1], DEMISSION_VARIANT[d[2]] || "");
+    h.push(d[1] === "death" ? "dies" : "leaves the roundtable");
+  }
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -4090,15 +4100,28 @@ function openAudienceDetail(stem) {
   }
 
   if (a.dd && a.dd.length) {
-    section("Fires when a knight dies");
-    const w = document.createElement("div");
-    w.className = "qdesc";
-    w.innerHTML = a.dd.map((d) => {
-      const [kstem] = d;
-      const who = (KNIGHTS && KNIGHTS.knights[kstem]) ? knightLink(kstem) : esc(kName(kstem));
-      return `Fires when ${who} dies — queued for the next cycle by the death follow-up (the scene is erased from played_audiences first so it can re-fire).`;
-    }).join("<br>");
-    panel.appendChild(w);
+    const deaths = a.dd.filter((d) => d[1] === "death");
+    const dems = a.dd.filter((d) => d[1] === "demission");
+    if (deaths.length) {
+      section("Fires when a knight dies");
+      const w = document.createElement("div");
+      w.className = "qdesc";
+      w.innerHTML = deaths.map((d) => {
+        const who = (KNIGHTS && KNIGHTS.knights[d[0]]) ? knightLink(d[0]) : esc(kName(d[0]));
+        return `Fires when ${who} dies — queued for the next cycle by the death follow-up (the scene is erased from played_audiences first so it can re-fire).`;
+      }).join("<br>");
+      panel.appendChild(w);
+    }
+    if (dems.length) {
+      section("Fires when a knight leaves the roundtable");
+      const w = document.createElement("div");
+      w.className = "qdesc";
+      w.innerHTML = dems.map((d) => {
+        const who = (KNIGHTS && KNIGHTS.knights[d[0]]) ? knightLink(d[0]) : esc(kName(d[0]));
+        return `Fires when ${who} leaves the roundtable (demission) — queued at the next cycle reset once the knight's affinity drops to its demission threshold${DEMISSION_VARIANT[d[2]] || ""}.`;
+      }).join("<br>");
+      panel.appendChild(w);
+    }
   }
 
   if (fu.length) {

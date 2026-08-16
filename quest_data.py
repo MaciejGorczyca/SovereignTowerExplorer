@@ -915,8 +915,8 @@ def load_knight_death_followups():
     death count (corruption_thresholds 1/3/5, ursula.gd:15-20) or, while on the
     kingslayer ultimatum quest, always the high one; Gideon (gideon.gd:24-28)
     suppresses his follow-up while he is the traitor during an AUDIENCE phase.
-    Values are `[knight_stem, "death"]` pairs so the same field can later carry
-    demissions (`"demission"`, E4).
+    Values are `[knight_stem, "death"]` pairs; `load_knight_demissions()`
+    populates the same `dd` field with `"demission"` entries.
     """
     d = f"{GAME}/content/character_descriptors/knights"
     out = {}
@@ -932,14 +932,62 @@ def load_knight_death_followups():
     return out
 
 
+def load_knight_demissions():
+    """Parse content/character_descriptors/knights/*.tres -> {audience stem: [[knight, "demission", variant?]]}.
+
+    A knight leaves the roundtable when its affinity drops to (or below) its
+    `demission_affinity_treshold`; at the next cycle reset `check_for_demission()`
+    (knight.gd:183-194) schedules the result of `get_demission_path()` as the
+    next cycle's audience. The base `roundtable_demission_audience_name` field
+    is set on every descriptor, and the per-knight subclasses override
+    `get_demission_path()` (knight.gd:196) with a variant audience while the
+    knight is in a special state:
+    - arron.gd:143 — `roundtable_demission_audience_violent` ("violent") when the
+      Dragonheart transformation is active
+    - dulahan.gd:116 — `_human` when in the human/body state, `_possessed`
+      ("possessed") when wearing the cursed helmet
+    - edith.gd:81 — `roundtable_demission_audience_possessed` while possessed
+    - gwendan.gd:161 — `roundtable_demission_audience_humbled` ("humbled") when
+      reformed (the humble vote-of-candidacy scene, which lives in
+      content/audiences/candidacies, not demissions/)
+    Values are `[knight_stem, "demission"]` plus an optional third variant label
+    — the same field the death follow-ups populate as `[knight, "death"]` (E3).
+    """
+    d = f"{GAME}/content/character_descriptors/knights"
+    fields = (
+        ("roundtable_demission_audience_name", None),
+        ("roundtable_demission_audience_violent", "violent"),
+        ("roundtable_demission_audience_human", "human"),
+        ("roundtable_demission_audience_possessed", "possessed"),
+        ("roundtable_demission_audience_humbled", "humbled"),
+    )
+    out = {}
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tres"):
+            continue
+        knight = os.path.splitext(fn)[0]
+        tf = TresFile.load(os.path.join(d, fn), d)
+        for field, variant in fields:
+            aud = tf.props.get(field) or ""
+            if not aud:
+                continue
+            entry = [knight, "demission"]
+            if variant:
+                entry.append(variant)
+            out.setdefault(aud, []).append(entry)
+    return out
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
-    special-intervention notes, dd: knight death-follow-up links} — the reverse
-    lookup the knot drawer needs ("how does this knot fire, and under what
-    conditions?").
+    special-intervention notes, dd: knight death-follow-up / demission links} —
+    the reverse lookup the knot drawer needs ("how does this knot fire, and
+    under what conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
@@ -948,6 +996,7 @@ def load_audience_catalog(idx):
     director = load_director_audiences()
     interventions = load_special_interventions()
     death_followups = load_knight_death_followups()
+    demissions = load_knight_demissions()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -977,8 +1026,9 @@ def load_audience_catalog(idx):
             if inotes:
                 entry["dir"] = (entry.get("dir") or []) + list(inotes)
             dde = death_followups.get(stem)
-            if dde:
-                entry["dd"] = list(dde)
+            dms = demissions.get(stem)
+            if dde or dms:
+                entry["dd"] = list(dde or []) + list(dms or [])
             catalog[stem] = entry
     return catalog
 
