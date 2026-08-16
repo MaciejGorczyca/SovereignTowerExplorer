@@ -897,6 +897,9 @@ function questHappensFacts(q) {
       if (r && r.t != null && rewardName(r.t) === "BOOL_STORY_VAR_MODIF" && r.v) {
         add({ k: "set", var: String(r.v), value: r.b ? "true" : "false" });
       }
+      if (r && r.t != null && rewardName(r.t) === "AUDIENCE_REQUEST" && r.item_stem) {
+        add({ k: "request", stem: String(r.item_stem) });
+      }
     }
   }
   return facts;
@@ -989,6 +992,13 @@ function whatFactRow(f) {
       ? ` <span class="mut">→ plays <a class="knotlink" data-knot="${esc(aud.k)}">${esc(aud.k)}</a></span>`
       : "";
     body = `<div>Adds doleance (${stemLink}${f.type ? ", " + esc(f.type) : ""})${plays}</div>`;
+  } else if (f.k === "request") {
+    ic = "📣";
+    const stem = f.stem;
+    const link = (AUDIENCE && AUDIENCE.requests[stem])
+      ? `<a class="reqlink" data-req="${esc(stem)}" title="open request ${esc(stem)}">${esc(aRequestName(stem))}</a>`
+      : esc(stem);
+    body = `<div>Grants audience request ${link}</div>`;
   } else if (f.k === "set") {
     ic = "✎";
     const mark = f.param ? ' <span class="mut">(via divert)</span>' : (f.temp ? ' <span class="mut">(temp)</span>' : "");
@@ -1741,6 +1751,13 @@ function rewardItemStem(r) {
 // reward text with item rewards rendered as clickable inventory links
 function rewardHtml(r) {
   if (rewardName(r.t) === "SPECIAL_INSTRUCTION") return specialRewardHtml(r);
+  if (rewardName(r.t) === "AUDIENCE_REQUEST") {
+    const stem = r.item_stem;
+    if (stem && AUDIENCE && AUDIENCE.requests[stem]) {
+      return `Request ${requestLink(stem)}`;
+    }
+    return esc(rewardText(r));
+  }
   const stem = rewardItemStem(r);
   if (!stem) return esc(rewardText(r));
   const t = rewardName(r.t);

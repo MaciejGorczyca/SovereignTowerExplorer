@@ -232,6 +232,24 @@ waitReady().then(() => {
   }
   const chainPlain = vm.runInContext("(() => { const c = knotChain('grest_first_grievance'); return c.before.length + c.after.length + c.prevTips.length + c.nextTips.length; })()", sandbox);
   if (chainPlain !== 0) throw new Error("chain rendered for an unrelated knot: " + chainPlain);
+  // Audience-request quest rewards: the "⚑ Request …" success reward must be a
+  // clickable request link, and the reward must surface in the "What happens"
+  // facts as a request fact row.
+  const hireQuest = vm.runInContext("QUEST.quests.quest_enberg_hire_an_assassin", sandbox);
+  if (!hireQuest) throw new Error("quest_enberg_hire_an_assassin missing from quests dataset");
+  const reqReward = hireQuest.mo[1].sr[0];
+  const reqHtml = vm.runInContext(`rewardHtml(${JSON.stringify(reqReward)})`, sandbox);
+  if (!/reqlink/.test(reqHtml) || !/data-req="bettie_request_victoria"/.test(reqHtml)) {
+    throw new Error("AUDIENCE_REQUEST reward not clickable: " + reqHtml);
+  }
+  const facts = vm.runInContext("JSON.stringify(questHappensFacts(QUEST.quests.quest_enberg_hire_an_assassin))", sandbox);
+  if (!/bettie_request_victoria/.test(facts)) {
+    throw new Error("AUDIENCE_REQUEST missing from What happens facts: " + facts);
+  }
+  const wfr = vm.runInContext("(() => { const row = whatFactRow({ k: 'request', stem: 'bettie_request_victoria' }); const body = row.children[1]; return body ? body.innerHTML : ''; })()", sandbox);
+  if (!/Grants audience request/.test(wfr) || !/data-req="bettie_request_victoria"/.test(wfr)) {
+    throw new Error("What happens request fact row not clickable: " + wfr);
+  }
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));

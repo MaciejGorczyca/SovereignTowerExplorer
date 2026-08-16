@@ -434,6 +434,13 @@ the single best feature of this app:
   Tests: updated walker fixtures (`STUB_COND_DIVERT`, `STUB_END_LOOP`) + a
   dist-conformance assertion that index-7 streams are balanced token lists.
   Full rebuild + docs; all 88 tests green.
+- Audience-request quest rewards clickable (2026-08-16): a quest's
+  `AUDIENCE_REQUEST` reward (e.g. `⚑ Request The assassination sponsor` in
+  `quest_enberg_hire_an_assassin`) is now a link into the Audiences tab's
+  request drawer via its request stem (the reward's `item_stem`), using the
+  existing `requestLink()`/`reqlink` plumbing. The "What happens" section also
+  lists such rewards (`Grants audience request …`) as a `📣` fact row. All
+  frontend; dist rebuilt, all 88 tests green.
 
 ---
 
