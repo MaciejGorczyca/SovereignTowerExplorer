@@ -290,6 +290,7 @@ a.knightlink { color: var(--acc); text-decoration: underline; cursor: pointer; }
   color: var(--green); border-bottom: 1px dotted currentColor; cursor: pointer;
 }
 .questlink:hover { color: var(--acc); border-bottom-style: solid; }
+.questlink .qid { font-family: var(--mono); font-size: 10px; color: var(--mut); margin-left: 6px; }
 .qidbig { font-family: var(--mono); font-size: 11px; color: var(--mut); }
 .qdesc { font-size: 14px; line-height: 1.65; margin: 10px 0 4px; color: var(--txt); }
 .qdesc.muted { color: var(--mut); font-size: 13px; }

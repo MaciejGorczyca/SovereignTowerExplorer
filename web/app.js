@@ -972,7 +972,7 @@ function whatFactRow(f) {
     }
   } else if (f.k === "quest") {
     ic = "🔓";
-    body = `<div>Unlocks quest ${questLink(f.qid)}</div>`;
+    body = `<div>Unlocks quest ${questIdLink(f.qid)}</div>`;
   } else if (f.k === "item") {
     ic = f.op === "remove" ? "🗑" : "📦";
     const stem = f.ref && invIndex().get(f.ref);
@@ -1387,7 +1387,7 @@ function originSection(name) {
     const by = {};
     for (const f of fu) (by[f.qid] = by[f.qid] || []).push(f.kind);
     for (const [qid, kinds] of Object.entries(by)) {
-      add(`Fires after ${questLink(qid)} <span class="mut">(${kinds.join(" / ")})</span>`);
+      add(`Fires after ${questIdLink(qid)} <span class="mut">(${kinds.join(" / ")})</span>`);
     }
   }
   const auds = knotAudiences().get(name);
@@ -1873,6 +1873,16 @@ function questLink(a) {
   }
   return esc(s);
 }
+// Like questLink but keeps the raw internal id visible next to the localized
+// name, so knot views stay Ctrl+F-searchable by id.
+function questIdLink(a) {
+  const s = String(a);
+  if (QUEST && QUEST.quests[s]) {
+    const nm = tkey(QUEST.quests[s].n) || s;
+    return `<a class="questlink" data-qid="${esc(s)}" title="open quest ${esc(s)}">${esc(nm)}<span class="qid">(${esc(s)})</span></a>`;
+  }
+  return esc(s);
+}
 
 // case-insensitive lookup: ink args use Camel_Case (e.g. Dragon_Heart) while
 // item stems are snake_case and cids / knight stems are lower- or Upper_Case.
@@ -1917,7 +1927,7 @@ function specialLink(key, text) {
 
 function linkArg(a) {
   const s = String(a);
-  if (QUEST && QUEST.quests[s]) return questLink(s);
+  if (QUEST && QUEST.quests[s]) return questIdLink(s);
   const istem = invIndex().get(s.toUpperCase());
   if (istem) return invItemLink("", istem);
   const kstem = knightIndex().get(s.toUpperCase());

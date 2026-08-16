@@ -512,6 +512,16 @@ the single best feature of this app:
   (`audSpecials()`), so an audience now shows *who* makes it play. Full rebuild;
   smoke + data-pass tests lock the cycle carry, the audience→special reverse and
   the gwendan/arron scheduled audiences; all 88 tests green.
+- Knot-displayed quest ids stay visible (2026-08-16): wherever a knot surfaces a
+  quest id as its localized name — the "What happens" `Unlocks quest` row, the
+  "Where it comes from" `Fires after` row, and the inline `UnlockQuest` args in
+  choice effects / function calls / state rows — the raw internal id now renders
+  muted next to the name (e.g. `Hire an assassin (quest_enberg_hire_an_assassin)`),
+  so the id stays Ctrl+F-findable without hunting in the ink files. New
+  `questIdLink()` helper (`web/app.js`, used only in knot contexts; the Quests /
+  Inventory / Knights / Special / Audiences tabs keep the name-only `questLink`)
+  + a `.questlink .qid` muted-mono style (`web/style.css`). Frontend-only; all 88
+  tests green.
 
 
 ---
