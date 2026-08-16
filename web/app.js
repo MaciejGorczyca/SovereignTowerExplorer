@@ -1828,6 +1828,8 @@ function linkArg(a) {
   if (istem) return invItemLink("", istem);
   const kstem = knightIndex().get(s.toUpperCase());
   if (kstem) return knightLink(kstem);
+  if (AUDIENCE && AUDIENCE.requests[s]) return requestLink(s);
+  if (AUDIENCE && AUDIENCE.audiences[s]) return audienceLink(s);
   return esc(s);
 }
 
@@ -3617,7 +3619,9 @@ function aRequestName(stem) {
 function requestLink(stem) {
   const s = String(stem);
   if (AUDIENCE && AUDIENCE.requests[s]) {
-    return `<a class="reqlink" data-req="${esc(s)}" title="open request ${esc(s)}">${esc(aRequestName(s))}</a>`;
+    const name = aRequestName(s);
+    const inner = (name && name !== s) ? `${esc(name)} <span class="mut">${esc(s)}</span>` : esc(s);
+    return `<a class="reqlink" data-req="${esc(s)}" title="open request ${esc(s)}">${inner}</a>`;
   }
   return esc(s);
 }
@@ -3626,7 +3630,8 @@ function audienceLink(stem) {
   if (AUDIENCE && AUDIENCE.audiences[s]) {
     const a = AUDIENCE.audiences[s];
     const nm = a.c && a.c.length ? a.c.map(tkey).filter(Boolean).join(", ") : s;
-    return `<a class="audiencelink" data-aud="${esc(s)}" title="open audience ${esc(s)}">${esc(nm)}</a>`;
+    const inner = (nm && nm !== s) ? `${esc(nm)} <span class="mut">${esc(s)}</span>` : esc(s);
+    return `<a class="audiencelink" data-aud="${esc(s)}" title="open audience ${esc(s)}">${inner}</a>`;
   }
   return esc(s);
 }
@@ -3723,7 +3728,7 @@ function audCard(stem, a) {
     badges.push(`<span class="badge quest" title="fires after ${esc(qid)} (${fu.map((f) => f.kind).join(", ")})">↳ ${esc(nm)}</span>`);
   }
   const rqstems = reqsFor(stem);
-  if (rqstems.length) badges.push(`<span class="badge req">request ${rqstems.length}</span>`);
+  if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
   if (a.k && !INDEX.knots[a.k]) badges.push(`<span class="badge knotless">no knot</span>`);
   const chars = (a.c || []).map(tkey).filter(Boolean);
   const open = () => go("aud", stem);
