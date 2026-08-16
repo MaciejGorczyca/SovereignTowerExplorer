@@ -525,213 +525,234 @@ function renderDialogue(k, root) {
   const stack = [root];                       // open if-blocks (bottom: root)
   let lastLine = null;                        // current .line for "c" continuations
   const mount = (el) => (stack[stack.length - 1].appendChild(el), el);
-  for (const t of toks) {
-    switch (t[0]) {
-      case "0": {
-        const sp = t[2] || "";
-        if (t[3] === "c" && lastLine) {
+  const renderToks = (list) => {
+    for (const t of list) {
+      switch (t[0]) {
+        case "0": {
+          const sp = t[2] || "";
+          if (t[3] === "c" && lastLine) {
+            const txt = document.createElement("span");
+            txt.className = "txt";
+            txt.textContent = state.show.fBbc ? (t[1] || " ") : (stripBbc(t[1]) || " ");
+            lastLine.appendChild(txt);
+            break;
+          }
+          const div = document.createElement("div");
+          div.className = "line";
+          if (sp) {
+            const who = document.createElement("span");
+            who.className = "who";
+            who.style.color = speakerColor(sp);
+            who.textContent = sp;
+            div.appendChild(who);
+          }
           const txt = document.createElement("span");
           txt.className = "txt";
           txt.textContent = state.show.fBbc ? (t[1] || " ") : (stripBbc(t[1]) || " ");
-          lastLine.appendChild(txt);
+          div.appendChild(txt);
+          mount(div);
+          lastLine = div;
           break;
         }
-        const div = document.createElement("div");
-        div.className = "line";
-        if (sp) {
-          const who = document.createElement("span");
-          who.className = "who";
-          who.style.color = speakerColor(sp);
-          who.textContent = sp;
-          div.appendChild(who);
+        case "1": {
+          if (!state.show.markers) break;
+          const m = document.createElement("span");
+          m.className = "marker";
+          m.textContent = t[1];
+          m.title = t[1] === "NO_CLICK" ? "no click-to-advance" : "timed pause";
+          if (t[2] === "i" && lastLine) lastLine.appendChild(m);
+          else { mount(m); lastLine = null; }
+          break;
         }
-        const txt = document.createElement("span");
-        txt.className = "txt";
-        txt.textContent = state.show.fBbc ? (t[1] || " ") : (stripBbc(t[1]) || " ");
-        div.appendChild(txt);
-        mount(div);
-        lastLine = div;
-        break;
-      }
-      case "1": {
-        if (!state.show.markers) break;
-        const m = document.createElement("span");
-        m.className = "marker";
-        m.textContent = t[1];
-        m.title = t[1] === "NO_CLICK" ? "no click-to-advance" : "timed pause";
-        if (t[2] === "i" && lastLine) lastLine.appendChild(m);
-        else { mount(m); lastLine = null; }
-        break;
-      }
-      case "2": {
-        const choice = document.createElement("div");
-        choice.className = "choice";
-        const flg = t[3];
-        if (flg != null) {
-          const flb = document.createElement("span");
-          flb.className = "flg" + (flg & 8 ? " auto" : "");
-          flb.textContent = "#" + flg;
-          const bits = [];
-          if (flg & 1) bits.push("conditional");
-          if (flg & 2) bits.push("start-content");
-          if (flg & 4) bits.push("choice-content");
-          if (flg & 8) bits.push("invisible-default (auto-chosen)");
-          if (flg & 16) bits.push("once-only");
-          flb.title = "choice flags: " + (bits.join(", ") || "none");
-          if (flg & 8) flb.textContent = "#auto";
-          choice.appendChild(flb);
-        }
-        const label = document.createElement("span");
-        label.className = "clabel";
-        label.textContent = t[1] || "(…continue)";
-        choice.appendChild(label);
-        if (t[4]) {
-          const dst = document.createElement(t[4].startsWith("(") ? "span" : "a");
-          dst.className = "dst";
-          if (t[4] === "(end)") {
-            dst.textContent = "→ dialogue ends";
-            dst.title = "this choice ends the dialogue";
-            dst.classList.add("meta");
-          } else if (t[4] === "(options)") {
-            dst.textContent = "→ more options";
-            dst.title = "this choice returns to the option list";
-            dst.classList.add("meta");
-          } else {
-            dst.textContent = "→ " + t[4] + (t[6] && t[6].length ? "(" + t[6].join(", ") + ")" : "");
-            dst.title = "advances to stitch/knot " + t[4];
-            if (INDEX.knots[t[4]]) {
-              dst.addEventListener("click", (e) => { e.stopPropagation(); go("knot", t[4]); });
-            }
+        case "2": {
+          const choice = document.createElement("div");
+          choice.className = "choice";
+          const flg = t[3];
+          if (flg != null) {
+            const flb = document.createElement("span");
+            flb.className = "flg" + (flg & 8 ? " auto" : "");
+            flb.textContent = "#" + flg;
+            const bits = [];
+            if (flg & 1) bits.push("conditional");
+            if (flg & 2) bits.push("start-content");
+            if (flg & 4) bits.push("choice-content");
+            if (flg & 8) bits.push("invisible-default (auto-chosen)");
+            if (flg & 16) bits.push("once-only");
+            flb.title = "choice flags: " + (bits.join(", ") || "none");
+            if (flg & 8) flb.textContent = "#auto";
+            choice.appendChild(flb);
           }
-          choice.appendChild(dst);
-        }
-        if (t[2] && t[2].length) {
-          const reqs = document.createElement("div");
-          reqs.className = "reqs";
-          for (const r of t[2]) {
-            const chip = document.createElement("span");
-            chip.className = "chip" + (r.startsWith("!") ? " neg" : "");
-            chip.textContent = "▣ " + r;
-            chip.title = "choice requirement / condition";
-            reqs.appendChild(chip);
-          }
-          choice.appendChild(reqs);
-        }
-        if (t[5] && t[5].length) {
-          const eff = document.createElement("div");
-          eff.className = "effs";
-          for (const e of t[5]) {
-            const chip = document.createElement("span");
-            if (e[0].startsWith("set:")) {
-              const target = e[1] && e[1][0] !== undefined ? e[1][0] : "";
-              const rhs = e[1] && e[1].length > 1 ? e[1][1] : "";
-              chip.textContent = "✎ " + e[0].slice(4).replace(/=$/, "") + " " + target + (rhs ? " = " + rhs : "");
+          const label = document.createElement("span");
+          label.className = "clabel";
+          label.textContent = t[1] || "(…continue)";
+          choice.appendChild(label);
+          if (t[4]) {
+            const dst = document.createElement(t[4].startsWith("(") ? "span" : "a");
+            dst.className = "dst";
+            if (t[4] === "(end)") {
+              dst.textContent = "→ dialogue ends";
+              dst.title = "this choice ends the dialogue";
+              dst.classList.add("meta");
+            } else if (t[4] === "(options)") {
+              dst.textContent = "→ more options";
+              dst.title = "this choice returns to the option list";
+              dst.classList.add("meta");
             } else {
-              chip.innerHTML = "➔ " + esc(e[0]) + ((e[1] || []).length ? "(" + (e[1] || []).map(linkArg).join(", ") + ")" : "");
+              dst.textContent = "→ " + t[4] + (t[6] && t[6].length ? "(" + t[6].join(", ") + ")" : "");
+              dst.title = "advances to stitch/knot " + t[4];
+              if (INDEX.knots[t[4]]) {
+                dst.addEventListener("click", (e) => { e.stopPropagation(); go("knot", t[4]); });
+              }
             }
-            chip.title = "effect triggered by this choice";
-            eff.appendChild(chip);
+            choice.appendChild(dst);
           }
-          choice.appendChild(eff);
-        }
-        mount(choice); lastLine = null;
-        break;
-      }
-      case "3": {
-        if (!state.show[fnCat(t[1])]) break;
-        const fn = document.createElement("div");
-        fn.className = "fn";
-        const name = t[1], args = (t[2] || []);
-        if (name.startsWith("set:")) {
-          const target = args[0] === undefined ? "" : args[0];
-          const rhs = args.length > 1 ? args[1] : "";
-          fn.innerHTML = `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(target)}${rhs ? " = " + esc(rhs) : ""}</span>`;
-        } else {
-          fn.innerHTML = "⚙ " + esc(name) + "(" + args.map(linkArg).join(", ") + ")";
-          fn.title = "game / ink function call";
-        }
-        mount(fn); lastLine = null;
-        break;
-      }
-      case "4": {
-        if (!state.show.diverts) break;
-        const d = document.createElement("div");
-        d.className = "divert";
-        const segs = String(t[1]).split(".").map((s) => s.replace(/\^/g, "")).filter((s) => s);
-        const tail = segs.length ? segs[segs.length - 1] : t[1];
-        d.textContent = "→ " + tail + (t[2] && t[2].length ? "(" + t[2].join(", ") + ")" : "");
-        if (INDEX.knots[tail]) {
-          d.title = "advances to knot " + tail;
-          d.addEventListener("click", () => go("knot", tail));
-        } else {
-          d.title = "advances to stitch " + tail + "  (" + t[1] + ")";
-        }
-        mount(d); lastLine = null;
-        break;
-      }
-      case "5": {
-        if (!state.show.stitches) break;
-        const s = document.createElement("h4");
-        s.className = "stitch";
-        const params = t[2] && t[2].length ? "(" + t[2].join(", ") + ")" : "";
-        s.textContent = t[1] + params;
-        mount(s); lastLine = null;
-        break;
-      }
-      case "7": {
-        const vars = t[1] || [];
-        const exprStr = t[2] || "";
-        const blockOpen = t[3] === "1";
-        const chost = document.createElement("div");
-        chost.className = "cond";
-        if (exprStr) {
-          const chip = document.createElement("span");
-          chip.className = "chip";
-          chip.textContent = "if " + exprStr;
-          chip.title = "branch condition expression";
-          chost.appendChild(chip);
-        } else {
-          for (const v of vars) {
-            const neg = v.startsWith("!");
-            const chip = document.createElement("span");
-            chip.className = "chip" + (neg ? " neg" : "");
-            chip.textContent = (neg ? "unless " : "if ") + v.replace(/^!/, "");
-            chip.title = "branch condition variable";
-            chost.appendChild(chip);
+          if (t[2] && t[2].length) {
+            const reqs = document.createElement("div");
+            reqs.className = "reqs";
+            for (const r of t[2]) {
+              const chip = document.createElement("span");
+              chip.className = "chip" + (r.startsWith("!") ? " neg" : "");
+              chip.textContent = "▣ " + r;
+              chip.title = "choice requirement / condition";
+              reqs.appendChild(chip);
+            }
+            choice.appendChild(reqs);
           }
+          if (t[5] && t[5].length) {
+            const eff = document.createElement("div");
+            eff.className = "effs";
+            for (const e of t[5]) {
+              const chip = document.createElement("span");
+              if (e[0].startsWith("set:")) {
+                const target = e[1] && e[1][0] !== undefined ? e[1][0] : "";
+                const rhs = e[1] && e[1].length > 1 ? e[1][1] : "";
+                chip.textContent = "✎ " + e[0].slice(4).replace(/=$/, "") + " " + target + (rhs ? " = " + rhs : "");
+              } else {
+                chip.innerHTML = "➔ " + esc(e[0]) + ((e[1] || []).length ? "(" + (e[1] || []).map(linkArg).join(", ") + ")" : "");
+              }
+              chip.title = "effect triggered by this choice";
+              eff.appendChild(chip);
+            }
+            choice.appendChild(eff);
+          }
+          mount(choice); lastLine = null;
+          if (t[7] && t[7].length) {
+            // this choice's own follow-up stream (narrative/consequences that play
+            // only when this option is chosen) — render it nested under the card
+            const flow = document.createElement("div");
+            flow.className = "choice-flow";
+            const base = stack.length;
+            stack.push(flow);
+            const savedLast = lastLine;
+            lastLine = null;
+            renderToks(t[7]);
+            stack.length = base;            // drop any if-blocks opened inside here
+            lastLine = savedLast;
+            if (flow.childNodes.length) choice.appendChild(flow);
+          }
+          break;
         }
-        chost.title = "branch condition: dialogue variant gated on this variable";
-        if (blockOpen) {
-          const block = document.createElement("div");
-          block.className = "ifblock";
-          if (state.show.conds) block.appendChild(chost);
-          mount(block);
-          stack.push(block);
-        } else if (state.show.conds) {
-          mount(chost);
+        case "3": {
+          if (!state.show[fnCat(t[1])]) break;
+          const fn = document.createElement("div");
+          fn.className = "fn";
+          const name = t[1], args = (t[2] || []);
+          if (name.startsWith("set:")) {
+            const target = args[0] === undefined ? "" : args[0];
+            const rhs = args.length > 1 ? args[1] : "";
+            fn.innerHTML = `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(target)}${rhs ? " = " + esc(rhs) : ""}</span>`;
+          } else {
+            fn.innerHTML = "⚙ " + esc(name) + "(" + args.map(linkArg).join(", ") + ")";
+            fn.title = "game / ink function call";
+          }
+          mount(fn); lastLine = null;
+          break;
         }
-        lastLine = null;
-        break;
-      }
-      case "8": {
-        if (stack.length > 1) {
-          const block = stack.pop();
-          if (state.show.conds) {
-            const end = document.createElement("div");
-            end.className = "cond endif";
+        case "4": {
+          if (!state.show.diverts) break;
+          const d = document.createElement("div");
+          d.className = "divert";
+          const segs = String(t[1]).split(".").map((s) => s.replace(/\^/g, "")).filter((s) => s);
+          const tail = segs.length ? segs[segs.length - 1] : t[1];
+          d.textContent = "→ " + tail + (t[2] && t[2].length ? "(" + t[2].join(", ") + ")" : "");
+          if (INDEX.knots[tail]) {
+            d.title = "advances to knot " + tail;
+            d.addEventListener("click", () => go("knot", tail));
+          } else if (tail === "(end)") {
+            d.title = "this branch ends the dialogue";
+          } else if (tail === "(options)") {
+            d.title = "this branch loops back to the options";
+          } else {
+            d.title = "advances to stitch " + tail + "  (" + t[1] + ")";
+          }
+          mount(d); lastLine = null;
+          break;
+        }
+        case "5": {
+          if (!state.show.stitches) break;
+          const s = document.createElement("h4");
+          s.className = "stitch";
+          const params = t[2] && t[2].length ? "(" + t[2].join(", ") + ")" : "";
+          s.textContent = t[1] + params;
+          mount(s); lastLine = null;
+          break;
+        }
+        case "7": {
+          const vars = t[1] || [];
+          const exprStr = t[2] || "";
+          const blockOpen = t[3] === "1";
+          const chost = document.createElement("div");
+          chost.className = "cond";
+          if (exprStr) {
             const chip = document.createElement("span");
             chip.className = "chip";
-            chip.textContent = "end if";
-            chip.title = "conditional branch block ends here";
-            end.appendChild(chip);
-            block.appendChild(end);
+            chip.textContent = "if " + exprStr;
+            chip.title = "branch condition expression";
+            chost.appendChild(chip);
+          } else {
+            for (const v of vars) {
+              const neg = v.startsWith("!");
+              const chip = document.createElement("span");
+              chip.className = "chip" + (neg ? " neg" : "");
+              chip.textContent = (neg ? "unless " : "if ") + v.replace(/^!/, "");
+              chip.title = "branch condition variable";
+              chost.appendChild(chip);
+            }
           }
+          chost.title = "branch condition: dialogue variant gated on this variable";
+          if (blockOpen) {
+            const block = document.createElement("div");
+            block.className = "ifblock";
+            if (state.show.conds) block.appendChild(chost);
+            mount(block);
+            stack.push(block);
+          } else if (state.show.conds) {
+            mount(chost);
+          }
+          lastLine = null;
+          break;
         }
-        lastLine = null;
-        break;
+        case "8": {
+          if (stack.length > 1) {
+            const block = stack.pop();
+            if (state.show.conds) {
+              const end = document.createElement("div");
+              end.className = "cond endif";
+              const chip = document.createElement("span");
+              chip.className = "chip";
+              chip.textContent = "end if";
+              chip.title = "conditional branch block ends here";
+              end.appendChild(chip);
+              block.appendChild(end);
+            }
+          }
+          lastLine = null;
+          break;
+        }
       }
     }
-  }
+  };
+  renderToks(toks);
 }
 
 // Reverse index: variable -> every ink knot that reads it (built once).

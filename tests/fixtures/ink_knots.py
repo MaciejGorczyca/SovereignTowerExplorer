@@ -203,3 +203,101 @@ CHOICE_EFFECTS = [
         "#f": 1,
     },
 ]
+
+# county_quest_enberg_audience_2 (c-3/c-4 stubs): a choice stub whose if/else
+# branches are *pure diverts*. Without the branch diverts the if/else would
+# render as empty gates, hiding where each branch leads.
+STUB_COND_DIVERT = [
+    [
+        "ev",
+        "str", "^Any thoughts on the victim?", "/str",
+        "/ev",
+        {"*": ".^.c-0", "flg": 5},
+        {
+            "c-0": [
+                "\n",
+                [
+                    "ev",
+                    {"VAR?": "polmauz_available"},
+                    "/ev",
+                    {"->": ".^.b", "c": True},
+                    {
+                        "b": [
+                            "\n",
+                            {"->": ".^.^.^.^.^.^.polmauz_interrogation_phase"},
+                            {"->": ".^.^.^.19"},
+                            None,
+                        ]
+                    },
+                ],
+                [
+                    {"->": ".^.b"},
+                    {
+                        "b": [
+                            "\n",
+                            {"->": ".^.^.^.^.^.^.end_interrogatory_phases"},
+                            {"->": ".^.^.^.19"},
+                            None,
+                        ]
+                    },
+                ],
+                "nop",
+                "\n",
+                {"#f": 5},
+            ]
+        },
+    ],
+    {"#f": 1},
+]
+
+# lady_tower_act_2_reached_reaction (c-0 stub): a choice stub whose if-branch
+# ends the dialogue and whose else-branch loops back to the options. The
+# `end` opcode and the empty-tail divert must surface as branch outcomes.
+STUB_END_LOOP = [
+    [
+        "ev",
+        "str", "^What do you mean?", "/str",
+        "/ev",
+        {"*": ".^.c-0", "flg": 5},
+        {
+            "c-0": [
+                "\n",
+                "^It became necessary to curb the Tower powers.",
+                "\n",
+                [
+                    "ev",
+                    {"VAR?": "former_glory_seen"},
+                    "/ev",
+                    {"->": ".^.b", "c": True},
+                    {
+                        "b": [
+                            "\n",
+                            "end",
+                            {"->": ".^.^.^.5"},
+                            None,
+                        ]
+                    },
+                ],
+                [
+                    {"->": ".^.b"},
+                    {
+                        "b": [
+                            "\n",
+                            "ev",
+                            True,
+                            {"VAR?": "former_glory_seen"},
+                            "/ev",
+                            {"->": ".^.^.^.^.^"},
+                            {"->": ".^.^.^.5"},
+                            None,
+                        ]
+                    },
+                ],
+                "nop",
+                "\n",
+                {"#f": 5},
+            ]
+        },
+    ],
+    {"#f": 1},
+]

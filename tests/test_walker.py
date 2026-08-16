@@ -141,5 +141,47 @@ class WalkerMetaTest(unittest.TestCase):
         self.assertIn("HintModification", meta["funcs"])
 
 
+class WalkerStubCondDivertTest(unittest.TestCase):
+    """county_quest_enberg_audience_2: a choice stub whose if/else branches are
+    pure diverts must keep those diverts in the flow so the gates are not empty
+    and both the if and the else impact are visible."""
+
+    def test_tokens(self):
+        w, tok, params = walk_knot(F.STUB_COND_DIVERT)
+        self.assertEqual(params, [])
+        self.assertEqual(tok, [
+            ["2", "Any thoughts on the victim?", [], 5,
+             "polmauz_interrogation_phase", [], [],
+             [
+                 ["7", ["polmauz_available"], "polmauz_available", "1"],
+                 ["4", ".^.^.^.^.^.^.polmauz_interrogation_phase"],
+                 ["7", ["!polmauz_available"], "!polmauz_available"],
+                 ["4", ".^.^.^.^.^.^.end_interrogatory_phases"],
+                 ["8"],
+             ]],
+        ])
+
+
+class WalkerStubEndLoopTest(unittest.TestCase):
+    """lady_tower_act_2_reached_reaction: a choice stub whose if-branch ends the
+    dialogue and whose else-branch loops back must surface `(end)`/`(options)`
+    as branch outcomes instead of rendering an empty if/else."""
+
+    def test_tokens(self):
+        w, tok, params = walk_knot(F.STUB_END_LOOP)
+        self.assertEqual(params, [])
+        self.assertEqual(tok, [
+            ["2", "What do you mean?", [], 5, "(end)", [], [],
+             [
+                 ["0", "It became necessary to curb the Tower powers.", ""],
+                 ["7", ["former_glory_seen"], "former_glory_seen", "1"],
+                 ["4", "(end)"],
+                 ["7", ["!former_glory_seen"], "!former_glory_seen"],
+                 ["4", "(options)"],
+                 ["8"],
+             ]],
+        ])
+
+
 if __name__ == "__main__":
     unittest.main()

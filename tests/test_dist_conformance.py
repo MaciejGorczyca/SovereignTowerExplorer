@@ -54,6 +54,20 @@ class IndexJsonTest(unittest.TestCase):
                     self.assertTrue(isinstance(t[1], str))
                     self.assertTrue(isinstance(t[3], int))
                     self.assertTrue(isinstance(t[4], str))
+                    if len(t) > 7:
+                        # per-choice follow-up stream (index 7): a nested token
+                        # list whose internal if-blocks are balanced
+                        nested = t[7]
+                        self.assertTrue(isinstance(nested, list))
+                        depth = 0
+                        for nt in nested:
+                            self.assertTrue(isinstance(nt, list) and nt
+                                            and nt[0] in TOKEN_TYPES)
+                            if nt[0] == "7" and len(nt) > 3 and nt[3] == "1":
+                                depth += 1
+                            elif nt[0] == "8":
+                                depth -= 1
+                        self.assertEqual(depth, 0)
         self.assertEqual(bad, [])
 
     def test_choices_have_resolved_destination(self):

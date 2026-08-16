@@ -412,6 +412,28 @@ the single best feature of this app:
   Frontend-only (`web/app.js` + `web/style.css`), dist rebuilt, smoke test
   locks the enberg chain order (and that unrelated knots get no chain), all
   86 tests green.
+- Branch-only diverts shown in if/else (2026-08-16): a compiled `if/else`
+  whose branches are *pure diverts* (no text/effects) used to render as empty
+  gates — `_stub_info` collapsed a choice stub's diverts into a single `dest`
+  for the choice card, discarding the else-branch target. The walker now keeps
+  any divert that appears inside a conditional branch (`7 …1…`) in the flow,
+  and surfaces `end`/loop branch outcomes as `(end)`/`(options)` markers, so
+  every conditional branch shows where it leads (e.g.
+  `county_quest_enberg_audience_2`: `if polmauz_available →
+  polmauz_interrogation_phase / else → end_interrogatory_phases`).
+- Choice-scoped follow-up content (2026-08-16): choice stubs that carry real
+  follow-up narrative/consequences were previously flattened into a single
+  sequential stream, so two mutually-exclusive choices sharing a closing branch
+  (e.g. the same "who is next" if/else in `county_quest_enberg_audience_2`'s
+  `c-3` and `c-4`) rendered as a duplicated sequence with text sandwiched
+  between. A choice's own follow-up tokens are now stored **on the choice
+  token** (index 7; index 6 = divert args) and rendered nested inside that
+  choice card (`web/app.js` `.choice-flow`), so alternatives display as
+  alternatives. Metadata scans traverse the nested streams via
+  `walk_tokens()` (reverse UnlockQuest/UnlockEquipment links unaffected).
+  Tests: updated walker fixtures (`STUB_COND_DIVERT`, `STUB_END_LOOP`) + a
+  dist-conformance assertion that index-7 streams are balanced token lists.
+  Full rebuild + docs; all 88 tests green.
 
 ---
 

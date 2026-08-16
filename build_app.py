@@ -184,6 +184,21 @@ def is_plumbing_write(tok) -> bool:
             and str(tok[2][0]).startswith("$"))
 
 
+def walk_tokens(tokens):
+    """Yield every token, descending into per-choice follow-up streams.
+
+    Choice-stub follow-ups are stored nested on the choice token (index 7) so
+    mutually-exclusive choice content is not flattened into one sequential flow.
+    Metadata scans that need every game call must traverse them.
+    """
+    for t in tokens:
+        if not isinstance(t, list) or not t:
+            continue
+        yield t
+        if t[0] == "2" and len(t) > 7 and isinstance(t[7], list):
+            yield from walk_tokens(t[7])
+
+
 def fold_param_runs(tok):
     """Fold runs of bare `temp=` writes into the stitch header that precedes them.
 
@@ -663,6 +678,10 @@ class Walker:
                 self.frames[-1].setdefault("expr", []).append("!")
             elif it in BINARY_OPS and self.frames:
                 self.frames[-1].setdefault("expr", []).append(it)
+            elif it == "end" and self.cond_stack:
+                # an `end` opcode inside a conditional branch means that branch
+                # ends the dialogue — surface it so the branch isn't invisible
+                self.emit("4", "(end)")
             elif self.is_text(it):
                 self.push_text(it[1:], self.in_str and len(self.label) < 200)
             return
@@ -782,12 +801,15 @@ class Walker:
         return bool(t) and (AUTO_STITCH_RE.match(t) or t.isdigit() or t.startswith("$"))
 
     def _patch_pending(self, tail, dest, effects, ended=False, loops=False,
-                       args=None):
+                       args=None, followup=None):
         """Attach destination + side-effect calls to the first matching, unresolved choice.
 
         dest wins when the stub really redirects somewhere; otherwise a `(end)`
         / `(options)` marker tells the reader the choice closes the dialogue or
-        loops back to the option list.
+        loops back to the option list. `followup` (when provided) is the stub's
+        own narrative/consequence token stream, attached to THIS choice card so
+        mutually-exclusive stubs render as alternatives instead of being
+        flattened into a single sequential flow.
         """
         for p in self.pending:
             if p["tail"] == tail and not p["done"]:
@@ -802,7 +824,17 @@ class Walker:
                     tok[4] = ""
                 if effects:
                     tok[5] = list(effects)
-                if args:
+                if followup is not None:
+                    # index 7 is always the follow-up stream (6 = divert args)
+                    if not args:
+                        tok.insert(6, [])    # placeholder: this choice has no divert args
+                    elif len(tok) < 7:
+                        tok.append([])
+                    if len(tok) < 8:
+                        tok.append(list(followup))
+                    else:
+                        tok[7] = list(followup)
+                elif args:
                     tok.insert(6, list(args))
                 p["done"] = True
                 return
@@ -830,15 +862,30 @@ class Walker:
         ended = False
         loops = False
         args = []
+        block_depth = 0
         for t in sub.tok:
             if t[0] == "4":
                 d = tail_path(t[1])
+                if d in ("(end)", "(options)"):
+                    # synthesized branch-outcome marker (a branch that ends the
+                    # dialogue or loops back to the options) — not a real target
+                    inline.append(t)
+                    continue
                 if len(t) > 2:
                     args = list(t[2])
                 if not d:
                     loops = True
                 elif d and not AUTO_STITCH_RE.match(d) and not d.isdigit() and not dest:
                     dest = d
+                if block_depth and d:
+                    # a divert inside a conditional branch: keep it in the flow so
+                    # the if/else block shows where each branch actually leads
+                    # (otherwise a divert-only if/else would render as empty gates)
+                    inline.append(t)
+                elif block_depth and not d:
+                    # a branch that loops back to the options: make its impact
+                    # visible too (the choice card already shows the "(options)" dest)
+                    inline.append(["4", "(options)"])
             elif t[0] == "3":
                 if is_effect_fn(t[1]):
                     # game-state consequence: attach to the choice card only
@@ -848,7 +895,14 @@ class Walker:
             elif t[0] == "0":
                 has_text = True
                 inline.append(t)
-            elif t[0] in ("1", "6", "2", "7", "8"):
+            elif t[0] == "7":
+                inline.append(t)
+                if len(t) > 3 and t[3] == "1":
+                    block_depth += 1
+            elif t[0] == "8":
+                inline.append(t)
+                block_depth = max(0, block_depth - 1)
+            elif t[0] in ("1", "6", "2"):
                 inline.append(t)
         raw = json.dumps(child)
         if '"end"' in raw or "->->" in raw:
@@ -861,9 +915,12 @@ class Walker:
             if name.startswith("c-"):
                 dest, effects, inline, has_text, ended, loops, args = self._stub_info(child)
                 if has_text or inline:
-                    # follow-up content is real narrative: show it inline
-                    self._patch_pending(name, dest or "", effects, ended, loops, args)
-                    self.tok.extend(inline)
+                    # follow-up content is real narrative / consequences: attach it
+                    # to THIS choice card (as an alternative branch), not to the
+                    # shared flow — otherwise mutually-exclusive choice stubs
+                    # flatten into a misleading sequential stream
+                    self._patch_pending(name, dest or "", effects, ended, loops,
+                                        args, followup=inline)
                 else:
                     # pure redirect stub: summarise on the choice line only
                     self._patch_pending(name, dest or "", effects, ended, loops, args)
@@ -1205,7 +1262,7 @@ def main():
         w = Walker()
         w.walk(knot)
         tok, params = finalize_tokens(w.tok)
-        for t in w.tok:
+        for t in walk_tokens(w.tok):
             if t[0] == "3" and t[1] == "UnlockQuest":
                 for a in (t[2] or []):
                     if isinstance(a, str) and a and a != "false" and a != "true":
@@ -1228,7 +1285,7 @@ def main():
         for s, c in speakers.items():
             speaker_counts[s] += c
         preview = ""
-        for t in w.tok:
+        for t in walk_tokens(w.tok):
             if t[0] == "0" and t[1].strip():
                 preview = t[1].strip()
                 break
