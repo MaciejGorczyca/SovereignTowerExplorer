@@ -206,7 +206,9 @@ CHOICE_EFFECTS = [
 
 # county_quest_enberg_audience_2 (c-3/c-4 stubs): a choice stub whose if/else
 # branches are *pure diverts*. Without the branch diverts the if/else would
-# render as empty gates, hiding where each branch leads.
+# render as empty gates, hiding where each branch leads. Because the jump is
+# conditional, the branch diverts must NOT set the choice's default destination
+# (the card shows no single "-> target" line — the branches show where it leads).
 STUB_COND_DIVERT = [
     [
         "ev",

@@ -875,7 +875,11 @@ class Walker:
                     args = list(t[2])
                 if not d:
                     loops = True
-                elif d and not AUTO_STITCH_RE.match(d) and not d.isdigit() and not dest:
+                elif (d and not AUTO_STITCH_RE.match(d) and not d.isdigit()
+                      and block_depth == 0 and not dest):
+                    # only an unconditional, top-level divert names the choice's
+                    # destination; a divert inside an if/else branch is shown
+                    # inline (the branch gate decides where it actually leads)
                     dest = d
                 if block_depth and d:
                     # a divert inside a conditional branch: keep it in the flow so

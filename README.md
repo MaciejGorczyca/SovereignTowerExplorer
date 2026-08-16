@@ -109,7 +109,7 @@ Compact arrays to keep JSON small:
 |---|---|
 | `["0", text, speaker?]` | dialogue text; `speaker` = active `Locutor` arg ("" = none) |
 | `["1", marker]` | `(BREAK_n)` / `(NO_CLICK)` split out of text runs |
-| `["2", label, [req...], flg?, dest?, [eff...]]` | player choice + conditional-var gates (e.g. `gideon_romanced`, `!flag`) + resolved destination + consequence fn calls. Function requirements (`RequiresFunds` etc.) are **not** duplicated here — they live only as `["3"]` flow tokens above the choice, keeping their args. `dest` is a real divert target, or the sentinel `(end)` / `(options)` when the choice closes the dialogue / re-offers the option list. `eff` = non-presentation game-state fn calls the choice triggers (e.g. `UpdateSovereignValue`, `UnlockQuest`); they appear **only** in the card, not replayed in the flow. |
+| `["2", label, [req...], flg?, dest?, [eff...]]` | player choice + conditional-var gates (e.g. `gideon_romanced`, `!flag`) + resolved destination + consequence fn calls. Function requirements (`RequiresFunds` etc.) are **not** duplicated here — they live only as `["3"]` flow tokens above the choice, keeping their args. `dest` is a real divert target, or the sentinel `(end)` / `(options)` when the choice closes the dialogue / re-offers the option list — except when the jump is **conditional**: a choice routed through an `if/else` (its follow-up stream at index 7 carries branch diverts) ships an **empty `dest`**, so the card shows no misleading default divert and the branches show where it leads. `eff` = non-presentation game-state fn calls the choice triggers (e.g. `UpdateSovereignValue`, `UnlockQuest`); they appear **only** in the card, not replayed in the flow. |
 | `["3", name, [args...]]` | game/ink function call (args from the eval stack) |
 | `["3", "set:"+kind, [target, rhs?]]` | variable write: `VAR=` / `temp=` / `list=`. `target` is the variable name; `rhs` (when the compiler emits an eval frame before the write) is the assigned value as an infix expression, e.g. [`"highest", "audacious_value"`] or [`"is_tyran_highest", "tyrannic_value == highest"`]. Param-declaration writes (function params, stitch-local temp re-decls) carry no `rhs`. |
 | `["4", target]` | divert (`->`) |
@@ -137,7 +137,10 @@ Compact arrays to keep JSON small:
 - **Choice destinations** are resolved from the choice's `c-N` redirect stub. A stub that
   diverts somewhere meaningful gives a real target (e.g. `lie`, `follow_up`); a stub that ends
   the dialogue (`end` / `->->` opcode) gives the sentinel `(end)`; a stub that self-loops back
-  to the option list (the "pick another option" pattern) gives `(options)`.
+  to the option list (the "pick another option" pattern) gives `(options)`. A stub whose jump
+  is **conditional** (`if/else` with per-branch diverts) gives **no** card destination — the
+  first branch's divert is *not* promoted to the choice's default target; the branch gates and
+  their diverts stay in the choice's follow-up stream so the reader sees where each branch leads.
 - **Choice effects** (`eff`): game-state fn calls *inside* the choice's stub (`Update*`,
   `UnlockQuest`, `AddFunds`, …) are attached to the choice. Presentation-only calls (`Locutor`,
   `SwapExpression`, `FlashScreen`, `TriggerCustomAnimation`, `SetBackground`, …) are excluded
@@ -397,7 +400,7 @@ Guidelines:
 |---|---|
 | knots | 922 (327 compiled as ink functions) |
 | text | 18,977 lines / ≈1.1 M chars across all knots/stitches |
-| choices | 3,477 (all with a resolved destination; 1,046 with consequences) |
+| choices | 3,477 (all with a resolved destination — or, when the jump is a conditional `if/else`, with the branch diverts carried in the choice's follow-up stream; 1,046 with consequences) |
 | speakers | 91 (resolved via `Locutor` eval-stack pattern) |
 | variables | 1,368 (298 declared + list items / conditionals read) |
 | categories | 17 auto-classified (grievance, affinity, quest, ending, …) |

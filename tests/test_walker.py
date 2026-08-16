@@ -144,14 +144,16 @@ class WalkerMetaTest(unittest.TestCase):
 class WalkerStubCondDivertTest(unittest.TestCase):
     """county_quest_enberg_audience_2: a choice stub whose if/else branches are
     pure diverts must keep those diverts in the flow so the gates are not empty
-    and both the if and the else impact are visible."""
+    and both the if and the else impact are visible. The branch diverts must NOT
+    leak into the choice's default destination — with a conditional jump the
+    choice card shows no single "→ target" line; the branches show where it leads."""
 
     def test_tokens(self):
         w, tok, params = walk_knot(F.STUB_COND_DIVERT)
         self.assertEqual(params, [])
         self.assertEqual(tok, [
             ["2", "Any thoughts on the victim?", [], 5,
-             "polmauz_interrogation_phase", [], [],
+             "", [], [],
              [
                  ["7", ["polmauz_available"], "polmauz_available", "1"],
                  ["4", ".^.^.^.^.^.^.polmauz_interrogation_phase"],

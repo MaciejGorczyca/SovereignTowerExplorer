@@ -71,10 +71,22 @@ class IndexJsonTest(unittest.TestCase):
         self.assertEqual(bad, [])
 
     def test_choices_have_resolved_destination(self):
+        # A choice resolves to its destination either on the card (index 4: a
+        # real divert target or the (end)/(options) sentinel) or, when the jump
+        # is conditional (an if/else routing the choice through per-branch
+        # diverts), leaves the card destination EMPTY — the branch-resolved
+        # diverts live in its follow-up stream (index 7) instead. So a choice
+        # may only have an empty card destination if its follow-up opens a
+        # conditional branch block.
         unresolved = []
         for name, k in self.idx["knots"].items():
             for t in k["lines"]:
-                if t[0] == "2" and not t[4]:
+                if t[0] != "2" or t[4]:
+                    continue
+                cond_routed = (len(t) > 7 and isinstance(t[7], list) and any(
+                    nt[0] == "7" and len(nt) > 3 and nt[3] == "1"
+                    for nt in t[7]))
+                if not cond_routed:
                     unresolved.append((name, t))
         self.assertEqual(unresolved, [])
 
