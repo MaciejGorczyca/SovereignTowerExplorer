@@ -980,14 +980,122 @@ def load_knight_demissions():
     return out
 
 
+# FillerAudiencesManager pack arrays of systems/autoloads/cycles_manager.tscn
+# -> the runtime unlock name. The four "representatives" packs are always
+# available from the start (filler_audiences_manager.gd `set_up()`); every
+# other name is the argument the ink passes to UnlockFillerAudiencesPack — the
+# `_unlock_audience_pack` match on filler_audiences_manager.gd:63, which groups
+# the two per-county arrays of each region under the region name (e.g. the
+# belthorne + beaconsbury arrays are both unlocked as "groveshire").
+FILLER_PACK_NAMES = {
+    "academician_filler_audiences": "academician",
+    "aristocrat_filler_audiences": "aristocrat",
+    "shopkeeper_filler_audiences": "shopkeeper",
+    "worker_filler_audiences": "worker",
+    "clovermont_filler_audiences": "clovermont",
+    "grest_filler_audiences": "grest",
+    "milkford_filler_audiences": "milkford",
+    "rozenn_filler_audiences": "rozenn",
+    "villador_filler_audiences": "villador",
+    "belthorne_filler_audiences": "groveshire",
+    "beaconsbury_filler_audiences": "groveshire",
+    "mavignac_filler_audiences": "gavault",
+    "chavignol_filler_audiences": "gavault",
+    "pince_harbor_filler_audiences": "southbay",
+    "shellington_filler_audiences": "southbay",
+    "naoned_filler_audiences": "almor",
+    "anveld_filler_audiences": "almor",
+    "volga_camp_filler_audiences": "kutnar",
+    "laik_valley_filler_audiences": "kutnar",
+    "avalon_filler_audiences": "moonvale",
+    "pinemaze_filler_audiences": "moonvale",
+    "popota_isle_filler_audiences": "basalt_isles",
+    "tortosa_isle_filler_audiences": "basalt_isles",
+    "ziskov_filler_audiences": "enberg",
+    "mana_strala_isle_filler_audiences": "enberg",
+    "kralgrun_filler_audiences": "brimwood",
+    "mossgart_filler_audiences": "brimwood",
+}
+
+
+def load_filler_packs():
+    """Parse the filler-audience packs -> {audience stem: [pack, pop_cat, corruption]}.
+
+    Channel 13 of the audience-condition research: the 236
+    `content/filler_audiences/*.tres` FillerAudience wrappers (each wrapping one
+    `content/audiences/filler/` scene) grouped by the
+    `[node name="FillerAudiencesManager"]` pack arrays of cycles_manager.tscn.
+    The pack name is the runtime unlock name of `_unlock_audience_pack`
+    (filler_audiences_manager.gd:63): the four "representatives" packs are
+    always available from the start, the rest are unlocked when the ink calls
+    UnlockFillerAudiencesPack (the first-grievance knots). Values are
+    `[pack, targeted_pop_category, corruption_score]` where the two ints are
+    baked only when the wrapper sets them (defaults are the game's 0 / PEOPLE).
+    """
+    d = f"{GAME}/content/filler_audiences"
+    if not os.path.isdir(d):
+        return {}
+    wrappers = {}
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tres"):
+            continue
+        tf = TresFile.load(os.path.join(d, fn), d)
+        P = tf.props
+        wrappers[os.path.splitext(fn)[0]] = {
+            "aud": _ref_stem(P.get("audience"), tf),
+            "tpc": P.get("targeted_pop_category"),
+            "cs": P.get("corruption_score"),
+        }
+
+    tscn = os.path.join(GAME, "systems/autoloads/cycles_manager.tscn")
+    if not os.path.exists(tscn):
+        return {}
+    lines = open(tscn, encoding="utf-8").read().splitlines()
+    ext = {}
+    for m in re.finditer(r"\[ext_resource type=\"[^\"]*\"[^]]*path=\"([^\"]+)\"[^]]*id=\"(\d+)\"\]",
+                         "\n".join(lines)):
+        ext[m.group(2)] = m.group(1)
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith('[node name="FillerAudiencesManager"'):
+            start = i + 1
+            break
+    if start is None:
+        return {}
+
+    out = {}
+    for i in range(start, len(lines)):
+        line = lines[i].strip()
+        if line.startswith("["):
+            break
+        m = re.match(r"^([A-Za-z0-9_]+)\s*=\s*(\[.*\])\s*$", line)
+        if not m:
+            continue
+        pack = FILLER_PACK_NAMES.get(m.group(1))
+        if not pack:
+            continue
+        for w in [os.path.splitext(os.path.basename(ext[j]))[0]
+                  for j in re.findall(r'ExtResource\("(\d+)"\)', m.group(2))]:
+            info = wrappers.get(w)
+            if not info or not info["aud"] or info["aud"] in out:
+                continue
+            out[info["aud"]] = [
+                pack,
+                info["tpc"] if isinstance(info["tpc"], int) else None,
+                info["cs"] if isinstance(info["cs"], int) else None,
+            ]
+    return out
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
-    special-intervention notes, dd: knight death-follow-up / demission links} —
-    the reverse lookup the knot drawer needs ("how does this knot fire, and
-    under what conditions?").
+    special-intervention notes, dd: knight death-follow-up / demission links,
+    fl: [filler pack, targeted population, corruption score]} — the reverse
+    lookup the knot drawer needs ("how does this knot fire, and under what
+    conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
@@ -997,6 +1105,7 @@ def load_audience_catalog(idx):
     interventions = load_special_interventions()
     death_followups = load_knight_death_followups()
     demissions = load_knight_demissions()
+    filler = load_filler_packs()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -1029,6 +1138,9 @@ def load_audience_catalog(idx):
             dms = demissions.get(stem)
             if dde or dms:
                 entry["dd"] = list(dde or []) + list(dms or [])
+            fl = filler.get(stem)
+            if fl:
+                entry["fl"] = fl
             catalog[stem] = entry
     return catalog
 

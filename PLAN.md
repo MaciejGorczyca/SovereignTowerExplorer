@@ -607,6 +607,28 @@ the single best feature of this app:
   channels stay distinct. Tests: `test_demission_sources` + `dd` schema allows
   the `(2,3)`-length entries in both conformance tests + smoke assertions; 92
   tests green.
+- Filler packs (2026-08-16): channel 13 of the audience-condition research —
+  the 236 `content/filler_audiences/*.tres` FillerAudience wrappers. New
+  `quest_data.py` `load_filler_packs()` parses the wrappers (audience ref +
+  `targeted_pop_category` + `corruption_score`) and groups them by the
+  `[node name="FillerAudiencesManager"]` pack arrays of cycles_manager.tscn,
+  mapping each array to the runtime unlock name of `filler_audiences_manager.gd`
+  `_unlock_audience_pack` (:63): the four representative packs
+  (academician/aristocrat/shopkeeper/worker, always available from the start)
+  + the 23 region/unlock packs (clovermont, grest, … enberg, groveshire,
+  gavault, …). Each audience carries a new `fl: [pack, pop_cat, corruption]`
+  field (null fields when unset) — 234 of the 237 filler scenes covered (the 2
+  duplicate-wrapper audiences + the unwrapped `grest_grievance_emergency` stay
+  source-less). The frontend (`fillerPackUnlocks()` re-scanning index.json, same
+  pattern as `doleanceSchedulers`) shows which first-grievance knot unlocks each
+  pack: the Audiences drawer gains a "Filler scene" section ("Filler scene of
+  the <pack> pack — targeted at <population> — corruption tier N — unlocked by
+  <knot> — random pick to fill a cycle, corruption-weighted", or "available from
+  the start"), the Dialogues knot "Where it comes from" rows append the note,
+  the audience cards carry a `filler · <pack>` badge and search indexes the
+  pack/population/knot names. Stats + `with_filler` (234). Tests:
+  `test_filler_pack_sources` + `fl` schema assertions in both conformance tests
+  + smoke assertions; 93 tests green.
 
 
 ---

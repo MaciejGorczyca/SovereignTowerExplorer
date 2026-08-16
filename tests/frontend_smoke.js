@@ -229,6 +229,35 @@ waitReady().then(() => {
   if (!vm.runInContext("ahay('knight_leaving_alwena', AUDIENCE.audiences['knight_leaving_alwena']).indexOf('leaves the roundtable') >= 0", sandbox)) {
     throw new Error("demission knight not in audience haystack");
   }
+  // channel 13: filler-pack audiences carry a fl link (pack + targeting), the
+  // first-grievance knots unlock them (UnlockFillerAudiencesPack), and the
+  // pack name indexes in the audience haystack + the knot drawer's row
+  const fillerCount = vm.runInContext("AUDIENCE.stats.with_filler", sandbox);
+  if (fillerCount !== 234) throw new Error("with_filler != 234: " + fillerCount);
+  const flClover = vm.runInContext("AUDIENCE.audiences['clovermont_grievance_emergency'].fl", sandbox);
+  if (!flClover || flClover.length !== 3 || flClover[0] !== "clovermont") {
+    throw new Error("clovermont filler fl wrong: " + JSON.stringify(flClover));
+  }
+  const flAcademic = vm.runInContext("AUDIENCE.audiences['brizh_scholars_grievance_copy_cats'].fl", sandbox);
+  if (!flAcademic || flAcademic[0] !== "academician") {
+    throw new Error("representative filler fl wrong: " + JSON.stringify(flAcademic));
+  }
+  const flUnlock = vm.runInContext("fillerPackUnlocks().get('clovermont') || []", sandbox);
+  if (!flUnlock.includes("clovermont_first_grievance")) {
+    throw new Error("filler pack unlock missing: " + JSON.stringify(flUnlock));
+  }
+  const flInKnot = vm.runInContext("(() => { const r = knotAudiences().get('clovermont_grievance_bakery_problem'); return r ? r.some(x => x.stem === 'clovermont_grievance_bakery_problem' && x.fl && x.fl[0] === 'clovermont') : false; })()", sandbox);
+  if (!flInKnot) throw new Error("fl not carried into knotAudiences");
+  if (!vm.runInContext("ahay('clovermont_grievance_emergency', AUDIENCE.audiences['clovermont_grievance_emergency']).indexOf('clovermont') >= 0", sandbox)) {
+    throw new Error("filler pack not in audience haystack");
+  }
+  const flSrc = vm.runInContext("fillerSource('clovermont_grievance_emergency', AUDIENCE.audiences['clovermont_grievance_emergency'])", sandbox);
+  if (flSrc.indexOf("clovermont") < 0 || flSrc.indexOf("corruption tier 2") < 0 ||
+      flSrc.indexOf("clovermont_first_grievance") < 0) {
+    throw new Error("fillerSource render missing: " + flSrc);
+  }
+  vm.runInContext("openAudienceDetail('clovermont_grievance_emergency')", sandbox);
+  vm.runInContext("openDetail('clovermont_grievance_bakery_problem')", sandbox);
   // drawer rendering must not throw on a demission variant either
   vm.runInContext("openAudienceDetail('knight_leaving_arron_dragonheart')", sandbox);
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE

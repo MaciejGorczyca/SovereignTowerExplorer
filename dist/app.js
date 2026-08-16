@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [] });
     }
   }
   return _knotAud || new Map();
@@ -1365,6 +1365,54 @@ const DEMISSION_VARIANT = {
   "possessed": " (possessed / cursed-helmet form)",
   "humbled": " (Gwendan's reformed humble candidacy)",
 };
+// human-readable label for an audience's targeted_pop_category enum value
+const FILLER_POP_LABELS = { 0: "people", 1: "nobles", 2: "merchants", 3: "scholars" };
+let _fillerUnlock = null;   // filler pack -> [knots] calling UnlockFillerAudiencesPack
+function fillerPackUnlocks() {
+  if (_fillerUnlock) return _fillerUnlock;
+  _fillerUnlock = new Map();
+  if (!INDEX) return _fillerUnlock;
+  const rec = (fn, args, knot) => {
+    if (fn !== "UnlockFillerAudiencesPack" || !Array.isArray(args) || !args.length) return;
+    const pack = String(args[0]);
+    if (!pack || pack === "false" || pack === "true") return;
+    if (!_fillerUnlock.has(pack)) _fillerUnlock.set(pack, []);
+    _fillerUnlock.get(pack).push(knot);
+  };
+  for (const [name, k] of Object.entries(INDEX.knots)) {
+    for (const t of k.lines || []) {
+      if (!Array.isArray(t)) continue;
+      if (t[0] === "3") rec(t[1], t[2] || [], name);
+      else if (t[0] === "2" && Array.isArray(t[5])) {
+        for (const e of t[5]) if (Array.isArray(e)) rec(e[0], Array.isArray(e[1]) ? e[1] : [], name);
+      }
+    }
+  }
+  return _fillerUnlock;
+}
+// human-readable "where it comes from" for a filler-pack audience (the `fl`
+// field): the pack it belongs to, who unlocks it (the first-grievance knots
+// calling UnlockFillerAudiencesPack — the representative packs are available
+// from the start) and the corruption/population weighting the cycle-fill
+// random pick applies. Returns HTML ("" when the audience is not a filler).
+function fillerSource(stem, a) {
+  const fl = a.fl;
+  if (!fl || !fl.length) return "";
+  const bits = [`Filler scene of the <b>${esc(String(fl[0]))}</b> pack`];
+  if (fl[1] != null) bits.push(`targeted at the ${esc(FILLER_POP_LABELS[fl[1]] || ("population " + fl[1]))}`);
+  if (fl[2] != null) bits.push(`corruption tier ${esc(String(fl[2]))}`);
+  const unlock = fillerPackUnlocks().get(fl[0]);
+  if (unlock && unlock.length) {
+    const chips = [...new Set(unlock)].map((k) => INDEX.knots[k]
+      ? `<a class="chip knobtn knotlink" data-knot="${esc(k)}">${esc(k)}</a>`
+      : `<span class="chip">${esc(k)}</span>`).join(" ");
+    bits.push(`unlocked by <span class="readers">${chips}</span>`);
+  } else {
+    bits.push("available from the start");
+  }
+  bits.push("random pick to fill a cycle, corruption-weighted");
+  return bits.join(" — ");
+}
 // human-readable rendering of a decoded audience requirement
 function audienceReqText(r) {
   const tag = r[0];
@@ -1410,6 +1458,8 @@ function originSection(name) {
       const dd = a.dd && a.dd.length
         ? ` <span class="mut">· fires when ${a.dd.map((d) => `${kName(d[0])} ${d[1] === "death" ? "dies" : "leaves"}${DEMISSION_VARIANT[d[2]] || ""}`).join(", ")}</span>`
         : "";
+      const fl = fillerSource(a.stem, a);
+      const flk = fl ? ` <span class="mut">· ${fl}</span>` : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
@@ -1418,9 +1468,9 @@ function originSection(name) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}`);
       }
     }
   }
@@ -3856,6 +3906,13 @@ function aHaystack(stem, a) {
     h.push(d[0], kName(d[0]), d[1], DEMISSION_VARIANT[d[2]] || "");
     h.push(d[1] === "death" ? "dies" : "leaves the roundtable");
   }
+  const fl = a.fl;
+  if (fl && fl.length) {
+    h.push(fl[0], "filler", "filler scene", "random pick", "corruption-weighted");
+    if (fl[1] != null) h.push(FILLER_POP_LABELS[fl[1]] || ("population " + fl[1]));
+    if (fl[2] != null) h.push("corruption tier " + fl[2]);
+    for (const k of fillerPackUnlocks().get(fl[0]) || []) h.push("unlocked by " + k, k);
+  }
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -3940,6 +3997,9 @@ function audCard(stem, a) {
     const qid = fu[0].q;
     const nm = QUEST && QUEST.quests[qid] ? (tkey(QUEST.quests[qid].n) || qid) : qid;
     badges.push(`<span class="badge quest" title="fires after ${esc(qid)} (${fu.map((f) => f.kind).join(", ")})">↳ ${esc(nm)}</span>`);
+  }
+  if (a.fl && a.fl.length) {
+    badges.push(`<span class="badge filler" title="filler scene of the ${esc(a.fl[0])} pack — random pick to fill a cycle, corruption-weighted">filler · ${esc(a.fl[0])}</span>`);
   }
   const rqstems = reqsFor(stem);
   if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
@@ -4081,6 +4141,18 @@ function openAudienceDetail(stem) {
     d.className = "qdesc";
     d.innerHTML = a.dir.map(esc).join("<br>");
     panel.appendChild(d);
+  }
+
+  if (a.fl && a.fl.length) {
+    section("Filler scene");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    d.innerHTML = fillerSource(stem, a);
+    const p = document.createElement("p");
+    p.className = "qdesc muted";
+    p.textContent = "Unlocked packs fill random free cycle slots during a cycle fill (weighted toward the current corruption tier); one audience is picked per pack and removed once played.";
+    panel.appendChild(d);
+    panel.appendChild(p);
   }
 
   if (a.cyc && a.cyc.length) {

@@ -382,6 +382,43 @@ class AudiencesDataPassTest(unittest.TestCase):
                                     and d[1] == "demission" and d[2] == variant
                                     for d in dd), (stem, dd, aud["audiences"][stem]))
 
+    def test_filler_pack_sources(self):
+        aud = _passes()["audiences"]
+        # channel 13: the content/filler_audiences FillerAudience wrappers
+        # grouped by the FillerAudiencesManager pack arrays of cycles_manager.tscn
+        self.assertEqual(aud["stats"]["with_filler"], 234)
+        for stem, a in aud["audiences"].items():
+            fl = a.get("fl")
+            if fl:
+                self.assertEqual(len(fl), 3, (stem, fl))
+                self.assertIsInstance(fl[0], str, (stem, fl))
+                for v in fl[1:]:
+                    self.assertTrue(v is None or isinstance(v, int), (stem, fl))
+                self.assertEqual(a["f"], "filler", stem)
+        clover = aud["audiences"]["clovermont_grievance_emergency"]["fl"]
+        self.assertEqual(clover[0], "clovermont")
+        academician = aud["audiences"]["brizh_scholars_grievance_copy_cats"]["fl"]
+        self.assertEqual(academician[0], "academician")
+        # the representative packs need no ink unlocker; the region packs are
+        # unlocked by the first-grievance knots (UnlockFillerAudiencesPack)
+        unlocks = {}
+        for name, k in self.index["knots"].items():
+            for t in k["lines"]:
+                if not isinstance(t, list) or not t:
+                    continue
+                if t[0] == "3" and t[1] == "UnlockFillerAudiencesPack" and t[2]:
+                    unlocks.setdefault(str(t[2][0]), set()).add(name)
+                elif t[0] == "2" and isinstance(t[5], list):
+                    for e in t[5]:
+                        if isinstance(e, list) and e and len(e) > 1 and e[0] == "UnlockFillerAudiencesPack" and e[1]:
+                            unlocks.setdefault(str(e[1][0]), set()).add(name)
+        self.assertEqual(unlocks.get("clovermont"), {"clovermont_first_grievance"})
+        self.assertEqual(unlocks.get("academician"), None)
+        for pack, kns in unlocks.items():
+            for kn in kns:
+                self.assertTrue(any((aud["audiences"][s].get("fl") or [None])[0] == pack
+                                    for s in aud["audiences"]), pack)
+
     def test_requests_resolve(self):
         aud = _passes()["audiences"]
         for stem, r in aud["requests"].items():
