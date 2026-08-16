@@ -472,10 +472,47 @@ the single best feature of this app:
   special-link row via a new `knotSpecialTriggers()` map: knots that a
   `SpecialInstruction` unlocks (`dlg`) or diverts to (`goto`) now say "Fires
   when the special instruction X is triggered", so
-  `gideon_victoria_dead_reaction` correctly requires `GIDEON_VICTORIA_DEAD`
+   `gideon_victoria_dead_reaction` correctly requires `GIDEON_VICTORIA_DEAD`
   (previously the *special* knew it unlocked the knot but the *knot* gave no
   clue what fires it). Full rebuild; smoke test locks cycle + reverse-special +
   modifier-follow-up; all 88 tests green.
+- Firing conditions everywhere: knot drawer → audience + conditions
+  (2026-08-16): the knot drawer's "Where it comes from" was missing the
+  conditions that actually *make* a dialogue fire. The `knotAudiences()` reverse
+  map dropped the audience's hardcoded cycle (`cyc`), so a knot played by
+  `scriptedquest_chester` showed "Played as doleances audience Chester" with no
+  hint that it is scripted into the cycle timeline — while the audience drawer
+  said "Hardcoded to play at cycle 2". The map now carries `cyc`, the audience
+  row links to the exact audience resource (clickable `audiencelink`), and when
+  a cycle is known the row states "hardcoded to play at cycle N (scripted into
+  the cycle timeline — fires regardless of player actions)". `knotSpecialTriggers()`
+  also gained the specials that *schedule* an audience whose knot this is
+  (`auds`), so `candidature_gwendan_the_humble` now says it fires when
+  `GWENDAN_REFORMED` is triggered (previously only `dlg`/`goto` reverse links
+  existed). Frontend-only (`web/app.js`) + smoke test.
+- Special firing conditions + character-manager audience scheduling
+  (2026-08-16): two new condition sources now reach the Special and Audiences
+  tabs. (1) `special_data.py` decodes the `if`-guard lines inside each
+  `special_instruction_manager.gd` case body into a `cond` field (multiline
+  guards, joined across `\` continuations, are handled too — e.g.
+  `ASSASINATION_PLOT_URSULA_FOLLOW_UP` → "only fires when Ursule is at the
+  roundtable", `SOUTHBAY/KUTNAR_TARCUS_INTERVENTION` → "only fires when Tarcus
+  is at the roundtable and available", `CHECK_FOR_EPICRATE_*` → Epicrate
+  availability, `TRIGGER_RUPIN_APOLOGIES` → Rupin not recruited,
+  `SET_UP_FOR_TOWER_DESTRUCTION` → Tower-Destruction ending path,
+  `BRING_BACK_TRAITOR` → traitor quest still running); the Special drawer shows
+  a "Firing conditions" section and cards get a "conditional" badge. (2)
+  `character_special_instructions_manager.gd` signal
+  handlers that schedule audiences as a side effect of a special instruction
+  (`_on_gwendan_reformed` → `gwendan_humble_candidacy` in ~5 cycles,
+  `arron_set_violent` → `arron_dragon_heart_gimmick`, `arron_set_kind` →
+  `arron_babydragon_gimmick`, plus knight-death `dulahan_candidacy`) are decoded
+  via `load_char_aud_schedules()` and folded into the instruction's `auds` + note;
+  the audience drawer gains a "Scheduled by special instruction" reverse section
+  (`audSpecials()`), so an audience now shows *who* makes it play. Full rebuild;
+  smoke + data-pass tests lock the cycle carry, the audience→special reverse and
+  the gwendan/arron scheduled audiences; all 88 tests green.
+
 
 ---
 

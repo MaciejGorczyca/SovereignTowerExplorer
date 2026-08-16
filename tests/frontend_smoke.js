@@ -284,6 +284,34 @@ waitReady().then(() => {
   if (!chesterFu.some((f) => f.q === "contract_cleankeeper_goose_part_two" && f.k === "unexpected")) {
     throw new Error("modifier unexpected follow-up missing for chester_candidacy: " + JSON.stringify(chesterFu));
   }
+  // 3. the knot→audience reverse map must carry the hardcoded cycle, so the
+  //    knot drawer explains WHEN the scripted scene plays (scriptedquest_chester -> cycle 2).
+  const knotCyc = vm.runInContext("(() => { const row = knotAudiences().get('scriptedquest_chester'); return row && row[0] ? row[0].cyc : null; })()", sandbox);
+  if (!knotCyc || !knotCyc.includes(2)) {
+    throw new Error("knot drawer audience row missing the hardcoded cycle: " + JSON.stringify(knotCyc));
+  }
+  // 4. special instructions that schedule an audience must (a) appear in the
+  //    audience drawer's reverse map and (b) mark the scheduled audience's knot
+  //    as "fires when this special is triggered" (GWENDAN_REFORMED ->
+  //    gwendan_humble_candidacy -> candidature_gwendan_the_humble).
+  const audSp = vm.runInContext("audSpecials().get('gwendan_humble_candidacy') || []", sandbox);
+  if (!audSp.includes("GWENDAN_REFORMED")) {
+    throw new Error("audience->special reverse link missing: " + JSON.stringify(audSp));
+  }
+  const gwendanKnotSp = vm.runInContext("knotSpecialTriggers().get('candidature_gwendan_the_humble') || []", sandbox);
+  if (!gwendanKnotSp.includes("GWENDAN_REFORMED")) {
+    throw new Error("scheduled-audience knot missing the special trigger: " + JSON.stringify(gwendanKnotSp));
+  }
+  // 5. conditional special instructions expose their firing conditions
+  //    (SOUTHBAY_TARCUS_INTERVENTION only fires while Tarcus is present).
+  const cond = vm.runInContext("SPECIAL.instructions.SOUTHBAY_TARCUS_INTERVENTION.cond || []", sandbox);
+  if (!cond.length || typeof cond[0] !== "string") {
+    throw new Error("special firing conditions missing: " + JSON.stringify(cond));
+  }
+  const assCond = vm.runInContext("SPECIAL.instructions.ASSASINATION_PLOT_URSULA_FOLLOW_UP.cond || []", sandbox);
+  if (!assCond.length || !/Ursule/.test(assCond[0])) {
+    throw new Error("multiline special firing condition missing: " + JSON.stringify(assCond));
+  }
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));

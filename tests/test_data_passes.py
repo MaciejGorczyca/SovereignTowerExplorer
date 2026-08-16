@@ -213,6 +213,14 @@ class SpecialDataPassTest(unittest.TestCase):
         v = special["instructions"]["VICTORIA_DEAD"]
         self.assertEqual(v["affects"], ["victoria"])
         self.assertIn("dead", v["note"].lower())
+        # firing conditions decoded from the manager's `if` guards
+        tarcus = special["instructions"]["SOUTHBAY_TARCUS_INTERVENTION"]
+        self.assertTrue(any("Tarcus" in c and "roundtable" in c.lower() for c in tarcus.get("cond", [])))
+        # character-manager signal→audience scheduling (GWENDAN_REFORMED schedules
+        # gwendan_humble_candidacy a few cycles later)
+        reformed = special["instructions"]["GWENDAN_REFORMED"]
+        self.assertIn("gwendan_humble_candidacy", reformed.get("auds", []))
+        self.assertEqual(reformed["knots"], ["gwendan_debt_reveal_reaction"])
 
 
 @unittest.skipUnless(game_available(), "game/SovereignTowerCode not present")

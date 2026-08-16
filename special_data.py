@@ -83,14 +83,60 @@ IS_DEAD = re.compile(r"\.is_dead\s*=\s*true")
 EXT_RESOURCE = re.compile(r'\[ext_resource[^\]]*path="([^"]+)"[^\]]*id="(\d+)"\]')
 SCENE_PROP = re.compile(r'(\w+)\s*=\s*(ExtResource\("(\d+)"\)|&"([^"]+)")')
 
+# firing-condition decoders: each `if ...:` guard line inside an instruction's
+# case body is turned into a human-readable "how to proc" note. Patterns are
+# keyed to the known guard forms in special_instruction_manager.gd.
+COND_PATTERNS = [
+    (re.compile(r"ursule\s+in\s+\S*roundtable_knights"),
+     "only fires when Ursule is at the roundtable"),
+    (re.compile(r"tarcus\s+in\s+\S*roundtable_knights\s+and\s+tarcus\.is_available"),
+     "only fires when Tarcus is at the roundtable and available"),
+    (re.compile(r"epicrate_available\s*:"),
+     "only fires when Epicrate is available (recruited, alive, not busy, no Epicrate/Marian audience in the current or next cycle)"),
+    (re.compile(r"get_servant_from_name\(\"rupin\"\)\s+in\s+\S*recruited_servants"),
+     "only fires while Rupin has not been recruited"),
+    (re.compile(r"current_ending\s*==\s*EndingManager\.Endings\.TOWER_DESTRUCTION"),
+     "only fires on the Tower-Destruction ending path"),
+    (re.compile(r"not\s+is_instance_valid\(traitor\.assigned_quest\)"),
+     "only fires when the traitor still has an assigned quest"),
+    (re.compile(r"traitor\.assigned_quest\.duration\s*<=\s*0"),
+     "only fires while the traitor's quest still has time left"),
+]
+
+
+def _decode_conditions(body):
+    """Turn the `if`-guard lines of an instruction body into condition notes.
+
+    A guard may span continuation lines (a line ending in `\\` continues the
+    condition on the next line), so the full guard expression is re-joined
+    before matching.
+    """
+    conds = []
+    guard = ""
+    for line in body.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith("if "):
+            guard = stripped[3:].rstrip()
+        elif guard:
+            guard = guard + " " + stripped.rstrip()
+        if guard and not guard.endswith("\\"):
+            full = guard
+            guard = ""
+            for rx, note in COND_PATTERNS:
+                if rx.search(full):
+                    if note not in conds:
+                        conds.append(note)
+    return conds
+
 
 def load_special_instructions():
     """Parse special_instruction_manager.gd's match table -> {NAME: effect dict}.
 
     Returns {NAME: {signal, dlgs, gotos, aud_next, aud_add, kls, knfs, vars,
-    endings, killed, body}} where the first signal names the SignalsEventBus
-    signal emitted by the case, and the rest are the raw tokens/patterns that
-    build_special turns into cross-links.
+    endings, killed, cond, body}} where the first signal names the SignalsEventBus
+    signal emitted by the case, `cond` lists the decoded `if`-guard firing
+    conditions, and the rest are the raw tokens/patterns that build_special
+    turns into cross-links.
     """
     path = f"{GAME}/systems/autoloads/special_instruction_manager.gd"
     if not os.path.exists(path):
@@ -123,6 +169,7 @@ def load_special_instructions():
         info["vars"] = SET_VAR.findall(b)
         info["endings"] = ENDING.findall(b)
         info["killed"] = bool(IS_DEAD.search(b))
+        info["cond"] = _decode_conditions(b)
     return out
 
 
@@ -169,6 +216,104 @@ def load_manager_exports():
                 out[var] = {"kind": "aud", "value": stem}
             elif "character_descriptors/knights/" in p:
                 out[var] = {"kind": "knight", "value": stem}
+    return out
+
+
+# signal handlers in character_special_instructions_manager.gd that schedule
+# audiences as a side effect of a special-instruction-emitted signal
+CHAR_AUD_FN = re.compile(r'^func (\w+)\(')
+CHAR_AUD_ADD = re.compile(r'GameState\.cycles_manager\.add_audience_in_x_cycle\(\s*(\w+)\s*(?:,\s*(\d+))?\s*\)')
+CHAR_AUD_NEXT = re.compile(r'SignalsEventBus\.audience_unlocked_for_next_cycle\.emit\(\s*(\w+)\s*\)')
+
+
+def load_char_aud_schedules():
+    """Decode character_special_instructions_manager.gd signal handlers.
+
+    The character manager connects SpecialInstruction signals (gwendan_reformed,
+    arron_set_violent, ...) to audience scheduling as a side effect
+    (`add_audience_in_x_cycle` — e.g. GWENDAN_REFORMED schedules
+    gwendan_humble_candidacy in ~5 cycles), plus a few cycle-transition checks.
+
+    Returns {export_var: {"signal": <handler signal>, "aud": <stem>, "delay": n}}
+    for each handler body that schedules an audience, resolved through the
+    CharacterSpecialInstructionsManager node exports in character_manager.tscn.
+    """
+    gd = f"{GAME}/systems/autoloads/character_special_instructions_manager.gd"
+    tscn = f"{GAME}/systems/autoloads/character_manager.tscn"
+    if not os.path.exists(gd) or not os.path.exists(tscn):
+        return {}
+
+    # exports on the CharacterSpecialInstructionsManager node
+    ext = {}
+    props = {}
+    node = False
+    for raw in open(tscn, encoding="utf-8"):
+        line = raw.strip()
+        m = EXT_RESOURCE.match(line)
+        if m:
+            ext[m.group(2)] = m.group(1)
+            continue
+        if line.startswith('[node name="CharacterSpecialInstructionsManager"'):
+            node = True
+            continue
+        if node:
+            if line.startswith("["):
+                break
+            m = SCENE_PROP.match(line)
+            if m:
+                props[m.group(1)] = m.group(2)
+    aud_vars = {}
+    for var, val in props.items():
+        m = re.match(r'ExtResource\("(\d+)"\)', val)
+        if not m:
+            continue
+        p = ext.get(m.group(1), "")
+        if "/content/audiences/" in p:
+            aud_vars[var] = os.path.splitext(os.path.basename(p))[0]
+
+    # signal name (with_continue_story etc. functions excluded) per function
+    fn_map = {}
+    cur = None
+    body = []
+    for line in open(gd, encoding="utf-8"):
+        m = CHAR_AUD_FN.match(line)
+        if m:
+            if cur is not None:
+                fn_map[cur] = "\n".join(body)
+            cur = m.group(1)
+            body = []
+            continue
+        if cur is not None:
+            body.append(line.rstrip("\n"))
+    if cur is not None:
+        fn_map[cur] = "\n".join(body)
+
+    fn_signals = {}
+    ready_body = fn_map.get("_ready", "")
+    for mm in re.finditer(r"SignalsEventBus\.(\w+)\.connect\(\s*(_\w+)\s*\)", ready_body):
+        fn_signals[mm.group(2)] = mm.group(1)
+
+    out = {}
+    for fn, b in fn_map.items():
+        signal = fn_signals.get(fn)
+        if not signal or not fn.startswith("_on_"):
+            continue
+        for mm in CHAR_AUD_ADD.finditer(b):
+            var = mm.group(1)
+            if var in aud_vars:
+                out.setdefault(var, []).append({
+                    "signal": signal,
+                    "aud": aud_vars[var],
+                    "delay": int(mm.group(2) or 1),
+                })
+        for mm in CHAR_AUD_NEXT.finditer(b):
+            var = mm.group(1)
+            if var in aud_vars:
+                out.setdefault(var, []).append({
+                    "signal": signal,
+                    "aud": aud_vars[var],
+                    "delay": 1,
+                })
     return out
 
 
@@ -272,6 +417,7 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
     evo_notes = _knight_evo_notes((knights_data or {}).get("knights"))
     instr_source = load_special_instructions()
     exports = load_manager_exports()
+    char_auds = load_char_aud_schedules()
     all_knots = set(index.get("knots") or {}) if index else set()
 
     def _affect_char(name):
@@ -319,6 +465,18 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
             stem = _resolve_export(var, "aud")
             if stem:
                 auds.append(stem)
+        # character-special-instructions scheduling: signals the instruction
+        # emits also schedule an audience as a side effect (e.g. GWENDAN_REFORMED
+        # schedules gwendan_humble_candidacy in ~5 cycles via
+        # character_special_instructions_manager.gd)
+        char_sched = []
+        if signal:
+            for entries in char_auds.values():
+                for e in entries:
+                    if e["signal"] == signal and e["aud"] not in auds:
+                        auds.append(e["aud"])
+                        d = e["delay"]
+                        char_sched.append("%s in ~%d cycle%s" % (e["aud"], d, "s" if d != 1 else ""))
         for provoke in (info.get("kls") or []) + (info.get("knfs") or []):
             affects.append(_affect_char(provoke))
         vars_written = sorted(set(info.get("vars") or []))
@@ -331,11 +489,17 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
                                 info.get("kls") or [])
         if not note and signal:
             note = _humanize(signal)
+        if char_sched:
+            sched_text = "Schedules %s" % "; ".join(char_sched)
+            note = (note + "; " + sched_text[0].lower() + sched_text[1:]) if note else sched_text
         if not note:
             note = ""
         inst = {}
         if signal:
             inst["signal"] = signal
+        conds = info.get("cond") or []
+        if conds:
+            inst["cond"] = conds
         if knot_map.get(name):
             inst["knots"] = sorted(set(knot_map[name]))
         if quest_map.get(name):

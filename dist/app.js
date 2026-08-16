@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [] });
     }
   }
   return _knotAud || new Map();
@@ -1277,8 +1277,25 @@ function knotSpecials() {
   }
   return _knotSp || new Map();
 }
-// knot -> [special instruction keys that unlock it as a special dialogue (dlg)
-// or divert to it (goto)] — "what makes this knot fire" reverse links.
+// audience stem -> [special instruction keys that schedule/unlock it as an
+// audience (auds)] — "which special instruction makes this audience fire".
+let _audSp = null;
+function audSpecials() {
+  if (!_audSp && SPECIAL) {
+    _audSp = new Map();
+    for (const [name, i] of Object.entries(SPECIAL.instructions)) {
+      for (const aud of i.auds || []) {
+        if (!AUDIENCE || !AUDIENCE.audiences[aud]) continue;
+        if (!_audSp.has(aud)) _audSp.set(aud, []);
+        _audSp.get(aud).push(name);
+      }
+    }
+  }
+  return _audSp || new Map();
+}
+// knot -> [special instruction keys that unlock it as a special dialogue (dlg),
+// divert to it (goto), or schedule an audience whose ink knot is this one (auds)]
+// — "what makes this knot fire" reverse links.
 let _knotSpTrig = null;
 function knotSpecialTriggers() {
   if (!_knotSpTrig && SPECIAL) {
@@ -1291,6 +1308,10 @@ function knotSpecialTriggers() {
     for (const [name, i] of Object.entries(SPECIAL.instructions)) {
       for (const kn of i.dlg || []) push(kn, name);
       for (const kn of i.goto || []) push(kn, name);
+      if (AUDIENCE) for (const aud of i.auds || []) {
+        const a = AUDIENCE.audiences[aud];
+        if (a && a.k) push(a.k, name);
+      }
     }
   }
   return _knotSpTrig || new Map();
@@ -1375,22 +1396,27 @@ function originSection(name) {
       const nm = a.c.length ? a.c.map(tkey).join(", ") : a.stem;
       const folder = a.f || a.stem;
       const reqs = a.rq.length ? ` <span class="mut">· ${a.rq.map(audienceReqText).join(", ")}</span>` : "";
-      const cyc = a.cyc && a.cyc.length ? ` <span class="mut">· scheduled at cycle ${a.cyc.join("/")}</span>` : "";
+      const cyc = a.cyc && a.cyc.length
+        ? ` <span class="mut">· hardcoded to play at cycle ${a.cyc.join("/")} (scripted into the cycle timeline — fires regardless of player actions)</span>`
+        : "";
       const scheds = doleanceSchedulers().get(a.stem);
+      const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
+        ? `audience ${audienceLink(a.stem)}`
+        : `audience <b>${esc(a.stem)}</b>`;
       if (scheds && scheds.length) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance audience <b>${esc(nm)}</b>${reqs}${cyc}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> audience <b>${esc(nm)}</b>${reqs}${cyc}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}`);
       }
     }
   }
   const spTrig = knotSpecialTriggers().get(name);
   if (spTrig && spTrig.length) {
     const chips = [...new Set(spTrig)].map((n) => `<a class="chip speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" ");
-    add(`Fires when the <b>special instruction</b> <span class="readers">${chips}</span> is triggered (unlocks/diverts this knot)`);
+    add(`Fires when the <b>special instruction</b> <span class="readers">${chips}</span> is triggered (unlocks/diverts this knot or schedules the audience that plays it)`);
   }
   const inc = (knotIncoming().get(name) || []).slice(0, 24);
   if (inc.length) {
@@ -3547,6 +3573,7 @@ function renderSpecialResults() {
     if ((i.dlg || []).length) badges.push(`<span class="badge sp-ink">unlocks ${i.dlg.length}</span>`);
     if ((i.goto || []).length) badges.push(`<span class="badge sp-ink">diverts ${i.goto.length}</span>`);
     if ((i.auds || []).length) badges.push(`<span class="badge aud" title="${esc(i.auds.join(", "))}">audiences ${i.auds.length}</span>`);
+    if ((i.cond || []).length) badges.push(`<span class="badge sp-quest" title="${esc(i.cond.join(" · "))}">conditional</span>`);
     if ((i.affects || []).length) badges.push(`<span class="badge sp-quest" title="affects ${esc(i.affects.map(sOwner).join(", "))}">affects ${i.affects.length}</span>`);
     if (i.signal) badges.push(`<span class="badge quiet">${esc(i.signal)}</span>`);
     const open = () => go("special", name);
@@ -3594,6 +3621,19 @@ function openSpecialDetail(name) {
   if (i.note) {
     const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Effect"; panel.appendChild(h);
     const d = document.createElement("div"); d.className = "qdesc"; d.textContent = i.note; panel.appendChild(d);
+  }
+
+  if ((i.cond || []).length) {
+    const h = document.createElement("h4"); h.className = "qsec"; h.textContent = "Firing conditions"; panel.appendChild(h);
+    const d = document.createElement("div"); d.className = "qdesc";
+    d.textContent = "This instruction only fires when:";
+    panel.appendChild(d);
+    for (const c of i.cond) {
+      const box = document.createElement("div");
+      box.className = "qchip";
+      box.innerHTML = `<span class="qchip-sub">${esc(c)}</span>`;
+      panel.appendChild(box);
+    }
   }
 
   if ((i.knots || []).length) {
@@ -3997,6 +4037,15 @@ function openAudienceDetail(stem) {
     w.innerHTML = scheds.map((s) => INDEX.knots[s.knot]
       ? `<a class="knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a> <span class="muted">(${esc(s.type)})</span>`
       : `${esc(s.knot)} <span class="muted">(${esc(s.type)})</span>`).join(" · ");
+    panel.appendChild(w);
+  }
+
+  const spBy = audSpecials().get(stem);
+  if (spBy && spBy.length) {
+    section("Scheduled by special instruction");
+    const w = document.createElement("div");
+    w.className = "qdesc";
+    w.innerHTML = [...new Set(spBy)].map((n) => `<a class="speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" · ");
     panel.appendChild(w);
   }
 
