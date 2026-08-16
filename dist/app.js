@@ -1027,6 +1027,7 @@ let _knotAud = null;   // knot -> [{stem, f, c, rq}]
 let _knotFu = null;    // knot -> [{qid, kind}]  (kind: success/failure/unexpected)
 let _knotIn = null;    // knot -> [incoming diverting knot names]
 let _doleance = null;  // audience stem -> [{knot, type}] scheduling it next cycle
+let _knotRequest = null; // knot -> Set(request stems) unlocked via UnlockAudienceRequest
 
 function knotAudiences() {
   if (!_knotAud && AUDIENCE) {
@@ -1099,11 +1100,37 @@ function doleanceSchedulers() {
   }
   return _doleance;
 }
+// knot -> [request stems it unlocks via UnlockAudienceRequest] (flat calls and
+// choice effects), mirroring how doleanceSchedulers collects AddDoleanceForNextCycle
+function knotRequests() {
+  if (_knotRequest) return _knotRequest;
+  _knotRequest = new Map();
+  if (!INDEX) return _knotRequest;
+  const rec = (fn, args, knot) => {
+    if (fn !== "UnlockAudienceRequest" || !Array.isArray(args) || !args.length) return;
+    const stem = String(args[0]);
+    if (!stem || stem === "false" || stem === "true") return;
+    if (!_knotRequest.has(knot)) _knotRequest.set(knot, new Set());
+    _knotRequest.get(knot).add(stem);
+  };
+  for (const [name, k] of Object.entries(INDEX.knots)) {
+    for (const t of k.lines || []) {
+      if (!Array.isArray(t)) continue;
+      if (t[0] === "3") rec(t[1], t[2] || [], name);
+      else if (t[0] === "2" && Array.isArray(t[5])) {
+        for (const e of t[5]) if (Array.isArray(e)) rec(e[0], Array.isArray(e[1]) ? e[1] : [], name);
+      }
+    }
+  }
+  return _knotRequest;
+}
 // ---------------------------------------------------------------------------
 // chain of events — the narrative sequence a knot belongs to. Primary edges:
-// doleance scheduling (AddDoleanceForNextCycle → the scheduled audience knot)
-// and quest-success follow-up audiences (unlocking knot → follow-up audience).
-// Failure/unexpected follow-ups are alternate branches, not the primary chain.
+// doleance scheduling (AddDoleanceForNextCycle → the scheduled audience knot),
+// quest-success follow-up audiences (unlocking knot → follow-up audience) and
+// audience-request unlocks (UnlockAudienceRequest → the request's follow-up
+// audience knot). Failure/unexpected follow-ups are alternate branches, not the
+// primary chain.
 // ---------------------------------------------------------------------------
 let _chain = null; // { next: Map(knot -> Set(knot)), prev: Map(knot -> Set(knot)) }
 function chainEdges() {
@@ -1122,6 +1149,13 @@ function chainEdges() {
       const a = AUDIENCE.audiences[stem];
       if (!a || !a.k) continue;
       for (const s of scheds) add(s.knot, a.k);
+    }
+    for (const [knot, stems] of knotRequests()) {
+      for (const stem of stems) {
+        const req = AUDIENCE.requests[stem];
+        const a = req && req.fua && AUDIENCE.audiences[req.fua];
+        if (a && a.k) add(knot, a.k);
+      }
     }
   }
   if (QUEST) {
@@ -1176,7 +1210,7 @@ function chainSection(name) {
   const sec = document.createElement("div");
   sec.className = "sec";
   sec.textContent = "Chain of events";
-  sec.title = "The narrative sequence this knot belongs to, in play order: what queues it (doleance scheduling) and the quest-success follow-up audiences it leads to.";
+  sec.title = "The narrative sequence this knot belongs to, in play order: what queues it (doleance scheduling), the audience requests it unlocks, and the quest-success follow-up audiences it leads to.";
   const box = document.createElement("div");
   box.className = "what";
   const flow = document.createElement("div");
@@ -1200,7 +1234,7 @@ function chainSection(name) {
   addTips("Next events", ch.nextTips);
   const hint = document.createElement("div");
   hint.className = "what-hint";
-  hint.textContent = "Sequenced from doleance scheduling (AddDoleanceForNextCycle) and quest-success follow-up audiences; failure/unexpected branches appear as options.";
+  hint.textContent = "Sequenced from doleance scheduling (AddDoleanceForNextCycle), audience-request unlocks (UnlockAudienceRequest) and quest-success follow-up audiences; failure/unexpected branches appear as options.";
   box.appendChild(hint);
   const frag = document.createDocumentFragment();
   frag.appendChild(sec);

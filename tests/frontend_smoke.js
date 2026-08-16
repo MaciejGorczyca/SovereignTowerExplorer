@@ -232,6 +232,21 @@ waitReady().then(() => {
   }
   const chainPlain = vm.runInContext("(() => { const c = knotChain('grest_first_grievance'); return c.before.length + c.after.length + c.prevTips.length + c.nextTips.length; })()", sandbox);
   if (chainPlain !== 0) throw new Error("chain rendered for an unrelated knot: " + chainPlain);
+  // Audience-request unlocks join the chain: UnlockAudienceRequest releases the
+  // request's follow-up audience as the next narrative step (bettie_request_victoria
+  // from the enberg finale → mana_strala_audience_request_assassin; the victoria
+  // call-back from scriptedquest_victoria_final_trials_completed → victoria_come_back_later).
+  const reqUnlk = vm.runInContext("(() => Array.from(knotRequests().get('scriptedquest_victoria_events_introduction_wounded_man') || []))()", sandbox);
+  if (!reqUnlk.includes("bettie_request_victoria")) throw new Error("knotRequests missed the bettie request: " + JSON.stringify(reqUnlk));
+  const enbergFinal = vm.runInContext("knotChain('county_quest_enberg_audience_final')", sandbox);
+  if (!enbergFinal.nextTips.includes("mana_strala_audience_request_assassin")) {
+    throw new Error("request follow-up audience missing from chain: " + JSON.stringify(enbergFinal.nextTips));
+  }
+  const victoriaSpine = vm.runInContext("knotChain('scriptedquest_victoria_final_trials_completed')", sandbox);
+  if (victoriaSpine.before[0] !== "scriptedquest_victoria_third_trial" ||
+      victoriaSpine.after[0] !== "victoria_come_back_later") {
+    throw new Error("victoria call-back chain wrong: " + JSON.stringify(victoriaSpine));
+  }
   // Audience-request quest rewards: the "⚑ Request …" success reward must be a
   // clickable request link, and the reward must surface in the "What happens"
   // facts as a request fact row.
