@@ -236,6 +236,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(st["requests"], 34)
         self.assertEqual(st["with_conditions"], 18)
         self.assertEqual(st["with_director"], 20)
+        self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["knotless"], 4)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
@@ -291,6 +292,40 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertIn("people", cw)
         rupin = aud["audiences"]["rupin_criminal_underground_grievance_10"]["dir"][0]
         self.assertIn("corruption level reaches 20", rupin)
+
+    def test_intervention_sources(self):
+        aud = _passes()["audiences"]
+        # the SpecialInterventionsManager node (channel 9) covers the two
+        # ultimatum second encounters, the four king/dragon allied plots, the
+        # traitor's-plot intro + murder, Dulahan's human form, Victoria's
+        # betrayal, the nobles' cycle-zero intro, the wolf candidacy, Arlin's
+        # reunited-reaction and all 15 courier scenes
+        self.assertEqual(aud["stats"]["with_intervention"], 28)
+        for stem in (
+            "kingslayer_ultimatum_before_the_storm",
+            "dragon_knight_ultimatum_before_the_storm",
+            "intervention_gwendan_kingslayer_plot",
+            "intervention_ursula_kingslayer_plot",
+            "intervention_tarcus_dragon_knight_plot",
+            "intervention_silgur_dragon_knight_plot",
+            "scriptedquest_traitors_plot_1", "scriptedquest_traitors_plot_2",
+            "dulahan_gimmick_intro_human_possession",
+            "scriptedquest_victoria_events_5_betraying",
+            "intro_nobleman", "wolf_candidacy",
+            "arlin_all_counties_reunited_reaction",
+            "brizh_grievance_the_courier_bringing_quests",
+            "brizh_grievance_the_courier_bringing_quests_15",
+        ):
+            with self.subTest(audience=stem):
+                notes = aud["audiences"][stem].get("dir", [])
+                self.assertTrue(any(n.startswith("Special intervention")
+                                    for n in notes), (stem, notes))
+        kingslayer = aud["audiences"]["kingslayer_ultimatum_before_the_storm"]["dir"]
+        self.assertTrue(any("second encounter" in n for n in kingslayer), kingslayer)
+        noble = aud["audiences"]["intro_nobleman"]["dir"]
+        self.assertTrue(any("cycle zero" in n for n in noble), noble)
+        courier = aud["audiences"]["brizh_grievance_the_courier_bringing_quests_15"]["dir"][0]
+        self.assertIn("act 3", courier)
 
     def test_requests_resolve(self):
         aud = _passes()["audiences"]

@@ -536,6 +536,30 @@ the single best feature of this app:
   the notes inline, and audience search includes them. Stats + `with_director`;
   tests lock the 20-stem set, the threshold text and the JSON schema; all 89
   tests green.
+- Special-intervention audiences (2026-08-16): channel 9 of the audience
+  condition research — the narrated scenes the `SpecialInterventionsManager`
+  node of `cycles_manager.tscn` plays directly. New `quest_data.py`
+  `load_special_interventions()` parses that node (the ultimatum second
+  encounters, the four king/dragon allied interventions, the traitor's-plot
+  intro + murder, Dulahan's human-form introduction, Victoria's betrayal, the
+  nobles' cycle-zero intro, the wolf candidacy, Arlin's reunited-roundtable
+  reaction and the 15 `brizh_grievance_the_courier_bringing_quests*` courier
+  scenes per act) and hand-writes the guard logic of
+  `special_interventions_manager.gd` (`check_for_audiences_phase_special_
+  intervention` :44 / `check_for_audience_phase_end_special_intervention` :77)
+  into per-audience `dir` notes prefixed "Special intervention:" (same baked
+  string style as the director `dir` rows and special.json `cond`). Covers
+  `intervention_*`, `scriptedquest_traitors_plot_*`, `intro_nobleman`,
+  `wolf_candidacy`, `dulahan_gimmick_intro_human_possession`,
+  `scriptedquest_victoria_events_5_betraying`, the two
+  `*_ultimatum_before_the_storm` second encounters and all couriers — 28
+  audiences (13 single + 15 courier). The Audiences drawer heading is
+  generalized to "Directed by the game director" and the stats block gains a
+  separate `with_intervention` count (director 20 / interventions 28 stay
+  distinct). Audiences 18% → 46% of the catalogue now shows a real source
+  (343 no-info before → 28 covered, 246 still no-info: filler 236 + doleances
+  minus the covered plots, demissions, death-follow-ups). Tests: new
+  `test_intervention_sources` + `with_intervention` assertion; 90 tests green.
 
 
 ---

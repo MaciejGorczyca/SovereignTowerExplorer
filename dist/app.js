@@ -4062,7 +4062,7 @@ function openAudienceDetail(stem) {
   }
 
   if (a.dir && a.dir.length) {
-    section("Directed by the cycle director");
+    section("Directed by the game director");
     const d = document.createElement("div");
     d.className = "qdesc";
     d.innerHTML = a.dir.map(esc).join("<br>");

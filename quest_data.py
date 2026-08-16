@@ -785,19 +785,138 @@ def load_director_audiences():
     return director
 
 
+def load_special_interventions():
+    """Parse the CyclesManager "SpecialInterventionsManager" node audiences ->
+    {audience ink path: [notes]}.
+
+    These narrated scenes (channel 9 of the audience-condition research) are
+    played directly by the game director's second manager node — not by quests,
+    ink doleance calls, requests or special instructions. Every node prop value
+    is an audience's ink path (StringName); the notes below hand-write the guard
+    logic of `special_interventions_manager.gd` (`check_for_audiences_phase_
+    special_intervention` at :44 and `check_for_audience_phase_end_special_
+    intervention` at :77) as human-readable "Special intervention: …" rows
+    (same convention as the director `dir` notes and special.json's `cond`).
+    """
+    tscn = os.path.join(GAME, "systems/autoloads/cycles_manager.tscn")
+    if not os.path.exists(tscn):
+        return {}
+    lines = open(tscn, encoding="utf-8").read().splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.startswith('[node name="SpecialInterventionsManager"'):
+            start = i + 1
+            break
+    if start is None:
+        return {}
+    props = {}
+    for i in range(start, len(lines)):
+        line = lines[i].strip()
+        if line.startswith("["):
+            break
+        m = re.match(r'^([A-Za-z0-9_]+)\s*=\s*(\[.*\]|&".*")\s*$', line)
+        if not m:
+            continue
+        values = re.findall(r'&"([^"]+)"', m.group(2))
+        if values:
+            props[m.group(1)] = values
+    if not props:
+        return {}
+
+    # single-scene notes, keyed by the node prop name; the value is the ink path
+    single = {
+        "kingslayer_second_encounter":
+            "Special intervention: kingslayer second encounter — when this scene "
+            "sits in a cycle, the phase-start check launches the kingslayer allied "
+            "interventions (Gwendan's if she is reformed and available, Ursula's if "
+            "she is available, not highly corrupted and has died at least once).",
+        "gwendan_intervention":
+            "Special intervention: plays during the kingslayer second encounter, "
+            "only while Gwendan is reformed and available.",
+        "ursula_intervention":
+            "Special intervention: plays during the kingslayer second encounter, "
+            "only while Ursula is available, not highly corrupted and has died at "
+            "least once.",
+        "dragon_knight_second_encounter":
+            "Special intervention: dragon-knight second encounter — when this scene "
+            "sits in a cycle, the phase-start check launches the dragon-knight "
+            "allied interventions (Tarcus's if he is available, Silgur's if she is "
+            "available).",
+        "tarcus_intervention":
+            "Special intervention: plays during the dragon-knight second encounter, "
+            "only while Tarcus is available.",
+        "silgur_intervention":
+            "Special intervention: plays during the dragon-knight second encounter, "
+            "only while Silgur is available.",
+        "traitor_intro_audience":
+            "Special intervention: the traitor's-plot introduction — once it has "
+            "played, the phase-end check may launch the traitor murder scene "
+            "(scriptedquest_traitors_plot_2) under the traitor-plot conditions.",
+        "murder_audience":
+            "Special intervention: the traitor's-plot murder — fires at the phase "
+            "end once the traitor introduction has played and the murder can run "
+            "(traitor chosen, within act 2 + 3 cycles, traitor available, a target "
+            "chosen, at least two other knights at the roundtable and the "
+            "prevention dialogue not played).",
+        "dulahan_human_introduction":
+            "Special intervention: Dulahan's human-form introduction — fires at the "
+            "phase end while Dulahan is at the roundtable in body form (not yet "
+            "turned) and the scene has not played yet.",
+        "victoria_betrayal":
+            "Special intervention: Victoria's betrayal — fires at the phase end once "
+            "Victoria has betrayed, and only once.",
+        "nobles_intro":
+            "Special intervention: the nobles' introduction — the only scene "
+            "scheduled at cycle zero (the very first cycle).",
+        "wolf_candidacy":
+            "Special intervention: fires at the phase end after the variable "
+            "angelica_tamed_the_beast_during_almor is true, and only once.",
+        "arlin_intervention":
+            "Special intervention: fires at the phase end when 11 counties have been "
+            "rallied and the golden key is not yet held, and only once (Arlin is "
+            "back at the reunited roundtable).",
+    }
+    # the two encounter audiences already carry cyc via the cycle timeline; make
+    # the intervention-manager role explicit on top of that
+    courier_act = {
+        "act_1_courier_interventions": "act 1",
+        "act_2_courier_interventions": "act 2",
+        "act_3_courier_interventions": "act 3",
+    }
+
+    out = {}
+    for key, values in props.items():
+        if key in single:
+            for path in values:
+                out.setdefault(path, [])
+                if single[key] not in out[path]:
+                    out[path].append(single[key])
+        elif key in courier_act:
+            for path in values:
+                out.setdefault(path, [])
+                note = ("Special intervention: courier scene — becomes available "
+                        "from %s; fires at a phase end when the courier cooldown "
+                        "has elapsed and at most 10 quests are active (random pick "
+                        "from the not-yet-played courier pool, once each)."
+                        % courier_act[key])
+                out[path].append(note)
+    return out
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
-    keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director
-    notes} — the reverse lookup the knot drawer needs ("how does this knot
-    fire, and under what conditions?").
+    keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
+    special-intervention notes} — the reverse lookup the knot drawer needs
+    ("how does this knot fire, and under what conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
         return catalog
     cycles = load_cycle_schedule()
     director = load_director_audiences()
+    interventions = load_special_interventions()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -822,7 +941,10 @@ def load_audience_catalog(idx):
             stem = os.path.splitext(fn)[0]
             dirn = director.get(stem)
             if dirn:
-                entry["dir"] = dirn
+                entry["dir"] = list(dirn)
+            inotes = interventions.get(entry["k"])
+            if inotes:
+                entry["dir"] = (entry.get("dir") or []) + list(inotes)
             catalog[stem] = entry
     return catalog
 
