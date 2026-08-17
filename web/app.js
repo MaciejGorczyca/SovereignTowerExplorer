@@ -482,11 +482,12 @@ function visibleKnots() {
   return out;
 }
 
+function loadingCards(el) {
+  if (el) el.innerHTML = `<div class="empty">Loading data…</div>`;
+}
+
 function renderResults() {
-  if (!INDEX) {
-    $("cards").innerHTML = `<div class="empty">Loading data…</div>`;
-    return;
-  }
+  if (!INDEX) { loadingCards($("cards")); return; }
   const list = visibleKnots();
   $("countline").innerHTML =
     `<b>${list.length}</b> of ${Object.keys(INDEX.knots).length} knots`;
@@ -2233,6 +2234,7 @@ async function switchLocale(loc) {
 
 async function init() {
   history.replaceState(INIT_LOC, "");
+  renderResults(); // show "Loading data…" before the first fetch resolves
   const resp = await fetch("index.json");
   INDEX = await resp.json();
   buildFilterUI();
@@ -2534,7 +2536,7 @@ function visibleQuests() {
 }
 
 function renderQuestResults() {
-  if (!QUEST) return;
+  if (!QUEST) { loadingCards($("qcards")); return; }
   const list = visibleQuests().sort((a, b) => a[0].localeCompare(b[0]));
   $("qcountline").innerHTML =
     `<b>${list.length}</b> of ${Object.keys(QUEST.quests).length} quests`;
@@ -3333,7 +3335,7 @@ function invSourceChips(it) {
 }
 
 function renderInvResults() {
-  if (!INV) return;
+  if (!INV) { loadingCards($("icards")); return; }
   const list = visibleItems().sort((a, b) => invName(a[1]).localeCompare(invName(b[1])) || a[0].localeCompare(b[0]));
   $("icountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(INV.items).length} items`;
   const cards = $("icards");
@@ -3682,7 +3684,7 @@ function buildKnightFilterUI() {
 }
 
 function renderKnightResults() {
-  if (!KNIGHTS) return;
+  if (!KNIGHTS) { loadingCards($("kcards")); return; }
   const list = visibleKnights().sort((a, b) => kName(a[0]).localeCompare(kName(b[0])) || a[0].localeCompare(b[0]));
   $("kcountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(KNIGHTS.knights).length} knights`;
   const cards = $("kcards");
@@ -4061,7 +4063,7 @@ function visibleSpecials() {
 }
 
 function renderSpecialResults() {
-  if (!SPECIAL) return;
+  if (!SPECIAL) { loadingCards($("scards")); return; }
   const list = visibleSpecials().sort((a, b) => a[0].localeCompare(b[0]));
   $("scountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(SPECIAL.instructions).length} special instructions`;
   const cards = $("scards");
@@ -4509,7 +4511,7 @@ function reqCard(stem, r) {
 }
 
 function renderAudienceResults() {
-  if (!AUDIENCE) return;
+  if (!AUDIENCE) { loadingCards($("acards")); return; }
   const req = ASTATE.view === "req";
   const list = req
     ? visibleRequests().sort((a, b) => aRequestName(a[0]).localeCompare(aRequestName(b[0])))
