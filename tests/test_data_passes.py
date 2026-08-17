@@ -47,6 +47,12 @@ def _passes():
             lambda tmp: AD.build_audiences(tmp, _PASSES["quests"], _PASSES["index"],
                                            game_root=str(GAME_ROOT)),
             "audiences.json")
+        import dialogue_data as DD
+        _PASSES["dialogues"] = _build_to_json(
+            lambda tmp: DD.build_dialogues(tmp, _PASSES["quests"], _PASSES["index"],
+                                           _PASSES["knights"], _PASSES["special"],
+                                           game_root=str(GAME_ROOT)),
+            "dialogues.json")
     return _PASSES
 
 
@@ -548,6 +554,146 @@ class AudiencesDataPassTest(unittest.TestCase):
                 self.assertIn(e["q"], self.quests["quests"], (stem, e))
                 self.assertIn(e["k"], ("success", "failure", "unexpected"),
                               (stem, e))
+
+
+@unittest.skipUnless(game_available(), "game/SovereignTowerCode not present")
+class DialoguesDataPassTest(unittest.TestCase):
+    def setUp(self):
+        self.index = _passes()["index"]
+        self.dlg = _passes()["dialogues"]
+        self.knights = _passes()["knights"]
+
+    def test_volume(self):
+        # 82 affinity + 76 conversation dialogue resources + 1 inline
+        # (candidature_alwena) + 76 reactions = 235 free-time dialogs
+        st = self.dlg["stats"]
+        self.assertEqual(st["all"], 235)
+        self.assertEqual(st["affinity"], 82)
+        self.assertEqual(st["conversation"], 77)
+        self.assertEqual(st["reaction"], 76)
+        self.assertEqual(len(self.dlg["dialogues"]), st["all"])
+        # every entry is one of the three resource folders; all but the 3 known
+        # dead resources land in a real knot (the dead FreeTimeDialogue files
+        # are referenced by no descriptor/manager and have no compiled knot)
+        DEAD = {
+            "gwendan_affinity_minus_1",
+            "traitors_plot_demon_quest_accept_reaction",
+            "traitors_plot_demon_quest_success_reaction",
+        }
+        for ink, e in self.dlg["dialogues"].items():
+            self.assertIn(e["t"], ("affinity", "conversation", "reaction"), ink)
+            if ink in DEAD:
+                self.assertNotIn(ink, self.index["knots"], ink)
+                continue
+            self.assertIn(ink, self.index["knots"], ink)
+
+    def test_affinity_gates(self):
+        d = self.dlg["dialogues"]
+        # angelica: {0: a1, 5: a2, 8: a3} + the on-death replacement at key 10
+        self.assertEqual(d["angelica_affinity_1"]["aff"],
+                         {"k": "angelica", "rank": 0})
+        self.assertTrue(d["angelica_affinity_1"]["aff0"])
+        self.assertEqual(d["angelica_affinity_2"]["aff"]["rank"], 5)
+        self.assertEqual(d["angelica_affinity_3"]["aff"]["rank"], 8)
+        self.assertEqual(d["angelica_affinity_4_knight_dead"]["aff"]["rank"], 10)
+        self.assertIn("knight dies", d["angelica_affinity_4_knight_dead"]["aff"]["re"])
+        # gideon's known-origin dialog is inserted at rank 5 (his base dict uses
+        # 0/3/7), gated on gideon_origins_known
+        g = d["gideon_affinity_3_if_gideon_orgins_known"]["aff"]
+        self.assertEqual(g["k"], "gideon")
+        self.assertEqual(g["rank"], 5)
+        self.assertIn("gideon_origins_known", g["re"])
+        # variant/room-gated gates carry their note
+        rufus = d["rufus_affinity_2"]["aff"]
+        self.assertEqual((rufus["k"], rufus["rank"]), ("rufus", 5))
+        self.assertIn("stables", rufus["re"])
+        victoria = d["victoria_affinity_3"]["aff"]
+        self.assertEqual((victoria["k"], victoria["rank"]), ("victoria", 6))
+        self.assertIn("witch tower", victoria["re"])
+        wolf = d["the_wolf_affinity_2"]["aff"]
+        self.assertEqual((wolf["k"], wolf["rank"]), ("the_wolf", 10))
+        gwendan = d["gwendan_affinity_3_humble"]["aff"]
+        self.assertEqual((gwendan["k"], gwendan["rank"]), ("gwendan", 5))
+        self.assertIn("reformed", gwendan["re"])
+        ursule = d["ursule_affinity_4_if_died"]["aff"]
+        self.assertEqual((ursule["k"], ursule["rank"]), ("ursule", 9))
+        # every affinity gate resolves to a real knight and a sane rank
+        for ink, e in d.items():
+            a = e.get("aff")
+            if a:
+                self.assertIn(a["k"], self.knights["knights"], ink)
+                self.assertIsInstance(a["rank"], int)
+                self.assertGreaterEqual(a["rank"], 0, ink)
+
+    def test_conversation_gates(self):
+        d = self.dlg["dialogues"]
+        c = d["conversation_brunhilda_gideon"]["conv"]
+        self.assertEqual(c["knights"], ["brunhilda", "gideon"])
+        self.assertIsInstance(c["o"], int)
+        # the gambling-tolerant pair: brunhilda_gideon is offered while neither
+        # is in an excluded state (ursula's HIGH corruption gate is global)
+        self.assertTrue(d["conversation_brunhilda_gideon"]["loc"] is not None)
+        # everyone in a conversation is a real descriptor / knight
+        for ink, e in d.items():
+            cv = e.get("conv")
+            if not cv:
+                continue
+            for kn in cv.get("knights", []):
+                found = (kn in self.knights["knights"]
+                         or _desc_exists(kn, GAME_ROOT))
+                self.assertTrue(found, (ink, kn))
+            for excl in cv.get("e", []):
+                self.assertIsInstance(excl, list)
+                self.assertEqual(len(excl), 2, (ink, excl))
+                self.assertTrue(excl[0] and excl[1], (ink, excl))
+
+    def test_unlock_sources(self):
+        d = self.dlg["dialogues"]
+        st = self.dlg["stats"]
+        # every resolved UnlockSpecialDialogue site lands on a dialog (98 raw
+        # call sites → 99 resolved including gwendan's runtime marriage/romance
+        # alias forks), and the ink-unlock count over dialogs reflects that
+        self.assertGreaterEqual(st["ink_unl"], 60)
+        self.assertGreaterEqual(st["with_unl"], 80)
+        # the four marriage sites in the nobles-revolt knot unlock both gwendan
+        leftovers = d["civil_wars_event_marriage_annoying_gwendan_reaction"]["unl"]
+        self.assertIn(["ink", "scriptedquest_civil_war_event_nobles_revolt"], leftovers)
+        humbles = d["civil_wars_event_marriage_humble_gwendan_reaction"]["unl"]
+        self.assertIn(["ink", "scriptedquest_civil_war_event_nobles_revolt"], humbles)
+        # reactions unlocked by ink and code:
+        self.assertEqual(d["lady_tower_act_2_reached_reaction"]["unl"],
+                         [["ink", "arlin_introduction_to_act_2"]])
+        self.assertTrue(any(u[0] == "code" and "romance" in u[1]
+                            for u in d["brunhilda_full_romance"]["unl"]))
+        self.assertTrue(any(u[0] == "item" and "DRAGON_HEART" in u[1]
+                            for u in d["arron_get_the_dragon_heart"]["unl"]))
+        self.assertTrue(any(u[0] == "item" and "CURSED_HELMET" in u[1]
+                            for u in d["cursed_helmet_obtained_dulahan_reaction"]["unl"]))
+        # special-instruction dlg unlocks are hooked from special.json
+        gv = d["gideon_victoria_dead_reaction"]["unl"]
+        self.assertTrue(any(u[0] == "special" and u[1] == "GIDEON_VICTORIA_DEAD"
+                            for u in gv), gv)
+        # every ink unlock resolves to a real knot; every item unlock names a
+        # real quest-item stem
+        for ink, e in d.items():
+            for typ, val in e.get("unl", []):
+                if typ == "ink":
+                    self.assertIn(val, self.index["knots"], (ink, val))
+                elif typ == "special":
+                    self.assertIn(val, _passes()["special"]["instructions"], (ink, val))
+                self.assertIsInstance(val, str)
+                self.assertTrue(val)
+
+
+def _desc_exists(stem, game_root):
+    """True when a knight/servant descriptor stem exists under the game root."""
+    import os
+    root = str(game_root)
+    for sub in ("content/character_descriptors/knights",
+                "content/character_descriptors/servants"):
+        if os.path.exists(os.path.join(root, sub, stem + ".tres")):
+            return True
+    return False
 
 
 if __name__ == "__main__":

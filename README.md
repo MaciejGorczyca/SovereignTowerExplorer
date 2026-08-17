@@ -35,6 +35,7 @@ browser.
     knights_data.py         the 24 knights + dialogue/quest/ink links -> dist/knights.json
     special_data.py         SpecialInstruction catalog joins -> dist/special.json
     audience_data.py        audience + audience-request catalog joins -> dist/audiences.json
+    dialogue_data.py        free-time dialogue catalog joins -> dist/dialogues.json
     web/                    frontend source assets (edited here)
       index.html
       app.js                all UI logic (vanilla JS, no build step)
@@ -49,6 +50,7 @@ browser.
       knights.json          the 24 playable knights + dialogue/quest/ink links
       special.json          the SpecialInstruction catalog (knot/quest/knight joins)
       audiences.json        the audience + audience-request catalog (knot/quest/request joins)
+      dialogues.json        the free-time dialogue catalog (affinity/conversation/reaction)
       locales/{fr,de,cmn,ja,ko}.json   dialogue-token overrides (≈2.7–2.9 MB each)
     viewer.env              OPTIONAL KEY=VALUE config (see "Paths/config" below)
   ../game/                   game data (SovereignTowerCode, saved_games, optional
@@ -76,9 +78,13 @@ and nothing is persisted by a plain build (requires pip `zstandard`; hard error 
 The build also runs the resource passes over the Godot tree (`quest_data.py`,
 `inventory_data.py`, `knights_data.py` from `build_app.py`) plus a final
 `special_data.py` pass that joins the ink story, the quest rewards and the knight
-evolution blocks into `dist/special.json`, and an `audience_data.py` pass that
+evolution blocks into `dist/special.json`, an `audience_data.py` pass that
 joins the audience resources, the audience requests and the quest follow-up /
-request-reward links into `dist/audiences.json`. The build only needs the compiled ink
+request-reward links into `dist/audiences.json`, and a `dialogue_data.py` pass
+that joins the free-time dialogue resources (affinity dialogs, knight
+conversations, reaction/special dialogs) with their affinity gates, conversation
+partners/exclusions/order and the ink `UnlockSpecialDialogue` + code unlock
+sources into `dist/dialogues.json`. The build only needs the compiled ink
 JSON (`INK_ROOT`) plus the game root (`GAME_ROOT`) as inputs.
 
 Deploy the whole `dist/` directory anywhere; the UI fetches `index.json` and `locales/*.json`
@@ -188,6 +194,9 @@ Resolution priority, higher wins:
         · quests: `python quest_data.py <game_root> [quest_out]` · inventory: `python inventory_data.py <game_root> [out]`
         · knights: `python knights_data.py <game_root> [out]` · special: `python special_data.py <game_root> [out]`
         (special reads `index.json`/`quests.json`/`knights.json` from `[out]`, so run it after those)
+        · audiences: `python audience_data.py <game_root> [out]` (reads `index.json`/`quests.json`)
+        · dialogues: `python dialogue_data.py <game_root> [out]` (reads `index.json`/`quests.json`/
+        `knights.json`/`special.json`, so run it last)
 2. Environment vars — `INK_ROOT`, `INK_OUT`, `GAME_ROOT` (build) · `GAME_ROOT`, `QUEST_OUT` (quest data)
         · `INK_SOURCE`, `INK_OUT` (extract)
 3. Config file — `viewer.env` (build/quests, shared keys) / `extract.env` (ink_extract.py), `KEY=VALUE`, next to each script
@@ -268,7 +277,9 @@ built from
 `audiences.json`, `quests.json`, `special.json`, `inventory.json` and
 `knights.json`): played-as-an-audience, fires-after-a-quest,
 reached-from-other-knots, unlocks-a-quest, emits-a-special-instruction,
-grants/removes-items, appears-in-knight-dialogue — plus dropdown selects for
+grants/removes-items, appears-in-knight-dialogue, **has-a-free-time-dialogue-
+source** (matches `dialogues.json` — the affinity/knight-conversation/reaction
+resources the tower free-time machinery plays) — plus dropdown selects for
 the audience **type** (folder), the audience **NPC**, the **quest** that fires
 the knot and the **special instruction** it emits. Knot cards carry badges for
 these links too (audience ×N, unlocks N, special ×N, knight ×N), so e.g.
@@ -289,7 +300,14 @@ actions)"), the doleance schedulers and special-instruction schedulers (the ones
 with dedicated knot-level rows — quest follow-ups and special triggers — are kept
 on their own lines to avoid duplication), the director/intervention notes, knight
 death/demission triggers, the filler pack, county introduction and ultimatum
-follow-up sources.
+follow-up sources. When the knot is a **free-time dialogue** (a `dialogues.json`
+entry), the origin section adds its own row ("Played as an affinity dialogue of
+<knight> (requires affinity ≥ N, plus the state-aware gates)",
+"Knight conversation: <knights> — plays once, free time, with its room/state
+exclusions/pick order", or "Reaction / special dialogue of <x>: unlocked by the
+ink knots calling `UnlockSpecialDialogue`, the romance/golden-key code unlocks,
+the dragon-egg/dragon-heart/cursed-helmet item gates and the special-instruction
+`dlg` signals").
 
 A **"Chain of events"** section (when the knot is part of a sequence) lays out
 the narrative order the knot plays in as a horizontal flow, current knot
@@ -465,4 +483,14 @@ transitions or when a neighboring county is rallied), 6 ultimatum follow-up scen
 emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 61 fired after
 quests, 4 knotless; 34 audience
 requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
-roundtable, they invite the knight back)).
+roundtable, they invite the knight back)) and `dialogues.json` (235 free-time dialogs — 82 affinity
+dialogs, 77 knight conversations (incl. the inline `candidature_alwena`), 76 reaction / special
+dialogs — each with its locating room, the affinity-conversation gates (`aff`: knight + min-affinity
+rank, incl. the subclass variant dicts: arron violent/kind, dulahan body-possession, edith possessed,
+gwendan reformed/repaid, gideon known-origin insert, ursula affinity-4-if-dead, angelica's on-death
+replacement and the room-gated rufus/victoria/wolf dialogs), the knight-conversation partners,
+state exclusions and pick order (`conv`), and the unlock sources (`unl`: the ink knots calling
+`UnlockSpecialDialogue` — all 98 sites resolve, incl. the four `marriage` calls in
+`scriptedquest_civil_war_event_nobles_revolt` and Gwendan's runtime `marriage`/`romance_completed`
+forks — plus the `romance_completed`/`golden_key`/item code unlocks and the special-instruction
+`dlg` signals), 85 with at least one unlock source).

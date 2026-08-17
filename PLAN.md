@@ -718,6 +718,38 @@ the single best feature of this app:
   special/ci/um/dd/fl), and `aHaystack` indexes the doleance knots + special
   schedulers. The `kName()` helper is null-safe (audience cards render before
   KNIGHTS loads). Frontend-only + smoke assertions; 96 tests green.
+- Free-time dialogue sources (2026-08-17): Task J of the knot-source research
+  (REPORT_DIALOGUES.md) — the ~240 knots played by the FreeTimeDialogue
+  machinery (affinity dialogs, knight conversations, reactions/special dialogs)
+  used to show no "Where it comes from" data at all. New `dialogue_data.py`
+  emits `dist/dialogues.json`: 235 free-time dialogs (82 affinity, 77 knight
+  conversations incl. the inline `candidature_alwena`, 76 reactions), each with
+  its locating room, the affinity-conversation gates (`aff`: knight + min
+  affinity rank, `aff0` intro flag, plus the state/room gates — arron
+  violent/kind, dulahan body-possession, edith possessed, gwendan
+  reformed/repaid, gideon known-origin insert at rank 5, ursula's affinity-9
+  if-dead dialog, angelica's on-death replacement, rufus post-stables and the
+  victoria/wolf witch-tower room dialogs), the conversation partners, per-state
+  exclusions and `character_manager.tscn` pick order (`conv`), and the unlock
+  sources (`unl`): every one of the 98 ink `UnlockSpecialDialogue` call sites
+  resolves (the four `marriage` sites inside
+  `scriptedquest_civil_war_event_nobles_revolt` + Gwendan's runtime
+  `marriage`/`romance_completed` forks — her annoying/humble and
+  pretentious/humble reactions both fire from the same ink site), plus the
+  `romance_completed`/`golden_key` code unlocks, the dragon-egg/dragon-heart/
+  cursed-helmet item gates and the special-instruction `dlg` signals. The
+  Dialogues knot drawer gains per-knot source rows ("Played as an affinity
+  dialogue of <x> (requires affinity ≥ N)", "Knight conversation: … plays once,
+  free time", "Reaction / special dialogue of <x>: unlocked by <knot|special|
+  romance|item>"), the Dialogues search indexes the new texts, and a new "has a
+  free-time dialogue source" source toggle filters the knot list. 3 dead
+  FreeTimeDialogue resources (gwendan_affinity_minus_1, the two un-referenced
+  demon traitor-plot reactions — referenced in no descriptor/manager and with no
+  compiled knot) stay catalogued but source-less and are exempted from the knot
+  cross-checks. Stats: 82/77/76/235 · 85 with unlock sources · 98 ink sites
+  resolved. Tests: `DialoguesDataPassTest` (volume, affinity thresholds,
+  conversation gates, unlock resolution) + `test_dialogues_schema` in
+  test_dist_conformance + smoke assertions; 101 tests green.
 
 
 ---

@@ -1071,13 +1071,14 @@ def build_knights(out_dir: Path, quests_data: dict, index: dict, game_root: Path
 
 
 def build_special(out_dir: Path, quests_data: dict, index: dict,
-                  knights_data: dict, game_root: Path) -> None:
+                  knights_data: dict, game_root: Path) -> dict:
     """Emit dist/special.json: the decoded SpecialInstruction catalog.
 
     Joins the ink knots that emit each instruction, the quests that grant it as
-    a reward, and (for knight evolutions) the per-state stat/feature notes."""
+    a reward, and (for knight evolutions) the per-state stat/feature notes.
+    Returns the data dict (used by the dialogues pass for its dlg reverse)."""
     from special_data import build_special as _build
-    _build(out_dir, quests_data, index, knights_data, game_root=str(game_root))
+    return _build(out_dir, quests_data, index, knights_data, game_root=str(game_root))
 
 
 def build_audiences(out_dir: Path, quests_data: dict, index: dict,
@@ -1088,6 +1089,18 @@ def build_audiences(out_dir: Path, quests_data: dict, index: dict,
     (which quest fires each audience) and the request quest-reward links."""
     from audience_data import build_audiences as _build
     _build(out_dir, quests_data, index, game_root=str(game_root))
+
+
+def build_dialogues(out_dir: Path, quests_data: dict, index: dict,
+                    knights_data: dict, special: dict, game_root: Path) -> None:
+    """Emit dist/dialogues.json: the free-time dialogue catalog.
+
+    Joins the FreeTimeDialogue resources (affinity/conversation/reaction) with
+    the affinity gates, conversation partners/exclusions/order and the unlock
+    sources (ink UnlockSpecialDialogue knots, special.json dlg, code/item)."""
+    from dialogue_data import build_dialogues as _build
+    _build(out_dir, quests_data, index, knights_data, special,
+           game_root=str(game_root))
 
 
 def copy_web_assets(out_dir: Path) -> None:
@@ -1113,8 +1126,8 @@ USAGE
     • the Godot project tree  (game_root) — quests, audiences, inventory,
       knights, special instructions, localisations.
   Outputs: index.json, quests.json, inventory.json, knights.json,
-  special.json, audiences.json, locales/<locale>.json, plus the web assets
-  (app.js, style.css, index.html) copied from explorer/web.
+  special.json, audiences.json, dialogues.json, locales/<locale>.json, plus
+  the web assets (app.js, style.css, index.html) copied from explorer/web.
 
 POSITIONAL ARGUMENTS
   ink_root    dir  Root that contains <locale>/master.ink.json files
@@ -1357,10 +1370,12 @@ def main():
     prof.tick("inventory pass")
     knights_data = build_knights(out_dir, quests_data, index, game_root)
     prof.tick("knights pass")
-    build_special(out_dir, quests_data, index, knights_data, game_root)
+    special_data = build_special(out_dir, quests_data, index, knights_data, game_root)
     prof.tick("special pass")
     build_audiences(out_dir, quests_data, index, game_root)
     prof.tick("audiences pass")
+    build_dialogues(out_dir, quests_data, index, knights_data, special_data, game_root)
+    prof.tick("dialogues pass")
 
     # other locales: token-only overrides (metadata identical to en)
     for locale in LOCALES:

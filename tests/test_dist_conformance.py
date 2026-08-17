@@ -142,6 +142,7 @@ class DatasetsTest(unittest.TestCase):
         cls.special = load_dist("special.json")
         cls.audiences = load_dist("audiences.json")
         cls.index = load_dist("index.json")
+        cls.dialogues = load_dist("dialogues.json")
 
     def test_quests_schema(self):
         q = self.quests
@@ -306,6 +307,61 @@ class DatasetsTest(unittest.TestCase):
                 for c in inst.get("affects", []):
                     found = any(c == km["stem"] for km in self.knights["knights"].values())
                     self.assertTrue(found, (name, c))
+
+    def test_dialogues_schema(self):
+        d = self.dialogues
+        self.assertEqual(d["stats"]["all"], len(d["dialogues"]))
+        # stats are self-consistent with the record types
+        for t, key in (("affinity", "affinity"), ("conversation", "conversation"),
+                       ("reaction", "reaction")):
+            self.assertEqual(d["stats"][key],
+                             sum(1 for e in d["dialogues"].values() if e["t"] == t))
+        self.assertEqual(d["stats"]["with_unl"],
+                         sum(1 for e in d["dialogues"].values() if e.get("unl")))
+        # 3 FreeTimeDialogue resources reference no compiled ink knot (dead data)
+        DEAD_KNOTS = {
+            "gwendan_affinity_minus_1",
+            "traitors_plot_demon_quest_accept_reaction",
+            "traitors_plot_demon_quest_success_reaction",
+        }
+        for ink, e in d["dialogues"].items():
+            with self.subTest(dialog=ink):
+                self.assertIn("t", e)
+                self.assertIn(e["t"], ("affinity", "conversation", "reaction"))
+                # every in-catalog dialog ties to an ink knot (except the dead
+                # resources that reference no compiled knot at all)
+                if ink not in DEAD_KNOTS:
+                    self.assertIn(ink, self.index["knots"])
+                if not isinstance(e.get("loc"), int):   # loc optional
+                    self.assertNotIn("loc", e)
+                for c in e.get("ch", []):
+                    self.assertTrue(isinstance(c, str) and c)
+                a = e.get("aff")
+                if a:
+                    self.assertEqual(set(a), {"k", "rank"} | ({"re"} if "re" in a else set()))
+                    self.assertTrue(isinstance(a["k"], str) and a["k"])
+                    self.assertTrue(isinstance(a["rank"], int))
+                if e.get("aff0") is not None:
+                    self.assertTrue(isinstance(e["aff0"], bool))
+                cv = e.get("conv")
+                if cv:
+                    self.assertTrue(cv.get("knights"), ink)
+                    for kn in cv["knights"]:
+                        self.assertTrue(isinstance(kn, str) and kn)
+                    for exc in cv.get("e", []):
+                        self.assertIsInstance(exc, list)
+                        self.assertEqual(len(exc), 2)
+                    if "o" in cv:
+                        self.assertTrue(isinstance(cv["o"], int) and cv["o"] >= 0)
+                for u in e.get("unl", []):
+                    self.assertIsInstance(u, list)
+                    self.assertEqual(len(u), 2)
+                    self.assertIn(u[0], ("ink", "code", "item", "special"))
+                    self.assertTrue(isinstance(u[1], str) and u[1])
+                    if u[0] in ("ink", "special"):
+                        self.assertIn(u[1], self.index["knots"]
+                                      if u[0] == "ink" else self.special["instructions"],
+                                      (ink, u))
 
 
 if __name__ == "__main__":

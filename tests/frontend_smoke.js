@@ -142,7 +142,11 @@ function waitReady() {
       // read it through the context's scope chain.
       const stats = vm.runInContext("INDEX ? INDEX.stats : null", sandbox);
       const knotCount = stats ? vm.runInContext("Object.keys(INDEX.knots).length", sandbox) : 0;
-      if (stats && knotCount === stats.knots) {
+      const dlgReady = vm.runInContext(
+        "DIALOGUE && DIALOGUE.stats ? DIALOGUE.stats.all : 0", sandbox);
+      const audReady = vm.runInContext(
+        "AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats.audiences : 0", sandbox);
+      if (stats && knotCount === stats.knots && dlgReady === 235 && audReady === 511) {
         return resolve(stats);
       }
       if (Date.now() > DEADLINE) {
@@ -330,6 +334,58 @@ waitReady().then(() => {
   // dataset (knotAudiences/knotFuQuests) — open one that has both audiences and
   // follow-up quests to keep that re-pointing locked in.
   vm.runInContext("openDetail('county_quest_enberg_first_audience')", sandbox);
+
+  // Task J: free-time dialogue sources (dialogues.json). Affinity dialogs carry
+  // their knight + min-affinity gate, conversations their partners/order, and
+  // reactions their unlock sources; the knot drawer renders all three and the
+  // Dialogues-tab "has a free-time dialogue source" filter narrows.
+  const dlg = vm.runInContext("DIALOGUE.stats", sandbox);
+  if (dlg.affinity !== 82 || dlg.conversation !== 77 || dlg.reaction !== 76 ||
+      dlg.all !== 235 || !(dlg.with_unl > 80)) {
+    throw new Error("DIALOGUE stats wrong: " + JSON.stringify(dlg));
+  }
+  const aff2 = vm.runInContext("DIALOGUE.dialogues.angelica_affinity_2", sandbox);
+  if (!aff2 || aff2.t !== "affinity" || !aff2.aff || aff2.aff.k !== "angelica" ||
+      aff2.aff.rank !== 5 || aff2.loc !== 2) {
+    throw new Error("angelica_affinity_2 gate wrong: " + JSON.stringify(aff2));
+  }
+  const conv = vm.runInContext("DIALOGUE.dialogues.conversation_brunhilda_gideon", sandbox);
+  if (!conv || conv.t !== "conversation" || !conv.conv ||
+      !conv.conv.knights.includes("gideon") || conv.conv.o == null || conv.loc !== 13) {
+    throw new Error("conversation_brunhilda_gideon wrong: " + JSON.stringify(conv));
+  }
+  const lady = vm.runInContext("DIALOGUE.dialogues.lady_tower_act_2_reached_reaction", sandbox);
+  if (!lady || lady.t !== "reaction" || !lady.unl ||
+      !lady.unl.some(([t, v]) => t === "ink" && v === "arlin_introduction_to_act_2")) {
+    throw new Error("lady_tower reaction unlock wrong: " + JSON.stringify(lady));
+  }
+  const marriage = vm.runInContext("DIALOGUE.dialogues.civil_wars_event_marriage_annoying_gwendan_reaction", sandbox);
+  if (!marriage || !(marriage.unl || [])
+      .some(([t, v]) => t === "ink" && v === "scriptedquest_civil_war_event_nobles_revolt")) {
+    throw new Error("gwendan marriage alias unlock wrong: " + JSON.stringify(marriage));
+  }
+  const affHtml = vm.runInContext("dialogueSourceHtml('angelica_affinity_2')", sandbox);
+  if (affHtml.indexOf("affinity dialogue") < 0 || affHtml.indexOf("requires affinity") < 0 ||
+      affHtml.indexOf(">5</b>") < 0) {
+    throw new Error("dialogueSourceHtml affinity gate missing: " + affHtml);
+  }
+  const convHtml = vm.runInContext("dialogueSourceHtml('conversation_brunhilda_gideon')", sandbox);
+  if (convHtml.indexOf("Knight conversation") < 0 || convHtml.indexOf("plays once") < 0) {
+    throw new Error("dialogueSourceHtml conversation missing: " + convHtml);
+  }
+  const reactHtml = vm.runInContext("dialogueSourceHtml('lady_tower_act_2_reached_reaction')", sandbox);
+  if (reactHtml.indexOf("unlocked by") < 0 || reactHtml.indexOf("arlin_introduction_to_act_2") < 0) {
+    throw new Error("dialogueSourceHtml unlock missing: " + reactHtml);
+  }
+  if (!vm.runInContext("hay(INDEX.knots.angelica_affinity_2).indexOf('affinity') >= 0", sandbox)) {
+    throw new Error("dialogue source not in knot haystack");
+  }
+  const srcDl = vm.runInContext("state.src = 'dl'; (() => { const n = visibleKnots().length; state.src = ''; return n; })()", sandbox);
+  const allKnots = vm.runInContext("Object.keys(INDEX.knots).length", sandbox);
+  if (!(srcDl > 0) || !(srcDl < allKnots)) {
+    throw new Error("dialogue-source filter wrong: " + srcDl + "/" + allKnots);
+  }
+  vm.runInContext("openDetail('angelica_affinity_2')", sandbox);
 
   // Dialogues-tab link filters ("Where it comes from" + cross-link selects).
   // The DOM stub's selects don't carry `options`, so assert through the state/

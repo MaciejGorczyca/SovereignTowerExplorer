@@ -5,6 +5,16 @@ const $ = (id) => document.getElementById(id);
 let INDEX = null;           // en metadata + tokens
 let LOC = {};               // active locale token overrides (merged)
 
+let DIALOGUE = null;        // dist/dialogues.json (free-time dialogue catalog)
+
+// dialogue_location_id (Room enum, room.gd:4-22) -> display name
+const DLG_ROOMS = [
+  "Lady Tower room", "Demon room", "Audience room", "Roundtable",
+  "Map room", "Intendancy", "Forge", "Stables", "Witch tower",
+  "Kitchen", "Training grounds", "Inventory", "Intro room", "Garden",
+  "Corridor", "Cellar", "Library",
+];
+
 // technical-layer display toggles (persisted in localStorage)
 const SHOW_KEY = "st_tower_ink_show";
 const SHOW_DEFAULTS = {
@@ -183,8 +193,33 @@ function haystack(k) {
   const aud = (knotAudiences().get(k.name) || []).map((a) => [a.f, ...a.c].join(" ")).join(" ");
   const fuq = (knotFuQuests().get(k.name) || []).map((f) => f.qid).join(" ");
   const sp = (knotSpecials().get(k.name) || []).join(" ");
-  return (k.name + " " + k.c + " " + text + " " + k.reads.join(" ") + " " + k.writes.join(" ") + " " + k.funcs.join(" ") + " " + aud + " " + fuq + " " + sp)
+  const dlg = dialogueHayText(k.name);
+  return (k.name + " " + k.c + " " + text + " " + k.reads.join(" ") + " " + k.writes.join(" ") + " " + k.funcs.join(" ") + " " + aud + " " + fuq + " " + sp + " " + dlg)
     .toLowerCase();
+}
+// searchable text for a knot's free-time dialogue source (dialogues.json):
+// the type label, characters/affinity gate, conversation partners and every
+// unlock value. Indexed into the knot haystack so the Dialogues search matches.
+function dialogueHayText(name) {
+  const e = (DIALOGUE && DIALOGUE.dialogues[name]);
+  if (!e) return "";
+  const h = [e.t, "free time", "affinity dialogue", "requires affinity",
+    "knight conversation", "reaction", "plays once", "free-time dialogue"];
+  for (const c of e.ch || []) { h.push(c, kName(c)); }
+  if (e.aff) { h.push(e.aff.k, kName(e.aff.k), "affinity " + e.aff.rank); if (e.aff0) h.push("intro dialog"); if (e.aff.re) h.push(e.aff.re); }
+  if (e.conv) {
+    for (const c of e.conv.knights || []) { h.push(c, kName(c)); }
+    for (const x of e.conv.e || []) { h.push(x[0], kName(x[0]), x[1] + " state"); }
+    if (e.conv.o != null) h.push("pick order " + (e.conv.o + 1));
+  }
+  for (const u of e.unl || []) {
+    if (u[0] === "ink") h.push("unlocked by", u[1], u[1] + " knot");
+    else if (u[0] === "special") h.push("unlocked by special instruction", u[1]);
+    else if (u[0] === "item") h.push("unlocked by", u[1], "quest item");
+    else h.push("unlocked by", u[1]);
+  }
+  if (e.loc != null) h.push(DLG_ROOMS[e.loc] || ("room " + e.loc));
+  return h.join(" ");
 }
 const _hcache = new Map();
 function hay(k) {
@@ -409,6 +444,7 @@ function visibleKnots() {
     if (state.src === "sp" && !knotSpecials().has(name)) continue;
     if (state.src === "it" && !knotItems().has(name)) continue;
     if (state.src === "kn" && !knotKnights().has(name)) continue;
+    if (state.src === "dl" && !(DIALOGUE && DIALOGUE.dialogues[name])) continue;
     if (state.kf) {
       const auds = knotAudiences().get(name) || [];
       if (!auds.some((a) => a.f === state.kf)) continue;
@@ -1316,6 +1352,72 @@ function knotSpecialTriggers() {
   }
   return _knotSpTrig || new Map();
 }
+// knot -> the free-time dialogue entry that plays it (affinity dialogs, knight
+// conversations, reaction/special dialogs) — "where it comes from" via the
+// tower free-time machinery rather than audiences/quests/diverts.
+let _knotDlg = null;
+function knotDialogues() {
+  if (_knotDlg) return _knotDlg;
+  _knotDlg = new Map();
+  if (DIALOGUE) {
+    for (const [ink, e] of Object.entries(DIALOGUE.dialogues)) {
+      if (!INDEX.knots[ink]) continue;
+      if (!_knotDlg.has(ink)) _knotDlg.set(ink, []);
+      _knotDlg.get(ink).push(e);
+    }
+  }
+  return _knotDlg || new Map();
+}
+// human-readable "where it comes from" for a free-time dialogue entry (the
+// `dialogues.json` catalog): the affinity gate, the conversation partners /
+// exclusions / pick order, and the unlock sources. Returns HTML ("" when the
+// knot has no free-time dialogue resource).
+function dialogueSourceHtml(name) {
+  const list = knotDialogues().get(name);
+  if (!list || !list.length) return "";
+  const e = list[0];
+  const bits = [];
+  const who = (e.ch || []).map((c) => `<b>${esc(kName(c))}</b>`).join(" & ");
+  const where = e.loc != null ? ` in the <b>${esc(DLG_ROOMS[e.loc] || ("room " + e.loc))}</b>` : "";
+  if (e.t === "affinity") {
+    const a = e.aff;
+    if (a) {
+      let s = `Played as an <b>affinity dialogue</b> of <b>${esc(kName(a.k))}</b>`;
+      s += a.aff0 ? ` — the intro dialog, offered first while unplayed` : ` — requires affinity ≥ <b>${esc(a.rank)}</b>`;
+      if (a.re) s += ` (${esc(a.re)})`;
+      bits.push(s + where);
+    } else {
+      bits.push(`Played as an <b>affinity dialogue</b>${who ? ` of ${who}` : ""}${where}`);
+    }
+  } else if (e.t === "conversation") {
+    const c = e.conv || {};
+    const knights = (c.knights || []).map((k) => `<b>${esc(kName(k))}</b>`).join(" & ");
+    let s = `<b>Knight conversation</b>: ${knights}${where}`;
+    const excl = (c.e || []).map(([k, st]) => `${esc(kName(k))} <span class="mut">not in the ${esc(st)} state</span>`).join(", ");
+    if (excl) s += ` — offered while ${excl}`;
+    if (c.o != null) s += ` <span class="mut">(pick order #${c.o + 1})</span>`;
+    s += ` — plays once in free time`;
+    bits.push(s);
+  } else {
+    let s = `Reaction / special dialogue${who ? ` of ${who}` : ""}${where}`;
+    const unl = e.unl || [];
+    if (unl.length) {
+      const parts = unl.map(([typ, val]) => {
+        if (typ === "ink") {
+          return INDEX.knots[val]
+            ? `<a class="chip knobtn knotlink" data-knot="${esc(val)}">${esc(val)}</a>`
+            : `<span class="chip">${esc(val)}</span>`;
+        }
+        if (typ === "special") return `special instruction <b>${esc(val)}</b>`;
+        if (typ === "item") return `holding the <b>${esc(val)}</b>`;
+        return `<b>${esc(val)}</b>`;
+      });
+      s += ` — unlocked by ${parts.join(", ")}`;
+    }
+    bits.push(s);
+  }
+  return bits.join(" — ");
+}
 // knot -> [{stem, op}] items the knot grants (op "grant") or removes (op "remove")
 let _knotIt = null;
 function knotItems() {
@@ -1549,6 +1651,10 @@ function originSection(name) {
   if (spTrig && spTrig.length) {
     const chips = [...new Set(spTrig)].map((n) => `<a class="chip speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" ");
     add(`Fires when the <b>special instruction</b> <span class="readers">${chips}</span> is triggered (unlocks/diverts this knot or schedules the audience that plays it)`);
+  }
+  const dlgSrc = dialogueSourceHtml(name);
+  if (dlgSrc) {
+    add(dlgSrc);
   }
   const inc = (knotIncoming().get(name) || []).slice(0, 24);
   if (inc.length) {
@@ -1887,6 +1993,7 @@ async function init() {
   await initInventory();
   await initKnights();
   await initSpecial();
+  await initDialogues();
   buildLinkFilterUI();
   renderResults(); // re-render ink list now that item/knight links can resolve
   const t = INDEX.stats;
@@ -4413,6 +4520,11 @@ async function initAudiences() {
   buildAudienceFilterUI();
   toggleAudienceOnly();
   renderAudienceResults();
+}
+
+async function initDialogues() {
+  const resp = await fetch("dialogues.json");
+  DIALOGUE = await resp.json();
 }
 
 function adebounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
