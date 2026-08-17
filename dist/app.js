@@ -483,6 +483,10 @@ function visibleKnots() {
 }
 
 function renderResults() {
+  if (!INDEX) {
+    $("cards").innerHTML = `<div class="empty">Loading data…</div>`;
+    return;
+  }
   const list = visibleKnots();
   $("countline").innerHTML =
     `<b>${list.length}</b> of ${Object.keys(INDEX.knots).length} knots`;
@@ -2234,13 +2238,15 @@ async function init() {
   buildFilterUI();
   $("hidefn").checked = state.hideFn;
   renderResults();
-  await initQuests();
-  await initAudiences();
-  await initInventory();
-  await initKnights();
-  await initSpecial();
-  await initDialogues();
-  await initEndings();
+  await Promise.all([
+    initQuests(),
+    initAudiences(),
+    initInventory(),
+    initKnights(),
+    initSpecial(),
+    initDialogues(),
+    initEndings(),
+  ]);
   buildLinkFilterUI();
   renderResults(); // re-render ink list now that item/knight links can resolve
   const t = INDEX.stats;
@@ -2528,6 +2534,7 @@ function visibleQuests() {
 }
 
 function renderQuestResults() {
+  if (!QUEST) return;
   const list = visibleQuests().sort((a, b) => a[0].localeCompare(b[0]));
   $("qcountline").innerHTML =
     `<b>${list.length}</b> of ${Object.keys(QUEST.quests).length} quests`;
@@ -3326,6 +3333,7 @@ function invSourceChips(it) {
 }
 
 function renderInvResults() {
+  if (!INV) return;
   const list = visibleItems().sort((a, b) => invName(a[1]).localeCompare(invName(b[1])) || a[0].localeCompare(b[0]));
   $("icountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(INV.items).length} items`;
   const cards = $("icards");
@@ -3674,6 +3682,7 @@ function buildKnightFilterUI() {
 }
 
 function renderKnightResults() {
+  if (!KNIGHTS) return;
   const list = visibleKnights().sort((a, b) => kName(a[0]).localeCompare(kName(b[0])) || a[0].localeCompare(b[0]));
   $("kcountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(KNIGHTS.knights).length} knights`;
   const cards = $("kcards");
@@ -4052,6 +4061,7 @@ function visibleSpecials() {
 }
 
 function renderSpecialResults() {
+  if (!SPECIAL) return;
   const list = visibleSpecials().sort((a, b) => a[0].localeCompare(b[0]));
   $("scountline").innerHTML = `<b>${list.length}</b> of ${Object.keys(SPECIAL.instructions).length} special instructions`;
   const cards = $("scards");
