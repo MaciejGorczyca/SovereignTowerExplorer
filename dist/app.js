@@ -1435,6 +1435,67 @@ function ultimatumSource(a) {
   const notes = (a.umc || []).length ? ` — condition set: ${esc(a.umc.join(", "))}` : "";
   return `Ultimatum <b>${esc(um[0])}</b> — follow-up quest failure/success — hard deadline cycle <b>${esc(um[1])}</b>${notes}`;
 }
+// one consolidated "Conditions" list for an audience — every gate that makes it
+// fire, in one place: story/knight requirements (rq), the hardcoded cycle (cyc),
+// the quests that fire it as a follow-up (rev.qf), the requests that unlock it,
+// the doleance schedulers, the special instructions that schedule it, the
+// director/intervention scenes (dir), knight death/demission triggers (dd), the
+// filler pack (fl), county introductions (ci) and ultimatum follow-ups (um).
+// Each entry is { kind, html }; `kind` lets the knot drawer drop the rows that
+// already have dedicated knot-level lines (quest follow-ups, special triggers).
+function audienceGates(stem, a) {
+  const gates = [];
+  for (const rq of a.rq || []) {
+    const lab = rq[0] === "VAR" ? "Story gate" : (rq[0] === "APLAY" ? "Plays only once" : "Knight gate");
+    gates.push({ kind: "rq", html: `<b>${lab}:</b> ${audienceReqText(rq)}` });
+  }
+  if (a.cyc && a.cyc.length) {
+    gates.push({ kind: "cyc", html: `Hardcoded to play at cycle ${esc(a.cyc.join("/"))} — scripted into the cycle timeline (fires regardless of player actions)` });
+  }
+  const fu = AUDIENCE.rev.qf[stem] || [];
+  const by = {};
+  for (const f of fu) (by[f.q] = by[f.q] || []).push(f.k);
+  for (const [qid, kinds] of Object.entries(by)) {
+    gates.push({ kind: "quest", html: `Fires after a quest: ${questLink(qid)} <span class="mut">(${kinds.join(", ")})</span>` });
+  }
+  for (const rs of reqsFor(stem)) {
+    const r = AUDIENCE.requests[rs];
+    if (!r) continue;
+    const parts = [`Triggered by request ${requestLink(rs)}`];
+    if (r.d) parts.push(`<span class="qchip-sub">${esc(tkey(r.d))}</span>`);
+    if (r.ch) parts.push(`<span class="qchip-sub">${esc(tkey(r.ck) || r.ch)}</span>`);
+    if (r.cst != null) parts.push(`<span class="qchip-sub">${r.cst} gold</span>`);
+    gates.push({ kind: "request", html: parts.join(" — ") });
+  }
+  const scheds = doleanceSchedulers().get(stem);
+  if (scheds && scheds.length) {
+    const from = scheds.map((s) => INDEX.knots[s.knot]
+      ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
+      : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
+    const types = [...new Set(scheds.map((s) => s.type).filter(Boolean))];
+    gates.push({ kind: "doleance", html: `Scheduled as a <b>${esc(a.f || stem)}</b> doleance from knot <span class="readers">${from}</span>${types.length ? ` <span class="mut">(${types.map(esc).join(", ")})</span>` : ""}` });
+  }
+  const spBy = audSpecials().get(stem);
+  if (spBy && spBy.length) {
+    const chips = [...new Set(spBy)].map((n) => `<a class="chip speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" ");
+    gates.push({ kind: "special", html: `Scheduled by the special instruction <span class="readers">${chips}</span>` });
+  }
+  for (const d of a.dir || []) gates.push({ kind: "dir", html: esc(d) });
+  for (const d of a.dd || []) {
+    const who = (KNIGHTS && KNIGHTS.knights[d[0]]) ? knightLink(d[0]) : esc(kName(d[0]));
+    if (d[1] === "death") gates.push({ kind: "dd", html: `Fires when ${who} dies — queued for the next cycle by the death follow-up (the scene is erased from played_audiences first so it can re-fire)` });
+    else gates.push({ kind: "dd", html: `Fires when ${who} leaves the roundtable (demission) — queued at the next cycle reset once the knight's affinity drops to its demission threshold${DEMISSION_VARIANT[d[2]] || ""}` });
+  }
+  const fl = fillerSource(stem, a);
+  if (fl) gates.push({ kind: "fl", html: fl });
+  const ci = countyIntroSource(a);
+  if (ci) gates.push({ kind: "ci", html: ci });
+  const um = ultimatumSource(a);
+  if (um) gates.push({ kind: "um", html: um });
+  return gates;
+}
+function audienceConditionRows(stem, a) { return audienceGates(stem, a).map((g) => g.html); }
+function audienceConditionCount(stem, a) { return audienceGates(stem, a).length; }
 // human-readable rendering of a decoded audience requirement
 function audienceReqText(r) {
   const tag = r[0];
@@ -1470,34 +1531,18 @@ function originSection(name) {
   const auds = knotAudiences().get(name);
   if (auds && auds.length) {
     for (const a of auds) {
-      const nm = a.c.length ? a.c.map(tkey).join(", ") : a.stem;
       const folder = a.f || a.stem;
-      const reqs = a.rq.length ? ` <span class="mut">· ${a.rq.map(audienceReqText).join(", ")}</span>` : "";
-      const cyc = a.cyc && a.cyc.length
-        ? ` <span class="mut">· hardcoded to play at cycle ${a.cyc.join("/")} (scripted into the cycle timeline — fires regardless of player actions)</span>`
-        : "";
-      const dir = a.dir.length ? ` <span class="mut">· ${a.dir.map(esc).join("; ")}</span>` : "";
-      const dd = a.dd && a.dd.length
-        ? ` <span class="mut">· fires when ${a.dd.map((d) => `${kName(d[0])} ${d[1] === "death" ? "dies" : "leaves"}${DEMISSION_VARIANT[d[2]] || ""}`).join(", ")}</span>`
-        : "";
-      const fl = fillerSource(a.stem, a);
-      const flk = fl ? ` <span class="mut">· ${fl}</span>` : "";
-      const ci = countyIntroSource(a);
-      const cik = ci ? ` <span class="mut">· ${ci}</span>` : "";
-      const um = ultimatumSource(a);
-      const umk = um ? ` <span class="mut">· ${um}</span>` : "";
-      const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
         : `audience <b>${esc(a.stem)}</b>`;
-      if (scheds && scheds.length) {
-        const from = scheds.map((s) => INDEX.knots[s.knot]
-          ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
-          : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}${umk}`);
-      } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}${umk}`);
-      }
+      // the same rows the audience drawer's Conditions segment uses; the
+      // quest follow-up + special-trigger kinds stay in their own knot-level
+      // rows (knotFuQuests / knotSpecialTriggers) to avoid duplication.
+      const conds = audienceGates(a.stem, a)
+        .filter((g) => g.kind !== "quest" && g.kind !== "special")
+        .map((g) => g.html);
+      const condk = conds.length ? ` <span class="mut">· ${conds.join(" · ")}</span>` : "";
+      add(`Played as <b>${esc(folder)}</b> ${audTarget}${condk}`);
     }
   }
   const spTrig = knotSpecialTriggers().get(name);
@@ -3170,6 +3215,7 @@ const KFEAT_LABELS = {
 };
 
 function kName(stem) {
+  if (!KNIGHTS || !KNIGHTS.knights) return stem;
   const k = KNIGHTS.knights[stem];
   if (!k) return stem;
   return tkey(k.n) || stem;
@@ -3939,6 +3985,12 @@ function aHaystack(stem, a) {
     for (const n of a.umc || []) h.push(n);
   }
   for (const d of a.dir || []) h.push(d);
+  for (const s of doleanceSchedulers().get(stem) || []) {
+    h.push(s.type, s.knot, "doleance");
+  }
+  for (const n of audSpecials().get(stem) || []) {
+    h.push(n, "special instruction", "scheduled by");
+  }
   for (const d of a.dd || []) {
     h.push(d[0], kName(d[0]), d[1], DEMISSION_VARIANT[d[2]] || "");
     h.push(d[1] === "death" ? "dies" : "leaves the roundtable");
@@ -3992,7 +4044,7 @@ function visibleAudiences() {
   for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
     if (ASTATE.folder && a.f !== ASTATE.folder) continue;
     if (ASTATE.char && !(a.c || []).includes(ASTATE.char)) continue;
-    if (ASTATE.cond && !(a.rq || []).length) continue;
+    if (ASTATE.cond && !audienceConditionCount(stem, a)) continue;
     if (ASTATE.quest && !(AUDIENCE.rev.qf[stem] || []).length) continue;
     if (ASTATE.audreq && !reqsFor(stem).length) continue;
     if (ASTATE.q && !matchesQuery(ahay(stem, a), ASTATE.q)) continue;
@@ -4029,8 +4081,10 @@ function audCard(stem, a) {
   if (a.cyc && a.cyc.length) {
     badges.push(`<span class="badge cyc" title="hardcoded to play at cycle ${esc(a.cyc.join("/"))}">cycle ${esc(a.cyc.join("/"))}</span>`);
   }
-  if ((a.rq || []).length) {
-    badges.push(`<span class="badge sp-quest" title="${esc(a.rq.map(audienceReqText).join(", "))}">${a.rq.length} condition${a.rq.length > 1 ? "s" : ""}</span>`);
+  const condCount = audienceConditionCount(stem, a);
+  if (condCount) {
+    const condTitle = audienceGates(stem, a).map((g) => g.html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).join(" · ");
+    badges.push(`<span class="badge sp-quest" title="${esc(condTitle)}">${condCount} gating condition${condCount > 1 ? "s" : ""}</span>`);
   }
   const fu = AUDIENCE.rev.qf[stem] || [];
   if (fu.length) {
@@ -4123,8 +4177,9 @@ function openAudienceDetail(stem) {
   }
   const fu = AUDIENCE.rev.qf[stem] || [];
   const rqstems = reqsFor(stem);
+  const condCount = audienceConditionCount(stem, a);
   for (const c of [
-    (a.rq || []).length ? `${a.rq.length} condition${a.rq.length > 1 ? "s" : ""}` : "",
+    condCount ? `${condCount} gating condition${condCount > 1 ? "s" : ""}` : "",
     fu.length ? `fires after ${fu.length} quest${fu.length > 1 ? "s" : ""}` : "",
     rqstems.length ? `triggered by ${rqstems.length} request${rqstems.length > 1 ? "s" : ""}` : "",
     a.ci && a.ci.length ? `county introduction of ${tkey(a.ci[1]) || a.ci[0]}` : "",
@@ -4165,132 +4220,36 @@ function openAudienceDetail(stem) {
     panel.appendChild(d);
   }
 
-  if (a.ci && a.ci.length) {
-    section("County introduction");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.innerHTML = countyIntroSource(a);
-    const p = document.createElement("p");
-    p.className = "qdesc muted";
-    p.textContent = "This is the scene that introduces the county. The ActManager is the only scheduler: at each act 1→2 / 2→3 transition the act's county intros are queued a few cycles in (per-neighbor shuffle delay, brimwood first), and when a county is rallied the introductions of its not-yet-introduced neighbors follow.";
-    panel.appendChild(d);
-    panel.appendChild(p);
-  }
-
-  if (a.um && a.um.length) {
-    section("Ultimatum follow-up");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.innerHTML = ultimatumSource(a);
-    const p = document.createElement("p");
-    p.className = "qdesc muted";
-    p.textContent = "This scene plays when one of the ultimatum's follow-up quests ends. The ultimatum is triggered from ink (UltimatumTriggered); its follow-up quests then carry the selected condition set as extra conditions and a hard deadline (remaining cycles = target cycle − current cycle) — failing one plays the defeat scene, completing one plays the victory scene.";
-    panel.appendChild(d);
-    panel.appendChild(p);
-  }
-
-  const scheds = doleanceSchedulers().get(stem);
-  if (scheds && scheds.length) {
-    section("Scheduled as doleance by");
+  const condRows = audienceGates(stem, a);
+  if (condRows.length) {
+    section("Conditions");
     const w = document.createElement("div");
-    w.className = "qdesc";
-    w.innerHTML = scheds.map((s) => INDEX.knots[s.knot]
-      ? `<a class="knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a> <span class="muted">(${esc(s.type)})</span>`
-      : `${esc(s.knot)} <span class="muted">(${esc(s.type)})</span>`).join(" · ");
-    panel.appendChild(w);
-  }
-
-  const spBy = audSpecials().get(stem);
-  if (spBy && spBy.length) {
-    section("Scheduled by special instruction");
-    const w = document.createElement("div");
-    w.className = "qdesc";
-    w.innerHTML = [...new Set(spBy)].map((n) => `<a class="speciallink" data-special="${esc(n)}">${esc(n)}</a>`).join(" · ");
-    panel.appendChild(w);
-  }
-
-  if (a.dir && a.dir.length) {
-    section("Directed by the game director");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.innerHTML = a.dir.map(esc).join("<br>");
-    panel.appendChild(d);
-  }
-
-  if (a.fl && a.fl.length) {
-    section("Filler scene");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.innerHTML = fillerSource(stem, a);
-    const p = document.createElement("p");
-    p.className = "qdesc muted";
-    p.textContent = "Unlocked packs fill random free cycle slots during a cycle fill (weighted toward the current corruption tier); one audience is picked per pack and removed once played.";
-    panel.appendChild(d);
-    panel.appendChild(p);
-  }
-
-  if (a.cyc && a.cyc.length) {
-    section("Hardcoded to play at cycle");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.textContent = `This scene is scripted into the cycle timeline (cycle ${a.cyc.join(", ")}) — it fires at that point regardless of player actions.`;
-    panel.appendChild(d);
-  }
-
-  if (a.rq && a.rq.length) {
-    section("Firing conditions");
-    const d = document.createElement("div");
-    d.className = "qdesc";
-    d.innerHTML = a.rq.map(audienceReqText).join("<br>");
-    panel.appendChild(d);
-  }
-
-  if (a.dd && a.dd.length) {
-    const deaths = a.dd.filter((d) => d[1] === "death");
-    const dems = a.dd.filter((d) => d[1] === "demission");
-    if (deaths.length) {
-      section("Fires when a knight dies");
-      const w = document.createElement("div");
-      w.className = "qdesc";
-      w.innerHTML = deaths.map((d) => {
-        const who = (KNIGHTS && KNIGHTS.knights[d[0]]) ? knightLink(d[0]) : esc(kName(d[0]));
-        return `Fires when ${who} dies — queued for the next cycle by the death follow-up (the scene is erased from played_audiences first so it can re-fire).`;
-      }).join("<br>");
-      panel.appendChild(w);
+    w.className = "what";
+    for (const g of condRows) {
+      const row = document.createElement("div");
+      row.className = "what-row";
+      row.innerHTML = `<span class="what-ic">➥</span><span class="what-body">${g.html}</span>`;
+      w.appendChild(row);
     }
-    if (dems.length) {
-      section("Fires when a knight leaves the roundtable");
-      const w = document.createElement("div");
-      w.className = "qdesc";
-      w.innerHTML = dems.map((d) => {
-        const who = (KNIGHTS && KNIGHTS.knights[d[0]]) ? knightLink(d[0]) : esc(kName(d[0]));
-        return `Fires when ${who} leaves the roundtable (demission) — queued at the next cycle reset once the knight's affinity drops to its demission threshold${DEMISSION_VARIANT[d[2]] || ""}.`;
-      }).join("<br>");
-      panel.appendChild(w);
+    if (a.ci && a.ci.length) {
+      const p = document.createElement("div");
+      p.className = "what-hint";
+      p.textContent = "The ActManager is the only scheduler: at each act 1→2 / 2→3 transition the act's county intros are queued a few cycles in (per-neighbor shuffle delay, brimwood first), and when a county is rallied the introductions of its not-yet-introduced neighbors follow.";
+      w.appendChild(p);
     }
-  }
-
-  if (fu.length) {
-    section("Fires after");
-    const w = document.createElement("div");
-    w.className = "qdesc";
-    w.innerHTML = fu.map((f) => `${questLink(f.q)} <span class="muted">(${esc(f.k)})</span>`).join(" · ");
+    if (a.um && a.um.length) {
+      const p = document.createElement("div");
+      p.className = "what-hint";
+      p.textContent = "This scene plays when one of the ultimatum's follow-up quests ends. The ultimatum is triggered from ink (UltimatumTriggered); its follow-up quests then carry the selected condition set as extra conditions and a hard deadline (remaining cycles = target cycle − current cycle) — failing one plays the defeat scene, completing one plays the victory scene.";
+      w.appendChild(p);
+    }
+    if (a.fl && a.fl.length) {
+      const p = document.createElement("div");
+      p.className = "what-hint";
+      p.textContent = "Unlocked packs fill random free cycle slots during a cycle fill (weighted toward the current corruption tier); one audience is picked per pack and removed once played.";
+      w.appendChild(p);
+    }
     panel.appendChild(w);
-  }
-
-  if (rqstems.length) {
-    section("Triggered by request");
-    for (const rs of rqstems) {
-      const r = AUDIENCE.requests[rs];
-      if (!r) continue;
-      const box = document.createElement("div");
-      box.className = "qchip";
-      const parts = [requestLink(rs)];
-      if (r.d) parts.push(`<span class="qchip-sub">${esc(tkey(r.d))}</span>`);
-      if (r.ch) parts.push(`<span class="qchip-sub">${esc(tkey(r.ck) || r.ch)}</span>`);
-      box.innerHTML = parts.join(" — ");
-      panel.appendChild(box);
-    }
   }
 
   enhanceSections(panel);

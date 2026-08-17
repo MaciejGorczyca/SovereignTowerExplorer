@@ -694,8 +694,30 @@ the single best feature of this app:
   knot "Where it comes from" rows append the note, cards carry an
   `ultimatum · <id>` badge and search indexes the ultimatum id / deadline /
   condition notes. Stats + `with_ultimatum` (6). Tests:
-  `test_ultimatum_sources` + `um`/`umc` schema/stat assertions in both
-  conformance tests + smoke assertions; 96 tests green.
+`test_ultimatum_sources` + `um`/`umc` schema/stat assertions in both
+   conformance tests + smoke assertions; 96 tests green.
+- Audiences "Conditions" consolidation (2026-08-17): task C of the
+  audience-condition research — the audience drawer used to scatter every gate
+  across separate sections ("Scheduled as doleance by", "Scheduled by special
+  instruction", "Directed by the game director", "Filler scene", "Hardcoded to
+  play at cycle", "Firing conditions", "Fires when a knight dies / leaves",
+  "Fires after", "Triggered by request") plus the county-intro and ultimatum
+  blocks. All of it now renders as ONE "Conditions" segment listing every gate
+  in one place, from a single shared source: new `audienceGates()` /
+  `audienceConditionRows()` / `audienceConditionCount()` helpers that fold the
+  story/knight requirements (`rq`, with "Story gate"/"Knight gate"/"Plays only
+  once" labels), hardcoded cycle, quest follow-ups, requests (with cost), the
+  doleance schedulers, the special-instruction schedulers, the director /
+  intervention notes, knight death/demission triggers, filler pack, county
+  introduction and ultimatum follow-up into one ordered row list. The Dialogues
+  knot drawer's "Where it comes from" audience rows reuse the same rows
+  (dropping the duplicated quest/special kinds that have their own knot-level
+  lines), the audience cards' badge now counts all gating conditions (not just
+  `rq`), the Audiences filter's "has firing conditions" became "has gating
+  conditions" and now matches any channel (rq/cyc/request/quest/doleance/
+  special/ci/um/dd/fl), and `aHaystack` indexes the doleance knots + special
+  schedulers. The `kName()` helper is null-safe (audience cards render before
+  KNIGHTS loads). Frontend-only + smoke assertions; 96 tests green.
 
 
 ---

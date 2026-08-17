@@ -300,6 +300,30 @@ waitReady().then(() => {
   const umInKnot = vm.runInContext("(() => { const r = knotAudiences().get('ultimatum_kingslayer_failure'); return r ? r.some(x => x.stem === 'kingslayer_ultimatum_faillure' && x.um && x.um[0] === 'kingslayer_ultimatum') : false; })()", sandbox);
   if (!umInKnot) throw new Error("um not carried into knotAudiences");
   vm.runInContext("openAudienceDetail('kingslayer_ultimatum_faillure')", sandbox);
+  // Task C (Conditions consolidation): every gating channel lands in the shared
+  // audienceGates rows — the enberg intro now shows its rq gate AND county-intro
+  // source, the ultimatum scene shows quest follow-ups + um context, a hardcoded
+  // scene counts as gated even with no rq, and the "has gating conditions"
+  // filter (ASTATE.cond) matches any of those channels (not just rq).
+  const enbergCond = vm.runInContext("audienceConditionCount('county_quest_enberg_1', AUDIENCE.audiences['county_quest_enberg_1'])", sandbox);
+  if (enbergCond < 2) throw new Error("enberg conditions too few: " + enbergCond);
+  const enbergRows = vm.runInContext("audienceConditionRows('county_quest_enberg_1', AUDIENCE.audiences['county_quest_enberg_1']).join(' | ')", sandbox);
+  if (enbergRows.indexOf("yohav_dead") < 0 || enbergRows.indexOf("County introduction") < 0) {
+    throw new Error("enberg conditions missing gates: " + enbergRows);
+  }
+  const umRows = vm.runInContext("audienceConditionRows('kingslayer_ultimatum_faillure', AUDIENCE.audiences['kingslayer_ultimatum_faillure']).join(' | ')", sandbox);
+  if (umRows.indexOf("quest_ultimatum_kingslayer_default") < 0 || umRows.indexOf("deadline cycle") < 0) {
+    throw new Error("ultimatum conditions missing gates: " + umRows);
+  }
+  const cycCond = vm.runInContext("audienceConditionCount('scriptedquest_assassination_attempt', AUDIENCE.audiences['scriptedquest_assassination_attempt'])", sandbox);
+  if (cycCond < 1) throw new Error("hardcoded cycle audience has no gating conditions: " + cycCond);
+  const condMatch = vm.runInContext("ASTATE.cond = true; const r = visibleAudiences().some(([s]) => s === 'scriptedquest_assassination_attempt'); ASTATE.cond = false; r", sandbox);
+  if (!condMatch) throw new Error("gating filter does not match a cyc-only audience");
+  const condNoMatch = vm.runInContext("ASTATE.cond = true; const n = visibleAudiences().length; ASTATE.cond = false; n", sandbox);
+  const allAud = vm.runInContext("Object.keys(AUDIENCE.audiences).length", sandbox);
+  if (!(condNoMatch > 0) || !(condNoMatch < allAud)) {
+    throw new Error("gating filter narrowed nothing or matched everything: " + condNoMatch + "/" + allAud);
+  }
   // drawer rendering must not throw on a demission variant either
   vm.runInContext("openAudienceDetail('knight_leaving_arron_dragonheart')", sandbox);
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE

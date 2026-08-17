@@ -280,10 +280,16 @@ the reverse of the Special tab's `dlg`/`goto`/`auds` links, so
 `gideon_victoria_dead_reaction` states that `GIDEON_VICTORIA_DEAD` must fire
 first and `candidature_gwendan_the_humble` that `GWENDAN_REFORMED` schedules it).
 Every audience row links to the exact audience resource (clickable) and carries
-its decoded conditions: the audience's `rq` firing requirements and, when a
-scene is scripted into the cycle timeline, the **hardcoded cycle** it plays in
-(e.g. `scriptedquest_chester` → "hardcoded to play at cycle 2 (scripted into the
-cycle timeline — fires regardless of player actions)").
+its decoded conditions — the same consolidated "Conditions" gates the Audiences
+drawer shows in one place: the audience's `rq` firing requirements ("Story gate" /
+"Knight gate" / "Plays only once"), the **hardcoded cycle** when a scene is
+scripted into the cycle timeline (e.g. `scriptedquest_chester` → "hardcoded to
+play at cycle 2 (scripted into the cycle timeline — fires regardless of player
+actions)"), the doleance schedulers and special-instruction schedulers (the ones
+with dedicated knot-level rows — quest follow-ups and special triggers — are kept
+on their own lines to avoid duplication), the director/intervention notes, knight
+death/demission triggers, the filler pack, county introduction and ultimatum
+follow-up sources.
 
 A **"Chain of events"** section (when the knot is part of a sequence) lays out
 the narrative order the knot plays in as a horizontal flow, current knot
