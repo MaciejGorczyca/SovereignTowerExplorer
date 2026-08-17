@@ -431,6 +431,11 @@ gideon, goberto, gwendan + Ursule's corruption-tiered new-gimmick variants), 29 
 Dulahan human/possessed, Edith possessed and Gwendan's reformed humble candidacy each use),
 234 filler-pack scenes (pack + corruption tier + targeted population per audience, in 27
 unlockable packs — the four representative packs + 23 region packs — unlocked by the
-first-grievance knots calling `UnlockFillerAudiencesPack`), 61 fired after quests, 4 knotless; 34 audience
+first-grievance knots calling `UnlockFillerAudiencesPack`), 7 county introductions (the
+`county_quest_<id>_1` intros — `ci` — scheduled by the ActManager at act 1→2 / 2→3
+transitions or when a neighboring county is rallied), 6 ultimatum follow-up scenes
+(the victory/defeat audiences of the kingslayer (deadline 23), dragon-knight (8) and
+emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 61 fired after
+quests, 4 knotless; 34 audience
 requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
 roundtable, they invite the knight back)).

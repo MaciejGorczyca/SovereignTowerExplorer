@@ -659,6 +659,43 @@ the single best feature of this app:
   guards still decode to nothing (currently clean). Tests: cond assertions in
   `test_data_passes` (golden-key, almor, epicrate sub-guards, guarded-iff-cond)
   + a `cond` schema check in `test_dist_conformance`; 94 tests green.
+- County-introduction sources (2026-08-17): task A of the audience-condition
+  research — the narrated scene that introduces each county (the
+  `county_quest_<id>_1` audiences) was showing almost no "where it comes from"
+  data (`county_quest_enberg_1` only exposed its `yohav_dead` requirement).
+  New `quest_data.py` `load_county_introductions()` parses every
+  `content/world/counties/*.tres` `county_introduction` field and reverse-maps
+  it onto the catalog as `ci: [county ink id, name key]` (7 audiences:
+  `county_quest_{almor,brimwood,enberg,isle_of_basalt,kutnar,moonvale,southbay}_1`)
+  — the county intros are scheduled by the ActManager (act 1→2 / 2→3
+  transition intros with a per-neighbor shuffle delay, or right after a
+  neighboring county is rallied; act_manager.gd:58,102). The Audiences drawer
+  gains a "County introduction" section (source note + ActManager-only
+  scheduler explanation), the Dialogues knot "Where it comes from" rows append
+  the note, cards carry a `county intro · <name>` badge and search indexes the
+  county names. Stats + `with_county_intro` (7). Tests:
+  `test_county_intro_sources` + `ci` schema/stat assertions in both conformance
+  tests + smoke assertions; 95 tests green.
+- Ultimatum follow-up context (2026-08-17): task B of the audience-condition
+  research — the ultimatum outcome scenes (e.g. `kingslayer_ultimatum_faillure`)
+  showed their quest-failure links but no ultimatum-level context (the hard
+  deadline cycle, the condition sets). New `quest_data.py` `load_ultimatums()`
+  parses the 3 `content/ultimatums/*.tres` (`kingslayer` deadline 23,
+  `dragon_knight` 8, `emperor` 45) plus `_decode_ultimatum_condition()` for the
+  three `*_conditions_set` arrays (MIN_RALLIED_COUNTIES / SATISFACTION_
+  REQUIREMENT with PopulationCategory name / MIN_FUNDS), and reverse-maps the
+  follow-up quests' success/failure audiences + unexpected-outcome follow-ups
+  onto the catalog as `um: [ultimatum_id, target_cycle]` + `umc` (6 audiences:
+  `kingslayer_ultimatum_{victory,faillure}`, `dragon_knight_ultimatum_*`,
+  `ultimatum_emperor_{victory,defeat}`) — applied inside `load_audience_catalog()`
+  so `quests.json` / `audiences.json` stay byte-equal. The Audiences drawer
+  gains an "Ultimatum follow-up" section ("Ultimatum <id> — follow-up quest
+  failure/success — hard deadline cycle <N> — condition set: …"), the Dialogues
+  knot "Where it comes from" rows append the note, cards carry an
+  `ultimatum · <id>` badge and search indexes the ultimatum id / deadline /
+  condition notes. Stats + `with_ultimatum` (6). Tests:
+  `test_ultimatum_sources` + `um`/`umc` schema/stat assertions in both
+  conformance tests + smoke assertions; 96 tests green.
 
 
 ---
