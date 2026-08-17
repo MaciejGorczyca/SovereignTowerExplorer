@@ -76,7 +76,9 @@ class QuestsDataPassTest(unittest.TestCase):
 
     def test_volume(self):
         self.assertEqual(self.quests["stats"]["quests"], 312)
-        self.assertEqual(self.quests["stats"]["with_unexpected"], 82)
+        # 91 = 82 quests whose SpecialOutcome is an ExtResource file + 9 that
+        # inline the outcome as a SubResource in the quest .tres itself
+        self.assertEqual(self.quests["stats"]["with_unexpected"], 91)
         # "511 audiences" = every audience resource under content/audiences,
         # each carrying its ink knot, folder and decoded firing requirements
         self.assertEqual(len(self.quests["audiences"]), 511)
@@ -128,6 +130,41 @@ class QuestsDataPassTest(unittest.TestCase):
                 if uo["id"] in expected:
                     self.assertIn(expected[uo["id"]], uo.get("k", []),
                                   (qid, uo["id"]))
+
+    def test_inline_special_outcomes_are_parsed(self):
+        # Some quests inline their SpecialOutcome as a SubResource in the quest
+        # .tres (no file under content/unexpected_outcomes/), which the ref
+        # resolver must decode instead of skipping. Each of the 9 affected
+        # quests gains its condition-bearing unexpected outcome(s).
+        expected_cond = {
+            "contract_anveld_demon_hunt": ("ch", [50]),
+            "contract_avalon_ice_skating_competition": ("k", ["gideon"]),
+            "contract_hydra_hunt": ("st", 3),
+            "contract_moonvale_magic_council_spying": ("k", ["oliver"]),
+            "contract_rozenn_music_competition": ("k", ["gideon"]),
+            "contract_spearfishing_competition": ("k", ["silgur"]),
+            "contract_volga_camp_knife_throwing_competition": ("k", ["victoria"]),
+            "contract_wolf_invasion": ("k", ["the_wolf"]),
+            "quest_southbay_political_instabilities": ("k", ["tarcus"]),
+        }
+        for qid, (key, value) in expected_cond.items():
+            with self.subTest(quest=qid):
+                q = self.quests["quests"][qid]
+                self.assertTrue(q["un"], "%s inline outcome skipped" % qid)
+                uo = q["un"][0]
+                self.assertTrue(uo["id"])
+                self.assertEqual(uo.get(key), value, key)
+                self.assertTrue(uo.get("no"), "arlin_note missing")
+        # the southbay inline outcome carries its follow-up audience, which the
+        # audiences pass must pick up as an unexpected fired-after-quest row
+        southbay = self.quests["quests"]["quest_southbay_political_instabilities"]["un"]
+        self.assertTrue(any(
+            uo.get("fu") == "county_quest_southbay_final_father_dead_tarcus_unexpected"
+            for uo in southbay))
+        # contract_wolf_invasion inlines TWO outcomes (one per affecting knight)
+        wolf = self.quests["quests"]["contract_wolf_invasion"]["un"]
+        self.assertEqual(len(wolf), 2)
+        self.assertIn("rufus", wolf[1].get("k", []))
 
 
 @unittest.skipUnless(game_available(), "game/SovereignTowerCode not present")

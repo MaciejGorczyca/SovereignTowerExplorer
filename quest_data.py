@@ -389,6 +389,35 @@ def resolve_sub(item, quest_file):
     return out
 
 
+def special_outcome_ref(tf, ref, fallback_id):
+    """Resolve a SpecialOutcome ref -> (id, props, filer).
+
+    A SpecialOutcome is usually an ExtResource file on disk (id = the file
+    stem, props read from that file; e.g. `bucolic_diplomacy_gwendan.tres`),
+    but a quest may inline it as a SubResource in the quest file instead
+    (id = the `fallback_id` synthesized by the caller, props read from the
+    quest file). Returns (None, None, None) when the ref is absent or
+    unresolvable — callers treat that as "no unexpected outcome".
+    """
+    if not isinstance(ref, dict) or ("_ext" not in ref and "_sub" not in ref):
+        return None, None, None
+    if "_sub" in ref:
+        props = tf.sub_props(ref["_sub"])
+        if not props:
+            return None, None, None
+        return fallback_id, props, tf
+    path = tf.ext_path(ref["_ext"])
+    if not path:
+        return None, None, None
+    if path.startswith("res://"):
+        path = path[6:]
+    full = os.path.join(GAME, path)
+    if not os.path.exists(full):
+        return None, None, None
+    sotf = TresFile.load(full, os.path.dirname(full))
+    return os.path.basename(os.path.splitext(full)[0]), sotf.props, sotf
+
+
 class QuestIndex:
     def __init__(self):
         self.enums = {}
@@ -1081,16 +1110,11 @@ def load_ultimatums(idx):
                 if astem:
                     out.setdefault(astem, {"um": [uid, cycle], "umc": list(umc)})
             for sref in qtf.props.get("special_outcomes", []) or []:
-                so_path = qtf.ext_path(sref["_ext"]) if isinstance(sref, dict) and "_ext" in sref else None
-                if not so_path:
+                ustem, sprops, sfil = special_outcome_ref(qtf, sref, None)
+                if not ustem and not sprops:
                     continue
-                if so_path.startswith("res://"):
-                    so_path = f"{GAME}/{so_path[6:]}"
-                if not os.path.exists(so_path):
-                    continue
-                sotf = TresFile.load(so_path, os.path.dirname(so_path))
-                fu = sotf.props.get("follow_up_audience")
-                astem = _ref_stem(fu, sotf) if fu not in (None, "null") else None
+                fu = sprops.get("follow_up_audience")
+                astem = _ref_stem(fu, sfil) if fu not in (None, "null") else None
                 if astem:
                     out.setdefault(astem, {"um": [uid, cycle], "umc": list(umc)})
     return out
@@ -1412,27 +1436,33 @@ def load_quests():
         q["rw"]["s"] = build_rewards([x for x in P.get("success_rewards", []) if x not in (None, "null")], tf)
         q["rw"]["f"] = build_rewards([x for x in P.get("faillure_consequences", []) if x not in (None, "null")], tf)
 
+        inline_un = 0
         for r in unexpected:
-            so_path = tf.ext_path(r["_ext"]) if isinstance(r, dict) and "_ext" in r else None
-            if not so_path:
+            # Special outcomes are usually ExtResource files, but some quests
+            # inline them as SubResources (quest_southbay_political_instabilities
+            # and the 8 competition contracts); the ref resolver synthesizes a
+            # readable id for those from the quest stem.
+            is_inline = isinstance(r, dict) and "_sub" in r
+            if is_inline:
+                inline_un += 1
+                fallback = f"{qid}_unexpected" if inline_un == 1 else f"{qid}_unexpected_{inline_un}"
+            else:
+                fallback = None
+            ustem, SP, filer = special_outcome_ref(tf, r, fallback)
+            if not ustem:
                 continue
-            if so_path.startswith("res://"):
-                so_path = f"{GAME}/{so_path[6:]}"
-            ustem = refname(so_path)
-            sotf = TresFile.load(so_path, os.path.dirname(so_path))
-            SP = sotf.props
             uo = {"id": ustem}
             # Knight condition: the base SpecialOutcome stores it in `knights`,
             # but the per-knight subclasses (Arron/Goberto/Gwendan special
             # outcomes) require a single named knight via their own field
             # (`arron` / `goberto` / `gwendan`) and may omit `knights` entirely
             # (e.g. stop_baby_dragon_arron.tres). Collect both, de-duplicated.
-            req_knights = [refname(resolve_quest_ref(x, sotf)) for x in SP.get("knights", []) if x not in (None, "null")]
+            req_knights = [refname(resolve_quest_ref(x, filer)) for x in SP.get("knights", []) if x not in (None, "null")]
             for field in ("arron", "goberto", "gwendan"):
                 ref = SP.get(field)
                 if not ref or ref in (None, "null"):
                     continue
-                name = refname(resolve_quest_ref(ref, sotf))
+                name = refname(resolve_quest_ref(ref, filer))
                 if name and name not in req_knights:
                     req_knights.append(name)
             if req_knights:
@@ -1444,12 +1474,12 @@ def load_quests():
                 uo["hi"] = SP.get("requires_higher", True)
                 uo["am"] = SP.get("amount", -1)
             if SP.get("rewards"):
-                uo["rw"] = build_rewards([x for x in SP["rewards"] if x not in (None, "null")], sotf)
+                uo["rw"] = build_rewards([x for x in SP["rewards"] if x not in (None, "null")], filer)
             fu = SP.get("follow_up_audience")
-            uo["fu"] = refname(resolve_quest_ref(fu, sotf)) if fu not in (None, "null") else None
+            uo["fu"] = refname(resolve_quest_ref(fu, filer)) if fu not in (None, "null") else None
             dr = SP.get("damage_range")
             if dr is not None and dr != "null":
-                dmv = resolve_int_range(sotf, dr)
+                dmv = resolve_int_range(filer, dr)
                 if dmv:
                     uo["dm"] = dmv
             uo["no"] = SP.get("arlin_note") or None
@@ -1483,25 +1513,16 @@ def load_quests():
                 mo["lo"] = it["location_modification"]
             if it.get("unexpected_outcomes"):
                 mo["un"] = []
-                for x in it["unexpected_outcomes"]:
-                    so_path = tf.ext_path(x["_ext"]) if isinstance(x, dict) and "_ext" in x else None
-                    if so_path and so_path.startswith("res://"):
-                        so_path = f"{GAME}/{so_path[6:]}"
-                    mo["un"].append(refname(so_path) if so_path else None)
-                mo["un"] = [u for u in mo["un"] if u]
-                # modifier unexpected outcomes can carry their own follow-up
-                # audience (e.g. contract_cleankeeper_goose_part_two's modifier
-                # outcomes -> chester_candidacy, which plays candidature_chester).
                 un_fu = []
-                for x in it["unexpected_outcomes"]:
-                    so_path = tf.ext_path(x["_ext"]) if isinstance(x, dict) and "_ext" in x else None
-                    if so_path and so_path.startswith("res://"):
-                        so_path = f"{GAME}/{so_path[6:]}"
-                    if so_path:
-                        sotf = TresFile.load(so_path, os.path.dirname(so_path))
-                        fu = sotf.props.get("follow_up_audience")
-                        if fu:
-                            un_fu.append(refname(resolve_quest_ref(fu, sotf)) if fu not in (None, "null") else None)
+                for n_inline, x in enumerate(it["unexpected_outcomes"]):
+                    mstem, msp, mfil = special_outcome_ref(
+                        tf, x, f"{qid}_mod_{i}_unexpected_{n_inline + 1}")
+                    if mstem:
+                        mo["un"].append(mstem)
+                    if msp and msp.get("follow_up_audience") not in (None, "null"):
+                        un_fu.append(refname(resolve_quest_ref(
+                            msp["follow_up_audience"], mfil)))
+                mo["un"] = [u for u in mo["un"] if u]
                 un_fu = [u for u in un_fu if u]
                 if un_fu:
                     mo["unfu"] = un_fu

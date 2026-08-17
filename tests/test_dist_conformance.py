@@ -159,6 +159,21 @@ class DatasetsTest(unittest.TestCase):
         for qid in q.get("unlock_knots", {}):
             self.assertIn(qid, q["quests"])
 
+    def test_un_schema(self):
+        # every unexpected outcome carries an id, and every follow-up audience
+        # it names is a real audience in the audiences dataset's reverse map
+        bad = []
+        for qid, record in self.quests["quests"].items():
+            for uo in record.get("un", []):
+                if not uo.get("id"):
+                    bad.append((qid, uo))
+        self.assertEqual(bad, [])
+        qf = self.audiences["rev"]["qf"]
+        tarcus = qf.get("county_quest_southbay_final_father_dead_tarcus_unexpected", [])
+        self.assertTrue(any(e["k"] == "unexpected"
+                            and e["q"] == "quest_southbay_political_instabilities"
+                            for e in tarcus), tarcus)
+
     def test_quest_loc_table_covers_names(self):
         q = self.quests
         loc = q["loc"]

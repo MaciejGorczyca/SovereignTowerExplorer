@@ -479,7 +479,9 @@ a `funcs` map (function name → knot count, for the function/requirement filter
 `stats` block for the header bar.
 
 The other data files (loaded by the other five tabs) are: `quests.json` (312 quests,
-90 unexpected outcomes, 69 modifier variants, 511 audiences, 306 ink-unlocked),
+91 quests carrying unexpected outcomes — 10 of which are inline `SubResource`
+special outcomes decoded from the quest file itself — 69 modifier variants, 511
+audiences, 306 ink-unlocked),
 `inventory.json` (154 items, 71 quest-linked, 24 ink-unlocked), `knights.json` (24
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
@@ -503,8 +505,10 @@ first-grievance knots calling `UnlockFillerAudiencesPack`), 7 county introductio
 `county_quest_<id>_1` intros — `ci` — scheduled by the ActManager at act 1→2 / 2→3
 transitions or when a neighboring county is rallied), 6 ultimatum follow-up scenes
 (the victory/defeat audiences of the kingslayer (deadline 23), dragon-knight (8) and
-emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 61 fired after
-quests, 4 knotless, 14 divert-reached sub-scene audiences
+emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 62 fired after
+quests (incl. `county_quest_southbay_final_father_dead_tarcus_unexpected`, the inline
+special outcome of `quest_southbay_political_instabilities` with `k:[tarcus]` + its
+follow-up audience), 4 knotless, 14 divert-reached sub-scene audiences
 (never queued by any channel: their ink knot is reached via an ink divert inside another,
 scheduled audience's scene — the 6 brimwood-trial interventions, `county_quest_brimwood_3_testimony_2`,
 `intervention_childeric_county_quest_almor_audience_3`, the childeric/ligia/tarcus candidacies,

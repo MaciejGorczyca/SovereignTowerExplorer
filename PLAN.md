@@ -12,7 +12,7 @@ absorbs the existing `ink_viewer` and renames it **"Sovereign Tower Explorer"**.
 Sections (tabs), added incrementally:
 
 1. **Dialogues** — existing ink view, unchanged (already works: 922 knots, filters, drawer, 6 locales).
-2. **Quests** — NEW. Filters + detail drawer over the 312 quest contracts + 90 unexpected outcomes.
+2. **Quests** — NEW. Filters + detail drawer over the 312 quest contracts + 103 unexpected outcomes (91 quests).
 3. **Later** (same shell, zero new infra): Knights, Equipment/Relics, Audiences/Requests, Save inspector.
    Shipped since: Knights, Inventory (Equipment/Relics), the **Special** instruction
    catalog and the **Audiences** tab; still future: Save inspector.
@@ -39,7 +39,8 @@ the single best feature of this app:
   `duration`, `nb_requested_knights`, `involve_killing`, `quest_can_be_lethal`,
   `success_rewards`, `faillure_consequences`, `success/failure_follow_up_audience`, `cutscene`,
   `has_deadline`, `modifiers`, `extra_conditions`, `requested_knights`.
-- **90 unexpected outcomes**: `content/unexpected_outcomes/*.tres` (`SpecialOutcome`): trigger
+- **103 unexpected outcomes** over 91 quests: 90 as `content/unexpected_outcomes/*.tres`
+  (`SpecialOutcome`) plus 10 inlined as `SubResource` inside the quest `.tres`; trigger
   conditions (specific knight / required `CharacterTags` / stat threshold), own rewards,
   follow-up audience, damage range, arlin note.
 - **48 quests** have `modifiers` (alternate spawn variants, chosen via `unlock_quest` idx param).
@@ -112,7 +113,7 @@ the single best feature of this app:
   from `lang/{en_fr,cmn_ja_de_ko}/*.csv`. Decodes `RewardType`/`QuestTypes`/`QuestTags`/`ConditionTags`/
   `LocationsID`/`Statistics`/`SovereignTags`/`CharacterTags`/`Population` enums **by numeric value**
   (supports non-sequential enums: QuestOutcomes ±, CharacterTags with gaps).
-- `build_app.py` now also emits `dist/quests.json` (312 quests, 90 unexpected outcomes, 69 modifiers,
+- `build_app.py` now also emits `dist/quests.json` (312 quests, 91 with unexpected outcomes (103 total), 69 modifiers,
   511 audiences, `unlock_knots` reverse map from `UnlockQuest` ink calls = 306 quests).
 - Frontend: **Dialogues | Quests** tabs. Quests tab = 10 filters (search/type/category/location/
   condition/stat/reward/unexpected/deadline/lethal/killing/linked), card grid, detail drawer with
@@ -824,6 +825,24 @@ the single best feature of this app:
   `county_quest_brimwood_3_before_testimony`). Rows count as gating conditions
   (badge + `acond` filter) and index into audience search. Frontend-only
   (`web/app.js`) + smoke assertions + docs; full suite green.
+- Inline sub-resource special outcomes (2026-08-17): task N3 of the audience-condition
+  research — `quest_data.py` only decoded `SpecialOutcome`s referenced as
+  **ExtResource files**, so quests that inline the outcome as a `SubResource` in
+  their own `.tres` silently produced `un: []`. 9 quests were affected
+  (`quest_southbay_political_instabilities` + the 8 competition/grievance
+  contracts: anveld demon hunt, avalon ice skating, hydra hunt, moonvale magic
+  council spying, rozenn music, spearfishing, volga knife throwing, wolf
+  invasion). The `SpecialOutcome` ref resolver now reads both forms (external
+  file stem vs. synthesized `<quest>_unexpected[+_N]` id for inline), so 10
+  condition-bearing unexpected outcomes decode: the knight conditions (tarcus /
+  gideon / oliver / silgur / victoria / the_wolf / rufus), the hydra stat gate,
+  the anveld demon-tag requirement, per-outcome rewards and follow-up audiences.
+  `quest_southbay_political_instabilities` gains `un` with `k:[tarcus]` +
+  `fu: county_quest_southbay_final_father_dead_tarcus_unexpected`, which now
+  appears in `audiences.json` `rev.qf` as an unexpected follow-up (61 → 62
+  fired-after-quest audiences); quests-with-unexpected 82 → 91. The modifier
+  `un` loop and the ultimatum reverse-map read the same refs both ways.
+  Data-layer (`quest_data.py`) + tests + docs; rebuild `dist/`; suite green.
 
 
 ---
