@@ -21,6 +21,7 @@
     <button id="tab-special" class="tab" type="button">Special</button>
     <button id="tab-aud" class="tab" type="button">Audiences</button>
   </nav>
+  <button id="donatebtn" type="button" title="Support the project">♥ Support</button>
   <div class="topstat" id="stats"></div>
   <label class="loclabel" for="locale">Locale
     <select id="locale">
@@ -365,6 +366,23 @@
 <div id="drawer" hidden>
   <div id="drawerbackdrop" class="backdrop"></div>
   <section id="drawerpanel"></section>
+</div>
+
+<div id="donate" hidden>
+  <div id="donatebackdrop" class="backdrop"></div>
+  <section id="donatepanel" role="dialog" aria-modal="true" aria-labelledby="donatetitle">
+    <button id="donateclose" type="button" aria-label="Close">✕</button>
+    <h2 id="donatetitle">Support Sovereign Tower Explorer</h2>
+    <p>Sovereign Tower Explorer is free and fan-made — it took a lot of time to dig all this data. If it saved you time or you find it helpful, consider donating; any amount helps a lot! &lt;3</p>
+    <div class="donate-actions">
+      <a id="donatestripe" class="donate-link primary" href="https://donate.stripe.com/7sYfZj6029cLfqM0Ed6c000" target="_blank" rel="noopener noreferrer">Donate with Stripe (card)</a>
+      <a class="donate-link secondary" href="https://www.paypal.com/donate/?hosted_button_id=N32Z3HX74QQAS" target="_blank" rel="noopener noreferrer">Donate with PayPal</a>
+    </div>
+    <p class="donate-note">Free fan-made project; any amount helps.</p>
+    <div class="donate-foot">
+      <button id="donatenotnow" type="button">Not now</button>
+    </div>
+  </section>
 </div>
 
 <script src="app.js"></script>

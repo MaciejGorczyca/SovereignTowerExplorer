@@ -52,6 +52,20 @@ select { background: var(--panel2); color: var(--txt); border: 1px solid var(--l
 }
 #tabs .tab:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
+/* ---- donate pill ---- */
+#donatebtn {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--acc); color: var(--acctxt);
+  border: 1px solid var(--acc); border-radius: 7px;
+  padding: 6px 12px;
+  font: 600 12px/1 var(--sans); letter-spacing: .4px; text-transform: uppercase;
+  cursor: pointer; user-select: none;
+  transition: filter .15s, transform .1s;
+}
+#donatebtn:hover { filter: brightness(1.12); }
+#donatebtn:active { transform: translateY(1px); }
+#donatebtn:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+
 /* ---- layout ---- */
 #layout { display: grid; grid-template-columns: 260px 1fr; min-height: calc(100vh - 46px); }
 #filters, #qfilters, #ifilters, #kfilters, #sfilters, #afilters {
@@ -136,6 +150,42 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
   position: absolute; top: 0; right: 0; bottom: 0; width: min(720px, 92vw);
   background: var(--panel); border-left: 1px solid var(--line); overflow: auto; padding: 18px 22px 60px;
 }
+
+/* ---- donation modal ---- */
+#donate { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 18px; }
+#donate[hidden] { display: none; }
+#donatebackdrop { position: absolute; inset: 0; background: #0009; cursor: pointer; }
+#donatepanel {
+  position: relative; width: min(430px, 92vw); max-height: calc(100vh - 36px); overflow: auto;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 22px 24px; box-shadow: 0 10px 40px #0008;
+}
+#donatepanel h2 { margin: 0 0 10px; font-size: 16px; color: var(--txt); }
+#donatepanel p { margin: 0; color: var(--mut); font-size: 13px; line-height: 1.5; }
+#donateclose {
+  position: absolute; top: 10px; right: 10px; background: none; border: none;
+  color: var(--mut); font-size: 15px; cursor: pointer; padding: 4px 6px;
+}
+#donateclose:hover { color: var(--txt); }
+#donateclose:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.donate-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
+.donate-link {
+  display: block; text-align: center; text-decoration: none;
+  padding: 10px 14px; border-radius: 8px;
+  font: 600 13px/1 var(--sans); cursor: pointer; user-select: none;
+  transition: filter .15s, border-color .15s, background .15s, transform .1s;
+}
+.donate-link.primary { background: var(--acc); color: var(--acctxt); border: 1px solid var(--acc); }
+.donate-link.secondary { background: var(--panel2); color: var(--txt); border: 1px solid var(--line); }
+.donate-link.primary:hover { filter: brightness(1.1); }
+.donate-link.secondary:hover { border-color: var(--acc); color: var(--acc); background: var(--panel); }
+.donate-link:active { transform: translateY(1px); }
+.donate-link:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.donate-note { text-align: center; margin-top: 12px; font-size: 11px !important; }
+.donate-foot { display: flex; justify-content: center; margin-top: 14px; }
+.donate-foot button { background: none; border: none; color: var(--mut); font-size: 12px; cursor: pointer; padding: 4px; }
+.donate-foot button:hover { color: var(--txt); }
+.donate-foot button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 .dhead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .dhead h2 { font-family: var(--mono); font-size: 17px; margin: 0; color: var(--blue); word-break: break-all; }
 .dhead .close { margin-left: auto; background: var(--panel2); border: 1px solid var(--line); color: var(--mut); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; transition: color .15s, border-color .15s, background .15s; }

@@ -776,6 +776,18 @@ the single best feature of this app:
   `EndingsDataPassTest` (types/vignettes/specials + full ending-knot coverage)
   + `test_endings_schema` in test_dist_conformance + smoke assertions; 106 tests
   green.
+- Donation UI (2026-08-17): a gold "♥ Support" pill sits in the topbar right
+  after the tab buttons (full label on every screen size — never collapses to
+  an icon), opening a centered donation modal (z-60, above the z-50 detail
+  drawer) with Stripe + PayPal links (`target="_blank"`) and a "Not now"
+  dismiss. An auto-ask fires from `openDetailBy()` (covers all seven detail
+  kinds + back/forward) but is frequency-capped in `localStorage`
+  (`st_tower_donate`): a brand-new visitor is never asked until **10 minutes**
+  after their first engaged card open (grace), then at most once per
+  **22 hours** (cooldown, recorded at show time). Esc closes the modal first
+  (the drawer second), the modal has its own dimmed backdrop and never closes
+  an open drawer, and the drawer's close also dismisses the modal. Ship-ready:
+  full suite green (105 tests) + logic verified in a VM harness.
 
 
 ---

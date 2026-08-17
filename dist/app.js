@@ -93,6 +93,22 @@ const collapsedSecs = loadCollapsedSecs();
 function saveCollapsedSecs() {
   try { localStorage.setItem(CSEC_KEY, JSON.stringify([...collapsedSecs])); } catch (err) {}
 }
+
+// donation auto-ask frequency (persisted in localStorage)
+const DONATE_KEY = "st_tower_donate";
+const DONATE_GRACE_MINUTES = 10;   // brand-new visitors are never asked before this
+const DONATE_COOLDOWN_HOURS = 22;  // re-ask cooldown after the popup has shown
+function readDonateState() {
+  try {
+    const p = JSON.parse(localStorage.getItem(DONATE_KEY));
+    if (p && typeof p === "object" && !Array.isArray(p) && typeof p.firstSeen === "number") return p;
+  } catch (err) {}
+  return null;
+}
+function writeDonateState(s) {
+  try { localStorage.setItem(DONATE_KEY, JSON.stringify(s)); } catch (err) {}
+}
+
 // stable per-section key: title with trailing "(<digits> …)" counts stripped,
 // so "Appears in dialogue (5 knots)" and "Modifiers (variants 3)" are stable.
 function secKey(title) {
@@ -1852,7 +1868,49 @@ function renderDial(name) {
 }
 function closeDetail() {
   $("drawer").hidden = true;
-  document.body.style.overflow = "";
+  closeDonationModal();
+  syncBodyOverflow();
+}
+
+// ---------------------------------------------------------------------------
+// donation modal — a centered overlay (z-60, above the z-50 detail drawer)
+// with Stripe + PayPal links. Entry points: the header pill (always allowed)
+// and maybeShowDonation() (frequency-capped, hooks into openDetailBy).
+// ---------------------------------------------------------------------------
+function syncBodyOverflow() {
+  document.body.style.overflow = ($("drawer").hidden === true && $("donate").hidden === true) ? "" : "hidden";
+}
+function openDonationModal() {
+  const m = $("donate");
+  if (m.hidden !== true) return;
+  m.hidden = false;
+  m.setAttribute("aria-hidden", "false");
+  syncBodyOverflow();
+  const f = $("donatestripe");
+  if (f && f.focus) f.focus();
+}
+function closeDonationModal() {
+  const m = $("donate");
+  if (m.hidden === true) return;
+  m.hidden = true;
+  m.setAttribute("aria-hidden", "true");
+  syncBodyOverflow();
+}
+// auto-ask gate: never on load (only fires from openDetailBy), never for a
+// brand-new visitor inside the grace window, then at most once per cooldown.
+function maybeShowDonation() {
+  if ($("donate").hidden !== true) return;        // already up — no stacking
+  let s = readDonateState();
+  const now = Date.now();
+  if (!s) {                                        // first ever visit: arm the clock
+    writeDonateState({ firstSeen: now, lastShown: 0 });
+    return;
+  }
+  if (now - s.firstSeen < DONATE_GRACE_MINUTES * 60e3) return;
+  if (s.lastShown && now - s.lastShown < DONATE_COOLDOWN_HOURS * 3600e3) return;
+  s.lastShown = now;                               // the ask itself starts the cooldown
+  writeDonateState(s);
+  openDonationModal();
 }
 
 // ---------------------------------------------------------------------------
@@ -1884,6 +1942,7 @@ function validLoc(loc) {
   return false;
 }
 function openDetailBy(kind, key) {
+  maybeShowDonation();
   if (kind === "knot") return openDetail(key);
   if (kind === "quest") return openQuestDetail(key);
   if (kind === "inv") return openInvDetail(key);
@@ -1996,7 +2055,15 @@ for (const id of ["kf", "kc", "kq", "ksp"]) {
   $(id).addEventListener("change", () => { state[id] = $(id).value; renderResults(); });
 }
 $("drawerbackdrop").addEventListener("click", goClose);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") goClose(); });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if ($("donate").hidden !== true) { closeDonationModal(); return; }
+  goClose();
+});
+$("donatebtn").addEventListener("click", openDonationModal);
+$("donatebackdrop").addEventListener("click", closeDonationModal);
+$("donateclose").addEventListener("click", closeDonationModal);
+$("donatenotnow").addEventListener("click", closeDonationModal);
 $("drawerpanel").addEventListener("click", (e) => {
   const a = e.target.closest("a.questlink, a.itemlink, a.knightlink, a.knotlink, a.speciallink, a.audiencelink, a.reqlink");
   if (!a) return;
