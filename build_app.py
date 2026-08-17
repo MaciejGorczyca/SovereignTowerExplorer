@@ -1103,6 +1103,18 @@ def build_dialogues(out_dir: Path, quests_data: dict, index: dict,
            game_root=str(game_root))
 
 
+def build_endings(out_dir, index, game_root: Path) -> None:
+    """Emit dist/endings.json: the ending cutscene + vignette catalog.
+
+    Parses the EndingManager's ending-type → cutscene knot map (act_manager.tscn
+    + the Endings enum), the SWITCH_ENDING_*_PATH special-instruction names and
+    the per-character ending_path vignettes (shared descriptor parser in
+    dialogue_data)."""
+    del index  # reserved: cross-knot consistency checks live in the tests
+    from ending_data import build_endings as _build
+    _build(out_dir, game_root=str(game_root))
+
+
 def copy_web_assets(out_dir: Path) -> None:
     web = Path(__file__).resolve().parent / "web"
     if not web.exists():
@@ -1376,6 +1388,8 @@ def main():
     prof.tick("audiences pass")
     build_dialogues(out_dir, quests_data, index, knights_data, special_data, game_root)
     prof.tick("dialogues pass")
+    build_endings(out_dir, index, game_root)
+    prof.tick("endings pass")
 
     # other locales: token-only overrides (metadata identical to en)
     for locale in LOCALES:

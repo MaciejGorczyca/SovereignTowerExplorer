@@ -53,6 +53,10 @@ def _passes():
                                            _PASSES["knights"], _PASSES["special"],
                                            game_root=str(GAME_ROOT)),
             "dialogues.json")
+        import ending_data as ED
+        _PASSES["endings"] = _build_to_json(
+            lambda tmp: ED.build_endings(tmp, game_root=str(GAME_ROOT)),
+            "endings.json")
     return _PASSES
 
 
@@ -683,6 +687,76 @@ class DialoguesDataPassTest(unittest.TestCase):
                     self.assertIn(val, _passes()["special"]["instructions"], (ink, val))
                 self.assertIsInstance(val, str)
                 self.assertTrue(val)
+
+
+@unittest.skipUnless(game_available(), "game/SovereignTowerCode not present")
+class EndingsDataPassTest(unittest.TestCase):
+    def setUp(self):
+        self.index = _passes()["index"]
+        self.end = _passes()["endings"]
+
+    def test_types(self):
+        # the six ending types in enum order, each mapping to a real
+        # ending-category knot; the five switcheable types carry their
+        # SWITCH_ENDING_*_PATH instruction, DEMON_STATE a corruption note.
+        types = self.end["types"]
+        self.assertEqual(len(types), 6)
+        self.assertEqual(list(types),
+                         ["WAR", "PEACE_TREATY", "MARRY", "SURRENDER",
+                          "TOWER_DESTRUCTION", "DEMON_STATE"])
+        self.assertEqual({t["cut"] for t in types.values()},
+                         {"tyranny_ending_cutscene", "wisdom_ending_cutscene",
+                          "audacity_ending_cutscene", "kind_ending_cutscene",
+                          "tower_destruction_ending_cutscene", "demon_state_ending"})
+        for name, t in types.items():
+            self.assertIn(t["cut"], self.index["knots"], name)
+            self.assertEqual(self.index["knots"][t["cut"]]["c"], "ending", name)
+            if name == "DEMON_STATE":
+                self.assertNotIn("switch", t)
+                self.assertIn("corruption", t["note"])
+            else:
+                self.assertEqual(t["switch"], "SWITCH_ENDING_%s_PATH" % name)
+
+    def test_vignettes(self):
+        v = self.end["vignettes"]
+        # 24 knights + 7 servants; the game routes the vignette by the
+        # character's ink id (alwena is "intendant"; carina is the blacksmith's
+        # vignette; ursula_ending is keyed by ursule).
+        self.assertEqual(len(v), 31)
+        self.assertEqual(v["ursule"], "ursula_ending")
+        self.assertEqual(v["intendant"], "alwena_ending")
+        self.assertEqual(v["blacksmith"], "carina_ending")
+        self.assertEqual(v["witch_belladonna"], "belladonna_ending")
+        self.assertEqual(v["lady_tower"], "lady_tower_ending")
+        for kid, knot in v.items():
+            self.assertIn(knot, self.index["knots"], (kid, knot))
+            self.assertEqual(self.index["knots"][knot]["c"], "ending", (kid, knot))
+
+    def test_specials(self):
+        # the two code-played ending knots (Hildegard's song + the demon room)
+        s = self.end["specials"]
+        self.assertEqual(len(s), 2)
+        self.assertEqual(set(s), {"hildegard_singing_ending",
+                                  "demon_back_in_time_ending_proposal"})
+        self.assertIn("HILDEGARD_SONG", s["hildegard_singing_ending"])
+        self.assertIn("demon room", s["demon_back_in_time_ending_proposal"])
+        for knot in s:
+            self.assertIn(knot, self.index["knots"])
+
+    def test_all_ending_knots_covered_by_source(self):
+        # the 41 ending-category knots: the 6 cutscenes + 31 vignettes + 2
+        # specials = 39; the remaining 2 (carina_ending_act_1/2_reaction) are
+        # blacksmith reaction dialogs already catalogued in dialogues.json
+        ending_knots = {n for n, k in self.index["knots"].items()
+                        if k["c"] == "ending"}
+        covered = ({t["cut"] for t in self.end["types"].values()}
+                   | set(self.end["vignettes"].values())
+                   | set(self.end["specials"]))
+        self.assertEqual(len(ending_knots), 41)
+        self.assertEqual(len(covered), 39)
+        leftover = ending_knots - covered
+        self.assertEqual(leftover, {"carina_ending_act_1_reaction",
+                                    "carina_ending_act_2_reaction"})
 
 
 def _desc_exists(stem, game_root):

@@ -751,6 +751,32 @@ the single best feature of this app:
   conversation gates, unlock resolution) + `test_dialogues_schema` in
   test_dist_conformance + smoke assertions; 101 tests green.
 
+- Ending sources (2026-08-17): Task K of the knot-source research
+  (REPORT_DIALOGUES.md) — the ~40 `ending`-category knots (which are neither
+  audiences/quests/diverts nor free-time dialogues) used to show no "Where it
+  comes from" data at all. New `ending_data.py` emits `dist/endings.json`
+  (6 ending types
+  in `types`: WAR/PEACE_TREATY/MARRY/SURRENDER/TOWER_DESTRUCTION each mapped to
+  its cutscene knot (the EndingManager's `endings_cutscenes_paths` in
+  act_manager.tscn + the `Endings` enum) and carrying its `SWITCH_ENDING_*_PATH`
+  special-instruction switch, plus the corruption-gated DEMON_STATE epilogue as
+  a `note` — no switch exists for it; the 31 per-character ending vignettes in
+  `vignettes` (24 knights + 7 servants — the same descriptors Task J parses, via
+  a shared `dialogue_data.load_ending_paths()` helper — keyed by character ink
+  id as the ServantEndingCutscene routes them, e.g. `intendant`→`alwena_ending`,
+  `blacksmith`→`carina_ending`, `ursule`→`ursula_ending`, gated by alive +
+  at-the-roundtable (recruited, for servants) when `trigger_end()` runs) and the
+  2 code-played specials in `specials` (`hildegard_singing_ending` ← `HILDEGARD_SONG`
+  special instruction; `demon_back_in_time_ending_proposal` ← the demon-room
+  scene). The Dialogues knot drawer adds per-knot rows "Ending vignette of <x> —
+  plays at the end while <x> is alive and at the roundtable" / "Ending cutscene
+  (<TYPE>)" / the special notes, and the Dialogues search indexes the new texts.
+  39 of the 41 ending knots are covered (the 2 leftovers are Carina's act-1/2
+  reactions — `reaction` dialogs already catalogued in dialogues.json). Tests:
+  `EndingsDataPassTest` (types/vignettes/specials + full ending-knot coverage)
+  + `test_endings_schema` in test_dist_conformance + smoke assertions; 106 tests
+  green.
+
 
 ---
 

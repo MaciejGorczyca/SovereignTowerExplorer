@@ -143,6 +143,7 @@ class DatasetsTest(unittest.TestCase):
         cls.audiences = load_dist("audiences.json")
         cls.index = load_dist("index.json")
         cls.dialogues = load_dist("dialogues.json")
+        cls.endings = load_dist("endings.json")
 
     def test_quests_schema(self):
         q = self.quests
@@ -362,6 +363,48 @@ class DatasetsTest(unittest.TestCase):
                         self.assertIn(u[1], self.index["knots"]
                                       if u[0] == "ink" else self.special["instructions"],
                                       (ink, u))
+
+    def test_endings_schema(self):
+        e = self.endings
+        # the six ending types each cross-reference a real ending-category knot
+        types = e["types"]
+        self.assertEqual(set(types), {"WAR", "PEACE_TREATY", "MARRY",
+                                      "SURRENDER", "TOWER_DESTRUCTION",
+                                      "DEMON_STATE"})
+        for name, t in types.items():
+            with self.subTest(type=name):
+                self.assertEqual(set(t), {"cut", "switch"} if name != "DEMON_STATE"
+                                         else {"cut", "note"})
+                self.assertIn(t["cut"], self.index["knots"])
+                self.assertEqual(self.index["knots"][t["cut"]]["c"], "ending")
+                for key in ("switch", "note"):
+                    if key in t:
+                        self.assertTrue(isinstance(t[key], str) and t[key])
+        # the 31 per-character vignettes key by character ink id and land on
+        # ending-category knots
+        vignettes = e["vignettes"]
+        self.assertEqual(len(vignettes), 31)
+        for kid, knot in vignettes.items():
+            with self.subTest(vignette=kid):
+                self.assertTrue(isinstance(kid, str) and kid)
+                self.assertIn(knot, self.index["knots"])
+                self.assertEqual(self.index["knots"][knot]["c"], "ending")
+        # the two code-played specials resolve too
+        self.assertEqual(len(e["specials"]), 2)
+        for knot, note in e["specials"].items():
+            self.assertIn(knot, self.index["knots"])
+            self.assertTrue(isinstance(note, str) and note)
+        # 39 of the 41 ending knots are covered by the catalog; the remaining
+        # two (carina's act-1/2 reactions) are reaction dialogs in dialogues.json
+        covered = (set(t["cut"] for t in types.values())
+                   | set(vignettes.values()) | set(e["specials"]))
+        ending_knots = {n for n, k in self.index["knots"].items()
+                        if k["c"] == "ending"}
+        self.assertEqual(len(ending_knots), 41)
+        self.assertEqual(len(covered), 39)
+        self.assertEqual(ending_knots - covered,
+                         {"carina_ending_act_1_reaction",
+                          "carina_ending_act_2_reaction"})
 
 
 if __name__ == "__main__":

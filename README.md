@@ -36,6 +36,7 @@ browser.
     special_data.py         SpecialInstruction catalog joins -> dist/special.json
     audience_data.py        audience + audience-request catalog joins -> dist/audiences.json
     dialogue_data.py        free-time dialogue catalog joins -> dist/dialogues.json
+    ending_data.py          ending cutscene + vignette catalog -> dist/endings.json
     web/                    frontend source assets (edited here)
       index.html
       app.js                all UI logic (vanilla JS, no build step)
@@ -51,6 +52,7 @@ browser.
       special.json          the SpecialInstruction catalog (knot/quest/knight joins)
       audiences.json        the audience + audience-request catalog (knot/quest/request joins)
       dialogues.json        the free-time dialogue catalog (affinity/conversation/reaction)
+      endings.json          the ending-type cutscenes + per-character vignette catalog
       locales/{fr,de,cmn,ja,ko}.json   dialogue-token overrides (≈2.7–2.9 MB each)
     viewer.env              OPTIONAL KEY=VALUE config (see "Paths/config" below)
   ../game/                   game data (SovereignTowerCode, saved_games, optional
@@ -84,7 +86,11 @@ request-reward links into `dist/audiences.json`, and a `dialogue_data.py` pass
 that joins the free-time dialogue resources (affinity dialogs, knight
 conversations, reaction/special dialogs) with their affinity gates, conversation
 partners/exclusions/order and the ink `UnlockSpecialDialogue` + code unlock
-sources into `dist/dialogues.json`. The build only needs the compiled ink
+sources into `dist/dialogues.json`, and an `ending_data.py` pass that mines the
+ending-type cutscene knots (the EndingManager's `endings_cutscenes_paths` +
+`Endings` enum), the `SWITCH_ENDING_*_PATH` special-instruction switches and the
+per-character `ending_path` vignettes into `dist/endings.json`. The build only
+needs the compiled ink
 JSON (`INK_ROOT`) plus the game root (`GAME_ROOT`) as inputs.
 
 Deploy the whole `dist/` directory anywhere; the UI fetches `index.json` and `locales/*.json`
@@ -197,6 +203,7 @@ Resolution priority, higher wins:
         · audiences: `python audience_data.py <game_root> [out]` (reads `index.json`/`quests.json`)
         · dialogues: `python dialogue_data.py <game_root> [out]` (reads `index.json`/`quests.json`/
         `knights.json`/`special.json`, so run it last)
+        · endings: `python ending_data.py <game_root> [out]` (new file, no deps on other passes)
 2. Environment vars — `INK_ROOT`, `INK_OUT`, `GAME_ROOT` (build) · `GAME_ROOT`, `QUEST_OUT` (quest data)
         · `INK_SOURCE`, `INK_OUT` (extract)
 3. Config file — `viewer.env` (build/quests, shared keys) / `extract.env` (ink_extract.py), `KEY=VALUE`, next to each script
@@ -307,7 +314,12 @@ entry), the origin section adds its own row ("Played as an affinity dialogue of
 exclusions/pick order", or "Reaction / special dialogue of <x>: unlocked by the
 ink knots calling `UnlockSpecialDialogue`, the romance/golden-key code unlocks,
 the dragon-egg/dragon-heart/cursed-helmet item gates and the special-instruction
-`dlg` signals").
+`dlg` signals"). When the knot is an **ending** (an `endings.json` entry), the
+origin section adds its own ending row too: "Ending vignette of <x> — plays at
+the end while <x> is alive and at the roundtable (recruited, for servants)", the
+main "Ending cutscene (<TYPE>)" with its `SWITCH_ENDING_*_PATH` switching
+instruction (or the corruption-gated DEMON_STATE note), or the code-played
+special note (`hildegard_singing_ending`, `demon_back_in_time_ending_proposal`).
 
 A **"Chain of events"** section (when the knot is part of a sequence) lays out
 the narrative order the knot plays in as a horizontal flow, current knot
@@ -421,7 +433,7 @@ Layers (each also runs standalone: `python3 tests/test_walker.py`, …):
 | `test_walker.py` | the compiled-ink Walker's exact token output on verbatim real-game knots (speaker attribution, if/else gates, choice dest/effects, `UnlockQuest` semantic writes) | nothing (fixtures in `tests/fixtures/ink_knots.py`) |
 | `test_tresfile.py` | `quest_data.py`'s `.tres`/enum parsing on self-contained fixtures | nothing |
 | `test_dist_conformance.py` | schema + cross-dataset invariants of the shipped `dist/` (token encoding, stats self-consistency, locale knot-set parity, id maps) | checked-in `dist/` only |
-| `test_data_passes.py` | the five data passes over the real game root at the documented volumes (312 quests, 154 items, 24 knights, 71 specials, 511 audiences) | `../game/SovereignTowerCode` (skips if absent) |
+| `test_data_passes.py` | the data passes over the real game root at the documented volumes (312 quests, 154 items, 24 knights, 71 specials, 511 audiences, 235 dialogs, 6 endings) | `../game/SovereignTowerCode` (skips if absent) |
 | `test_build_golden.py` | a **fresh build is byte-identical to the reference `dist/`** — the highest-value regression net for a refactor; **opt-in** (`run_tests.py --golden` or `check_dist_ref.py`, not run by default) | game root + pip `zstandard` (skips if absent) |
 | `test_frontend.py` + `frontend_smoke.js` | `node --check dist/app.js` + boots the full app in a VM with a minimal DOM stub, renders every tab, and calls `renderDialogue()` across all 922 knots expecting zero throws | node (skips if absent) |
 
@@ -493,4 +505,12 @@ state exclusions and pick order (`conv`), and the unlock sources (`unl`: the ink
 `UnlockSpecialDialogue` — all 98 sites resolve, incl. the four `marriage` calls in
 `scriptedquest_civil_war_event_nobles_revolt` and Gwendan's runtime `marriage`/`romance_completed`
 forks — plus the `romance_completed`/`golden_key`/item code unlocks and the special-instruction
-`dlg` signals), 85 with at least one unlock source).
+`dlg` signals), 85 with at least one unlock source) and `endings.json` (the game-end context of the
+41 `ending`-category knots: the six ending-type main cutscenes — WAR / PEACE_TREATY / MARRY /
+SURRENDER / TOWER_DESTRUCTION each switched by its `SWITCH_ENDING_*_PATH` special instruction,
+plus the corruption-gated DEMON_STATE epilogue — in `types`; the 31 per-character ending
+vignettes (24 knights + 7 servants, `endings.json` `vignettes` keyed by character ink id, played
+by the ServantEndingCutscene at game end while the character is alive / at the roundtable, e.g.
+`intendant` → `alwena_ending`, `blacksmith` → `carina_ending`, `ursule` → `ursula_ending`); and
+the 2 code-played special knots in `specials`: `hildegard_singing_ending` (the `HILDEGARD_SONG`
+special instruction) and `demon_back_in_time_ending_proposal` (the demon-room scene)).

@@ -144,9 +144,11 @@ function waitReady() {
       const knotCount = stats ? vm.runInContext("Object.keys(INDEX.knots).length", sandbox) : 0;
       const dlgReady = vm.runInContext(
         "DIALOGUE && DIALOGUE.stats ? DIALOGUE.stats.all : 0", sandbox);
+      const endReady = vm.runInContext(
+        "ENDINGS && ENDINGS.types ? Object.keys(ENDINGS.types).length : 0", sandbox);
       const audReady = vm.runInContext(
         "AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats.audiences : 0", sandbox);
-      if (stats && knotCount === stats.knots && dlgReady === 235 && audReady === 511) {
+      if (stats && knotCount === stats.knots && dlgReady === 235 && endReady === 6 && audReady === 511) {
         return resolve(stats);
       }
       if (Date.now() > DEADLINE) {
@@ -386,6 +388,42 @@ waitReady().then(() => {
     throw new Error("dialogue-source filter wrong: " + srcDl + "/" + allKnots);
   }
   vm.runInContext("openDetail('angelica_affinity_2')", sandbox);
+
+  // Task K: ending sources (endings.json). The six ending-type cutscenes, the
+  // 31 per-character vignettes and the two code-played specials render as knot-
+  // drawer "Where it comes from" rows and are indexed into the knot haystack.
+  const endReady = vm.runInContext("ENDINGS && Object.keys(ENDINGS.types).length", sandbox);
+  if (endReady !== 6 ||
+      vm.runInContext("Object.keys(ENDINGS.vignettes).length", sandbox) !== 31 ||
+      vm.runInContext("Object.keys(ENDINGS.specials).length", sandbox) !== 2) {
+    throw new Error("ENDINGS catalog wrong");
+  }
+  const cutHtml = vm.runInContext("endingSourceHtml('tyranny_ending_cutscene')", sandbox);
+  if (cutHtml.indexOf("Ending cutscene") < 0 || cutHtml.indexOf("WAR") < 0 ||
+      cutHtml.indexOf("SWITCH_ENDING_WAR_PATH") < 0) {
+    throw new Error("ending cutscene row missing: " + cutHtml);
+  }
+  const demHtml = vm.runInContext("endingSourceHtml('demon_state_ending')", sandbox);
+  if (demHtml.indexOf("Ending cutscene") < 0 || demHtml.indexOf("corruption") < 0) {
+    throw new Error("demon-state note missing: " + demHtml);
+  }
+  const vigHtml = vm.runInContext("endingSourceHtml('ursula_ending')", sandbox);
+  if (vigHtml.indexOf("Ending vignette") < 0 || vigHtml.indexOf("Ursula") < 0 ||
+      vigHtml.indexOf("roundtable") < 0) {
+    throw new Error("ending vignette row missing: " + vigHtml);
+  }
+  const carinaHtml = vm.runInContext("endingSourceHtml('carina_ending')", sandbox);
+  if (carinaHtml.indexOf("Carina") < 0) {
+    throw new Error("servant vignette name missing: " + carinaHtml);
+  }
+  const hildegardHtml = vm.runInContext("endingSourceHtml('hildegard_singing_ending')", sandbox);
+  if (hildegardHtml.indexOf("HILDEGARD_SONG") < 0) {
+    throw new Error("hildegard special note missing: " + hildegardHtml);
+  }
+  if (!vm.runInContext("hay(INDEX.knots.ursula_ending).indexOf('ending vignette') >= 0", sandbox)) {
+    throw new Error("ending source not in knot haystack");
+  }
+  vm.runInContext("openDetail('ursula_ending')", sandbox);
 
   // Dialogues-tab link filters ("Where it comes from" + cross-link selects).
   // The DOM stub's selects don't carry `options`, so assert through the state/

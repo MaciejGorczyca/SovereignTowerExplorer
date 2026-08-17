@@ -6,6 +6,7 @@ let INDEX = null;           // en metadata + tokens
 let LOC = {};               // active locale token overrides (merged)
 
 let DIALOGUE = null;        // dist/dialogues.json (free-time dialogue catalog)
+let ENDINGS = null;         // dist/endings.json (ending cutscene + vignette catalog)
 
 // dialogue_location_id (Room enum, room.gd:4-22) -> display name
 const DLG_ROOMS = [
@@ -194,7 +195,8 @@ function haystack(k) {
   const fuq = (knotFuQuests().get(k.name) || []).map((f) => f.qid).join(" ");
   const sp = (knotSpecials().get(k.name) || []).join(" ");
   const dlg = dialogueHayText(k.name);
-  return (k.name + " " + k.c + " " + text + " " + k.reads.join(" ") + " " + k.writes.join(" ") + " " + k.funcs.join(" ") + " " + aud + " " + fuq + " " + sp + " " + dlg)
+  const endl = endingHayText(k.name);
+  return (k.name + " " + k.c + " " + text + " " + k.reads.join(" ") + " " + k.writes.join(" ") + " " + k.funcs.join(" ") + " " + aud + " " + fuq + " " + sp + " " + dlg + " " + endl)
     .toLowerCase();
 }
 // searchable text for a knot's free-time dialogue source (dialogues.json):
@@ -1418,6 +1420,71 @@ function dialogueSourceHtml(name) {
   }
   return bits.join(" — ");
 }
+// knot -> the ending context that plays it (endings.json): a per-character
+// game-end vignette, a main ending-type cutscene, or a code-played special.
+let _knotEnd = null;
+function knotEndings() {
+  if (_knotEnd) return _knotEnd;
+  _knotEnd = new Map();
+  if (ENDINGS) {
+    for (const [kid, knot] of Object.entries(ENDINGS.vignettes || {})) {
+      if (!INDEX.knots[knot]) continue;
+      if (!_knotEnd.has(knot)) _knotEnd.set(knot, { type: "vignette", key: kid });
+    }
+    for (const [type, t] of Object.entries(ENDINGS.types || {})) {
+      if (!t || !INDEX.knots[t.cut]) continue;
+      _knotEnd.set(t.cut, { type: "cutscene", key: type, t });
+    }
+    for (const [knot, note] of Object.entries(ENDINGS.specials || {})) {
+      if (!INDEX.knots[knot]) continue;
+      _knotEnd.set(knot, { type: "special", note });
+    }
+  }
+  return _knotEnd || new Map();
+}
+// display name for a vignette character ink id: knights resolve through the
+// knights catalog, servants (and alwena's "intendant" ink id) through the
+// loc-table name key `<stem>_NAME`.
+function endingCharName(id) {
+  const stem = (id === "intendant") ? "alwena" : id;
+  if (KNIGHTS && KNIGHTS.knights[stem]) return kName(stem);
+  return tkey(stem.toUpperCase() + "_NAME") || id;
+}
+// human-readable "where it comes from" for an ending knot (the `endings.json`
+// catalog): the vignette gate, the type cutscene + its switching special
+// instruction, or the code-played special note. Returns HTML ("" when the knot
+// is not an ending cutscene/vignette).
+function endingSourceHtml(name) {
+  const e = knotEndings().get(name);
+  if (!e) return "";
+  if (e.type === "vignette") {
+    const nm = `<b>${esc(endingCharName(e.key))}</b>`;
+    return `Ending vignette of ${nm} — plays at the end while ${nm} is alive and at the roundtable (recruited, for servants)`;
+  }
+  if (e.type === "cutscene") {
+    const t = e.t || {};
+    let s = `Ending cutscene (<b>${esc(e.key)}</b>)`;
+    if (t.switch) s += ` — switched by the special instruction <b>${esc(t.switch)}</b>`;
+    if (t.note) s += ` — ${esc(t.note)}`;
+    return s;
+  }
+  return `Played by ${esc(e.note)}`;
+}
+// searchable text for an ending knot (mirror of dialogueHayText): indexed into
+// the knot haystack so the Dialogues search matches vignettes/cutscenes.
+function endingHayText(name) {
+  const e = knotEndings().get(name);
+  if (!e) return "";
+  const h = ["ending", "game end", "ending cutscene"];
+  if (e.type === "vignette") {
+    h.push("ending vignette", e.key, endingCharName(e.key));
+  } else if (e.type === "cutscene") {
+    h.push(e.key, e.t && e.t.switch, e.t && e.t.note);
+  } else {
+    h.push(e.note);
+  }
+  return h.filter(Boolean).join(" ");
+}
 // knot -> [{stem, op}] items the knot grants (op "grant") or removes (op "remove")
 let _knotIt = null;
 function knotItems() {
@@ -1655,6 +1722,10 @@ function originSection(name) {
   const dlgSrc = dialogueSourceHtml(name);
   if (dlgSrc) {
     add(dlgSrc);
+  }
+  const endSrc = endingSourceHtml(name);
+  if (endSrc) {
+    add(endSrc);
   }
   const inc = (knotIncoming().get(name) || []).slice(0, 24);
   if (inc.length) {
@@ -1994,6 +2065,7 @@ async function init() {
   await initKnights();
   await initSpecial();
   await initDialogues();
+  await initEndings();
   buildLinkFilterUI();
   renderResults(); // re-render ink list now that item/knight links can resolve
   const t = INDEX.stats;
@@ -4525,6 +4597,11 @@ async function initAudiences() {
 async function initDialogues() {
   const resp = await fetch("dialogues.json");
   DIALOGUE = await resp.json();
+}
+
+async function initEndings() {
+  const resp = await fetch("endings.json");
+  ENDINGS = await resp.json();
 }
 
 function adebounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }

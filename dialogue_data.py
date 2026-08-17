@@ -467,6 +467,32 @@ def load_descriptors():
     return specd_by_ink, aff_map, dict(owner)
 
 
+def load_ending_paths():
+    """{character_ink_id: ending_path} for every knight+servant descriptor.
+
+    The game-end vignette routing (cutscene_controller.gd:145-164) plays each
+    character's `ending_path` vignette by character ink id while they are alive
+    and at the roundtable (recruited, for servants). The demon descriptor has
+    no ending_path and is skipped. Shared with ending_data.py — same files.
+    """
+    out = {}
+    for desc_dir in DESC_DIRS:
+        d = f"{GAME}/{desc_dir}"
+        if not os.path.isdir(d):
+            continue
+        for fn in sorted(os.listdir(d)):
+            if not fn.endswith(".tres"):
+                continue
+            stem = os.path.splitext(fn)[0]
+            tf = TresFile.load(os.path.join(d, fn), d)
+            end = tf.props.get("ending_path")
+            if not isinstance(end, str) or not end.strip():
+                continue
+            ink_id = str(tf.props.get("character_ink_id") or stem).lstrip("&").strip('"')
+            out[ink_id] = end.strip()
+    return out
+
+
 def load_code_unlocks(specd_by_ink):
     """{ink knot: [[type, value], ...]} from the code/unlock-table (§3.3b).
 
