@@ -1,9 +1,11 @@
 """Golden build test: a fresh build must reproduce the checked-in dist/ exactly.
 
-OPT-IN, refactor-only: this test is deliberately NOT part of the default
-`tests/run_tests.py` suite (it rebuilds the whole app just to confirm a fresh
-build is byte-identical to a reference dist/, which only earns its time on
-refactors — not on every feature commit). Include it explicitly with:
+OPT-IN, REFACTOR-ONLY — DO NOT RUN unless you are refactoring. This test is
+deliberately NOT part of the default `tests/run_tests.py` suite, and it should
+not be invoked for feature/fix/docs/chore tasks: it rebuilds the whole app
+(~20 s) just to confirm a fresh build is byte-identical to a reference dist/,
+which is wasted time on a non-refactor task (the build is deterministic — two
+consecutive builds already match). On a refactor only, run it with:
 
     python3 tests/run_tests.py --golden          # default suite + this test
     python3 tests/test_build_golden.py           # standalone

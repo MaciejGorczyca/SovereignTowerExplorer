@@ -401,18 +401,20 @@ python3 tests/run_tests.py --golden   # + golden build test (fresh build vs chec
 python3 tests/run_tests.py test_helpers   # filter to one module (substring match)
 ```
 
-**Golden build test is opt-in, refactor-only.** It is not part of the default
-suite: it rebuilds the whole app just to confirm a fresh build is byte-identical
-to a reference `dist/`, which only earns its time on refactors — not on every
-feature commit. Run it explicitly with `python3 tests/run_tests.py --golden`, or
-— the recommended refactor flow — validate your branch against another ref's
-`dist/` before/after the refactor to confirm the build output did not change
-(nothing broke, nothing different):
+**Golden build test is REFACTOR-ONLY — DO NOT RUN IT for routine work.** It is not
+part of the default suite, and it must not be invoked for feature/fix/docs/chore
+tasks: it rebuilds the whole app just to confirm a fresh build is byte-identical
+to a reference `dist/`, which adds zero value on a non-refactor task and wastes
+~20 s of rebuild time double-checking unchanged output (the build is deterministic
+— two consecutive builds already match). **Skip it unless you are refactoring**
+and need to confirm the build output did not change vs an older, stable ref.
+Run it only then:
 
 ```bash
-python3 tests/check_dist_ref.py main          # fresh build vs main's dist/ (byte-identical check)
-python3 tests/check_dist_ref.py dev           # ... vs dev's dist/
-python3 tests/check_dist_ref.py <commit-sha>  # ... vs an older commit
+python3 tests/run_tests.py --golden              # fresh build vs the checked-in dist/
+python3 tests/check_dist_ref.py main             # fresh build vs main's dist/ (the refactor check)
+python3 tests/check_dist_ref.py dev              # ... vs dev's dist/
+python3 tests/check_dist_ref.py <commit-sha>     # ... vs an older commit
 ```
 
 `check_dist_ref.py` runs the full suite (including the golden test) with
@@ -434,14 +436,15 @@ Layers (each also runs standalone: `python3 tests/test_walker.py`, …):
 | `test_tresfile.py` | `quest_data.py`'s `.tres`/enum parsing on self-contained fixtures | nothing |
 | `test_dist_conformance.py` | schema + cross-dataset invariants of the shipped `dist/` (token encoding, stats self-consistency, locale knot-set parity, id maps) | checked-in `dist/` only |
 | `test_data_passes.py` | the data passes over the real game root at the documented volumes (312 quests, 154 items, 24 knights, 71 specials, 511 audiences, 235 dialogs, 6 endings) | `../game/SovereignTowerCode` (skips if absent) |
-| `test_build_golden.py` | a **fresh build is byte-identical to the reference `dist/`** — the highest-value regression net for a refactor; **opt-in** (`run_tests.py --golden` or `check_dist_ref.py`, not run by default) | game root + pip `zstandard` (skips if absent) |
+| `test_build_golden.py` | a **fresh build is byte-identical to the reference `dist/`** — the highest-value regression net for a refactor; **refactor-only, do not run for routine work** (`run_tests.py --golden` or `check_dist_ref.py`, not run by default) | game root + pip `zstandard` (skips if absent) |
 | `test_frontend.py` + `frontend_smoke.js` | `node --check dist/app.js` + boots the full app in a VM with a minimal DOM stub, renders every tab, and calls `renderDialogue()` across all 922 knots expecting zero throws | node (skips if absent) |
 
 Guidelines:
 - `dist/` is the golden reference for `test_build_golden.py`; when data changes
   *intentionally*, rebuild `dist/` and commit the new golden in the same change.
-  The golden test is opt-in (`--golden`) precisely so routine feature work does
-  not pay the full-build cost; a refactor branch must run `check_dist_ref.py`.
+  The golden test is refactor-only (`--golden`) precisely so routine feature work
+  does not pay the full-build cost; only a refactor branch should run
+  `check_dist_ref.py`.
 - The suite deliberately avoids third-party test runners (no pytest), matching
   the project's no-runtime-deps philosophy.
 - Known data quirks the suite acknowledges (documented in the tests):

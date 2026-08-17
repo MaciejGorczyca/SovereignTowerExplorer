@@ -11,11 +11,12 @@ Loads every `test_*.py` module in tests/ and runs it with stdlib unittest
 runtime (zstandard / node) skip cleanly when those are missing.
 
 The golden build test (`test_build_golden`) is deliberately **not** part of the
-default suite: it rebuilds the whole app and diffs it against a `dist/`, which
-only earns its time on refactor work (confirming the build output did not
-change before/after), not on every feature commit. Opt in with `--golden`, or
-compare against another ref's `dist/` via `python3 tests/check_dist_ref.py
-<branch|commit>` (which runs the suite with `--golden`).
+default suite, and you should NOT run it unless you are doing a REFACTOR task:
+it rebuilds the whole app (~20 s) just to confirm the build output is
+byte-identical to a reference dist/, which adds zero value for feature/fix/docs
+work (the build is deterministic — two consecutive builds already match). On a
+refactor only, opt in with `--golden` or compare against another ref's `dist/`
+via `python3 tests/check_dist_ref.py <branch|commit>` (which adds `--golden`).
 """
 import importlib
 import os
