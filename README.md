@@ -307,7 +307,15 @@ actions)"), the doleance schedulers and special-instruction schedulers (the ones
 with dedicated knot-level rows — quest follow-ups and special triggers — are kept
 on their own lines to avoid duplication), the director/intervention notes, knight
 death/demission triggers, the filler pack, county introduction and ultimatum
-follow-up sources. When the knot is a **free-time dialogue** (a `dialogues.json`
+follow-up sources — plus the **divert-reached sub-scene labels** for audiences
+never queued by any of those channels: "Same scene as <scheduled sibling>"
+(identical ink path, e.g. `county_quest_brimwood_3_testimony_1` = its doleance-scheduled
+twin) and "Plays inside <parent audience>" (the nearest scheduled ancestor audience
+whose knot diverts into this one, resolved by walking the knot→divert graph — e.g.
+`county_quest_brimwood_3_testimony_2` and the 6 brimwood-trial interventions play inside
+`county_quest_brimwood_3_before_testimony`, the candidacies inside their county finals,
+`intervention_childeric_county_quest_almor_audience_3` inside `county_quest_almor_3`).
+When the knot is a **free-time dialogue** (a `dialogues.json`
 entry), the origin section adds its own row ("Played as an affinity dialogue of
 <knight> (requires affinity ≥ N, plus the state-aware gates)",
 "Knight conversation: <knights> — plays once, free time, with its room/state
@@ -496,7 +504,15 @@ first-grievance knots calling `UnlockFillerAudiencesPack`), 7 county introductio
 transitions or when a neighboring county is rallied), 6 ultimatum follow-up scenes
 (the victory/defeat audiences of the kingslayer (deadline 23), dragon-knight (8) and
 emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 61 fired after
-quests, 4 knotless; 34 audience
+quests, 4 knotless, 14 divert-reached sub-scene audiences
+(never queued by any channel: their ink knot is reached via an ink divert inside another,
+scheduled audience's scene — the 6 brimwood-trial interventions, `county_quest_brimwood_3_testimony_2`,
+`intervention_childeric_county_quest_almor_audience_3`, the childeric/ligia/tarcus candidacies,
+`goberto_gimmick_introduction_new_armor` and `intro_dragon_knight_grievance` — each labelled in its
+Conditions box "Plays inside <parent audience>" resolved from the knot→divert graph, e.g.
+`county_quest_brimwood_3_testimony_2` → the doleance-scheduled `county_quest_brimwood_3_before_testimony`,
+plus the same-ink duplicate `county_quest_brimwood_3_testimony_1` marked "Same scene as"
+`county_quest_brimwood_3_before_testimony`); 34 audience
 requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
 roundtable, they invite the knight back), and every request's **ink unlock sources** rendered in
 its drawer ("Unlocked by ink": the `UnlockAudienceRequest` call sites — e.g. `rowan_request` is

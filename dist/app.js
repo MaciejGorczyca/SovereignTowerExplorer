@@ -1650,7 +1650,10 @@ function ultimatumSource(a) {
 // filler pack (fl), county introductions (ci) and ultimatum follow-ups (um).
 // Each entry is { kind, html }; `kind` lets the knot drawer drop the rows that
 // already have dedicated knot-level lines (quest follow-ups, special triggers).
-function audienceGates(stem, a) {
+// This is the "base" set — the scheduling channels the audience resource
+// carries itself. `audienceGates` appends the divert-reached sub-scene labels
+// (divt/dup, N2) on top for audiences that have no base channel at all.
+function baseAudienceGates(stem, a) {
   const gates = [];
   for (const rq of a.rq || []) {
     const lab = rq[0] === "VAR" ? "Story gate" : (rq[0] === "APLAY" ? "Plays only once" : "Knight gate");
@@ -1700,6 +1703,89 @@ function audienceGates(stem, a) {
   const um = ultimatumSource(a);
   if (um) gates.push({ kind: "um", html: um });
   return gates;
+}
+// audienceGates = the base scheduling channels + the N2 divert-in labels. The
+// divt/dup rows only fire for audiences whose base channels are all empty (the
+// ones the knot drawer calls "no conditions" — e.g. the brimwood-trial
+// interventions + `_testimony_2`, the candidacies, goberto's new-armor gimmick
+// and the dragon-knight grievance intro), so existing gated audiences are
+// untouched and their condition counts stay stable.
+function audienceGates(stem, a) {
+  return baseAudienceGates(stem, a).concat(divertInRows(stem, a));
+}
+// knot -> { stem } | null — the NEAREST scheduled ancestor audience of an ink
+// knot, found by walking the ink diverts upward (knotIncoming) until a knot
+// that some actually-scheduled audience resource plays. For
+// county_quest_brimwood_audience_3_after_testimony the walk is
+// after_testimony <- intervention_*_brimwood_testimony <- ...before_testimony,
+// landing on the doleance-scheduled county_quest_brimwood_3_before_testimony.
+let _divtParent = null;
+function divertInParent(knot) {
+  if (!INDEX || !AUDIENCE) return null;
+  if (!_divtParent) _divtParent = new Map();
+  if (_divtParent.has(knot)) return _divtParent.get(knot);
+  let found = null;
+  const seen = new Set();
+  const find = (cur) => {
+    if (found || seen.has(cur) || !INDEX.knots[cur]) return;
+    seen.add(cur);
+    const sched = (knotAudiences().get(cur) || []).find((x) =>
+      baseAudienceGates(x.stem, AUDIENCE.audiences[x.stem]).length);
+    if (sched) { found = { stem: sched.stem }; return; }
+    for (const inc of knotIncoming().get(cur) || []) find(inc);
+  };
+  for (const f of knotIncoming().get(knot) || []) find(f);
+  _divtParent.set(knot, found);
+  return found;
+}
+// N2 — divert-reached sub-scene audiences. These audience resources are never
+// queued by any channel; their ink knot is reached via an ink divert inside
+// another, scheduled audience's scene. Rows (only when the audience has no base
+// conditions of its own):
+//   divt — "Plays inside <parent audience>": the scheduled parent's scene diverts
+//          into this knot (parent = nearest scheduled ancestor audience via
+//          knotIncoming). e.g. county_quest_brimwood_3_testimony_2, the 6
+//          brimwood interventions, intervention_childeric_county_quest_almor_3,
+//          the candidacies, goberto_gimmick_introduction_new_armor,
+//          intro_dragon_knight_grievance.
+//   dup  — "Same scene as <scheduled sibling>": two audience resources share one
+//          ink path; the sibling is the scheduled one, this one is a literal
+//          duplicate resource. e.g. county_quest_brimwood_3_testimony_1 ==
+//          county_quest_brimwood_3_before_testimony.
+function divertInRows(stem, a) {
+  const rows = [];
+  if (baseAudienceGates(stem, a).length) return rows;
+  const k = a.k;
+  if (!k || !INDEX || !INDEX.knots[k]) return rows;
+  const sibs = (knotAudiences().get(k) || []).filter((x) => x.stem !== stem);
+  const schedSib = sibs.find((x) =>
+    baseAudienceGates(x.stem, AUDIENCE.audiences[x.stem]).length);
+  if (schedSib) {
+    rows.push({
+      kind: "dup",
+      html: `Same scene as ${audienceLink(schedSib.stem)} — an identical ink path (<b>${esc(k)}</b>); this audience resource is never queued itself, the scheduled sibling is the one that actually plays the scene`,
+    });
+    return rows;
+  }
+  const parent = divertInParent(k);
+  if (parent) {
+    const p = AUDIENCE.audiences[parent.stem];
+    const pk = (p && p.k);
+    const all = knotIncoming().get(k) || [];
+    const hops = all.filter((h) => h !== pk).slice(0, 3);
+    let hopsNote = "";
+    if (hops.length) {
+      const chips = hops.map((h) => INDEX.knots[h]
+        ? `<a class="chip knobtn knotlink" data-knot="${esc(h)}">${esc(h)}</a>`
+        : `<span class="chip">${esc(h)}</span>`).join(" ");
+      hopsNote = ` (reached via ink divert${all.length > 1 ? "s" : ""} from <span class="readers">${chips}</span>${all.length > hops.length ? ` <span class="mut">+${all.length - hops.length} more</span>` : ""})`;
+    }
+    rows.push({
+      kind: "divt",
+      html: `Plays inside ${audienceLink(parent.stem)} — an ink-divert sub-scene: this audience resource is never queued itself, it runs when the scheduled ${esc(p && p.f || "audience")} scene's ink diverts into it${hopsNote}`,
+    });
+  }
+  return rows;
 }
 function audienceConditionRows(stem, a) { return audienceGates(stem, a).map((g) => g.html); }
 function audienceConditionCount(stem, a) { return audienceGates(stem, a).length; }
@@ -4270,6 +4356,7 @@ function aHaystack(stem, a) {
     if (fl[2] != null) h.push("corruption tier " + fl[2]);
     for (const k of fillerPackUnlocks().get(fl[0]) || []) h.push("unlocked by " + k, k);
   }
+  for (const g of divertInRows(stem, a)) h.push(g.html.replace(/<[^>]+>/g, " "));
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }

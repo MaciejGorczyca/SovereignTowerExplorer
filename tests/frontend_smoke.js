@@ -249,6 +249,67 @@ waitReady().then(() => {
   if (!vm.runInContext("rhay('rowan_request', AUDIENCE.requests.rowan_request).indexOf('arlin_introduction_to_act_2') >= 0", sandbox)) {
     throw new Error("request unlock knot not indexed in the request haystack");
   }
+  // Task N2: divert-reached sub-scene audiences. Audiences whose ink knot is
+  // reached via an ink divert inside another, scheduled audience's scene get a
+  // divt row ("Plays inside <parent>") resolved from knotIncoming (nearest
+  // scheduled ancestor audience); two audience resources sharing one ink path
+  // get a dup row on the non-scheduled one ("Same scene as <sibling>").
+  const divtRows = vm.runInContext(
+    "divertInRows('county_quest_brimwood_3_testimony_2', AUDIENCE.audiences['county_quest_brimwood_3_testimony_2'])", sandbox);
+  if (!divtRows.length || divtRows[0].kind !== "divt" ||
+      divtRows[0].html.indexOf("county_quest_brimwood_3_before_testimony") < 0 ||
+      divtRows[0].html.indexOf("ink-divert") < 0) {
+    throw new Error("testimony_2 divert row wrong: " + JSON.stringify(divtRows));
+  }
+  const brWHtml = vm.runInContext(
+    "audienceConditionRows('county_quest_brimwood_3_testimony_2', AUDIENCE.audiences['county_quest_brimwood_3_testimony_2']).join(' | ')", sandbox);
+  if (brWHtml.indexOf("county_quest_brimwood_3_before_testimony") < 0) {
+    throw new Error("testimony_2 condition row missing parent: " + brWHtml);
+  }
+  const brCond = vm.runInContext(
+    "audienceConditionCount('county_quest_brimwood_3_testimony_2', AUDIENCE.audiences['county_quest_brimwood_3_testimony_2'])", sandbox);
+  if (brCond < 1) throw new Error("testimony_2 no gating conditions after N2");
+  if (!vm.runInContext("ahay('county_quest_brimwood_3_testimony_2', AUDIENCE.audiences['county_quest_brimwood_3_testimony_2']).indexOf('county_quest_brimwood_3_before_testimony') >= 0", sandbox)) {
+    throw new Error("divert parent not in audience haystack");
+  }
+  const dupRows = vm.runInContext(
+    "divertInRows('county_quest_brimwood_3_testimony_1', AUDIENCE.audiences['county_quest_brimwood_3_testimony_1'])", sandbox);
+  if (!dupRows.length || dupRows[0].kind !== "dup" ||
+      dupRows[0].html.indexOf("county_quest_brimwood_3_before_testimony") < 0 ||
+      dupRows[0].html.indexOf("Same scene as") < 0) {
+    throw new Error("testimony_1 same-ink row wrong: " + JSON.stringify(dupRows));
+  }
+  const schedTest1 = vm.runInContext("baseAudienceGates('county_quest_brimwood_3_testimony_1', AUDIENCE.audiences['county_quest_brimwood_3_testimony_1']).length", sandbox);
+  if (schedTest1 !== 0) throw new Error("testimony_1 unexpectedly has a base schedule channel");
+  const schedBefore = vm.runInContext("baseAudienceGates('county_quest_brimwood_3_before_testimony', AUDIENCE.audiences['county_quest_brimwood_3_before_testimony']).length", sandbox);
+  if (schedBefore < 1) throw new Error("before_testimony lost its doleance schedule after N2");
+  // the sibling (doleance-scheduled) must NOT gain a dup/divt row — it has real
+  // conditions, so divertInRows stays empty there
+  const beforeRows = vm.runInContext(
+    "divertInRows('county_quest_brimwood_3_before_testimony', AUDIENCE.audiences['county_quest_brimwood_3_before_testimony'])", sandbox);
+  if (beforeRows.length) throw new Error("scheduled before_testimony got a spurious N2 row: " + JSON.stringify(beforeRows));
+  // one of the divert-reached interventions + a candidacy resolve too
+  const brIntRows = vm.runInContext(
+    "divertInRows('intervention_brunhilda_brimwood_testimony', AUDIENCE.audiences['intervention_brunhilda_brimwood_testimony'])", sandbox);
+  if (!brIntRows.length || brIntRows[0].kind !== "divt" ||
+      brIntRows[0].html.indexOf("county_quest_brimwood_3_before_testimony") < 0) {
+    throw new Error("brimwood intervention divert row wrong: " + JSON.stringify(brIntRows));
+  }
+  const cadRows = vm.runInContext(
+    "divertInRows('childeric_candidacy', AUDIENCE.audiences['childeric_candidacy'])", sandbox);
+  if (!cadRows.length || cadRows[0].kind !== "divt" ||
+      cadRows[0].html.indexOf("county_quest_almor_final_success") < 0) {
+    throw new Error("childeric candidacy divert row wrong: " + JSON.stringify(cadRows));
+  }
+  // the "has gating conditions" filter (ASTATE.cond) now also matches these
+  const test2Cond = vm.runInContext("(() => { ASTATE.cond = true; const r = visibleAudiences().some(([s]) => s === 'county_quest_brimwood_3_testimony_2'); ASTATE.cond = false; return r; })()", sandbox);
+  if (!test2Cond) throw new Error("divert-reached audience not matched by the gating filter");
+  clearPanel();
+  vm.runInContext("openAudienceDetail('county_quest_brimwood_3_testimony_2')", sandbox);
+  if (drawerText().indexOf("county_quest_brimwood_3_before_testimony") < 0 ||
+      drawerText().indexOf("ink-divert") < 0) {
+    throw new Error("testimony_2 drawer missing the divert row: " + drawerText());
+  }
   // channel 10: knight death-follow-up audiences carry a dd link and search in
   // the audience haystack (both tabs consume the reversed field)
   const ddCount = vm.runInContext("AUDIENCE.stats.with_death_followup", sandbox);

@@ -805,6 +805,25 @@ the single best feature of this app:
   Request cards carry an "unlocked by N knots" chip and request search indexes
   the unlock knot names. Frontend-only (`web/app.js`) + smoke assertions +
   docs; full suite green.
+- Divert-reached sub-scene audiences (2026-08-17): task N2 of the audience-condition
+  research — 14 audiences still showed no "Conditions" rows because they are never
+  queued by any channel: their ink knot is reached via an **ink divert** inside
+  another, scheduled audience's scene (or shares its ink path with it). `audienceGates()`
+  now appends two label rows to the base scheduling channels (only for audiences
+  with no base conditions, so existing gated audiences are untouched): **divt**
+  "Plays inside <parent audience> — an ink-divert sub-scene" resolved by walking the
+  knot→divert graph upward to the nearest scheduled ancestor audience
+  (`divertInParent`, memoized) — `county_quest_brimwood_3_testimony_2` + the 6
+  brimwood-trial interventions → `county_quest_brimwood_3_before_testimony`,
+  `intervention_childeric_county_quest_almor_audience_3` → `county_quest_almor_3`,
+  the childeric/ligia/tarcus candidacies → their county finals,
+  `goberto_gimmick_introduction_new_armor` → `county_quest_almor_final_unexpected`,
+  `intro_dragon_knight_grievance` → `intro_nobleman` — and **dup** "Same scene as
+  <scheduled sibling>" for same-ink duplicate resources
+  (`county_quest_brimwood_3_testimony_1` = the scheduled
+  `county_quest_brimwood_3_before_testimony`). Rows count as gating conditions
+  (badge + `acond` filter) and index into audience search. Frontend-only
+  (`web/app.js`) + smoke assertions + docs; full suite green.
 
 
 ---
