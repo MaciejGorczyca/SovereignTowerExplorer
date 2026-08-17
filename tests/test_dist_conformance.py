@@ -205,6 +205,13 @@ class DatasetsTest(unittest.TestCase):
                     self.assertIsInstance(fl[0], str)
                     self.assertTrue(fl[1] is None or isinstance(fl[1], int))
                     self.assertTrue(fl[2] is None or isinstance(fl[2], int))
+                ci = a.get("ci")
+                if ci:
+                    self.assertEqual(len(ci), 2)
+                    self.assertIsInstance(ci[0], str)
+                    self.assertTrue(ci[0])
+                    self.assertIsInstance(ci[1], str)
+                    self.assertTrue(ci[1])
 
     def test_audiences_json_schema(self):
         aud = self.audiences
@@ -230,6 +237,8 @@ class DatasetsTest(unittest.TestCase):
                 self.assertIn(e["k"], ("success", "failure", "unexpected"))
         self.assertEqual(aud["stats"]["with_filler"],
                          sum(1 for a in aud["audiences"].values() if a.get("fl")))
+        self.assertEqual(aud["stats"]["with_county_intro"],
+                         sum(1 for a in aud["audiences"].values() if a.get("ci")))
 
     def test_inventory_schema(self):
         inv = self.inventory

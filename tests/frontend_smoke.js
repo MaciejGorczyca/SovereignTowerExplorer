@@ -258,6 +258,27 @@ waitReady().then(() => {
   }
   vm.runInContext("openAudienceDetail('clovermont_grievance_emergency')", sandbox);
   vm.runInContext("openDetail('clovermont_grievance_bakery_problem')", sandbox);
+  // channel 6: county-introduction audiences carry a ci link (county ink id +
+  // name key), render a source note, index in the audience haystack and in the
+  // knot drawer's audience rows, and surface in the stats
+  const ciCount = vm.runInContext("AUDIENCE.stats.with_county_intro", sandbox);
+  if (ciCount !== 7) throw new Error("with_county_intro != 7: " + ciCount);
+  const ciEnberg = vm.runInContext("AUDIENCE.audiences['county_quest_enberg_1'].ci", sandbox);
+  if (!ciEnberg || ciEnberg.length !== 2 || ciEnberg[0] !== "enberg" ||
+      ciEnberg[1] !== "ENBERG_NAME") {
+    throw new Error("county_quest_enberg_1 ci wrong: " + JSON.stringify(ciEnberg));
+  }
+  const ciSrc = vm.runInContext("countyIntroSource(AUDIENCE.audiences['county_quest_enberg_1'])", sandbox);
+  if (ciSrc.indexOf("Enberg") < 0 || ciSrc.indexOf("neighboring county is rallied") < 0 ||
+      ciSrc.indexOf("act 2 or 3") < 0) {
+    throw new Error("countyIntroSource render missing: " + ciSrc);
+  }
+  if (!vm.runInContext("ahay('county_quest_enberg_1', AUDIENCE.audiences['county_quest_enberg_1']).indexOf('county introduction') >= 0", sandbox)) {
+    throw new Error("county intro not in audience haystack");
+  }
+  const ciInKnot = vm.runInContext("(() => { const r = knotAudiences().get('county_quest_enberg_first_audience'); return r ? r.some(x => x.stem === 'county_quest_enberg_1' && x.ci && x.ci[0] === 'enberg') : false; })()", sandbox);
+  if (!ciInKnot) throw new Error("ci not carried into knotAudiences");
+  vm.runInContext("openAudienceDetail('county_quest_enberg_1')", sandbox);
   // drawer rendering must not throw on a demission variant either
   vm.runInContext("openAudienceDetail('knight_leaving_arron_dragonheart')", sandbox);
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE

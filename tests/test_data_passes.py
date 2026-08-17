@@ -254,6 +254,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(st["with_conditions"], 18)
         self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["with_intervention"], 28)
+        self.assertEqual(st["with_county_intro"], 7)
         self.assertEqual(st["knotless"], 4)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
@@ -280,6 +281,32 @@ class AudiencesDataPassTest(unittest.TestCase):
                 self.assertIn(rq[0], ("KAT", "KDEAD", "KABS", "VAR", "APLAY"),
                               (stem, rq))
                 self.assertEqual(len(rq), 3 if rq[0] == "VAR" else 2, (stem, rq))
+
+    def test_county_intro_sources(self):
+        aud = _passes()["audiences"]
+        # channel 6: the county resources' county_introduction field reverse-maps
+        # onto the county_quest_*_1 intro audiences (ActManager scheduling)
+        for stem, county, name_key in (
+            ("county_quest_enberg_1", "enberg", "ENBERG_NAME"),
+            ("county_quest_almor_1", "almor", "ALMOR_NAME"),
+            ("county_quest_isle_of_basalt_1", "basalt_isles", "BASALT_ISLES_NAME"),
+            ("county_quest_brimwood_1", "brimwood", "BRIMWOOD_NAME"),
+            ("county_quest_kutnar_1", "kutnar", "KUTNAR_NAME"),
+            ("county_quest_moonvale_1", "moonvale", "MOONVALE_NAME"),
+            ("county_quest_southbay_1", "southbay", "SOUTHBAY_NAME"),
+        ):
+            with self.subTest(audience=stem):
+                ci = aud["audiences"][stem].get("ci")
+                self.assertEqual(ci, [county, name_key], (stem, ci))
+                self.assertTrue(aud["audiences"][stem]["c"], stem)
+        # every ci entry resolves to a real audience and carries a real county
+        for stem, a in aud["audiences"].items():
+            ci = a.get("ci")
+            if ci is None:
+                continue
+            self.assertIn(stem, aud["audiences"], stem)
+            self.assertEqual(len(ci), 2, (stem, ci))
+            self.assertTrue(ci[0] and ci[1], (stem, ci))
 
     def test_director_sources(self):
         aud = _passes()["audiences"]

@@ -209,6 +209,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
             "with_demission": sum(1 for a in audiences.values()
                                   if any(d[1] == "demission" for d in (a.get("dd") or []))),
             "with_filler": sum(1 for a in audiences.values() if a.get("fl")),
+            "with_county_intro": sum(1 for a in audiences.values() if a.get("ci")),
             "with_callbacks": sum(1 for r in requests.values() if r.get("cb")),
             "knotless": len(knotless),
             "fires_after_quests": len(rev["qf"]),
@@ -225,6 +226,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
           f"{data['stats']['with_death_followup']} knight death follow-ups · "
           f"{data['stats']['with_demission']} knight demissions · "
           f"{data['stats']['with_filler']} filler packs · "
+          f"{data['stats']['with_county_intro']} county introductions · "
           f"{data['stats']['with_callbacks']} call-backs · "
           f"{data['stats']['requests']} requests · "
           f"{data['stats']['fires_after_quests']} fired after quests · "

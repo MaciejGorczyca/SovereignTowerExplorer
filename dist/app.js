@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [] });
     }
   }
   return _knotAud || new Map();
@@ -1413,6 +1413,17 @@ function fillerSource(stem, a) {
   bits.push("random pick to fill a cycle, corruption-weighted");
   return bits.join(" — ");
 }
+// human-readable "where it comes from" for a county-introduction audience (the
+// `ci` field): the county whose narrated intro this is, and how the ActManager
+// schedules it (act 1->2 / 2->3 transition intros with a per-neighbor shuffle
+// delay, or right after a neighboring county is rallied — act_manager.gd:58,102).
+// Returns HTML ("" when the audience is not a county introduction).
+function countyIntroSource(a) {
+  const ci = a.ci;
+  if (!ci || !ci.length) return "";
+  const name = esc(tkey(ci[1]) || ci[0]);
+  return `County introduction of <b>${name}</b> — scheduled when act 2 or 3 starts (a few cycles in, per-neighbor shuffle delay) or when a neighboring county is rallied`;
+}
 // human-readable rendering of a decoded audience requirement
 function audienceReqText(r) {
   const tag = r[0];
@@ -1460,6 +1471,8 @@ function originSection(name) {
         : "";
       const fl = fillerSource(a.stem, a);
       const flk = fl ? ` <span class="mut">· ${fl}</span>` : "";
+      const ci = countyIntroSource(a);
+      const cik = ci ? ` <span class="mut">· ${ci}</span>` : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
@@ -1468,9 +1481,9 @@ function originSection(name) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}`);
       }
     }
   }
@@ -3901,6 +3914,11 @@ function aHaystack(stem, a) {
     if (q) h.push(tkey(q.n));
   }
   if (a.cyc && a.cyc.length) h.push("cycle " + a.cyc.join(" "));
+  const ci = a.ci;
+  if (ci && ci.length) {
+    h.push("county introduction", "introduction", ci[0], tkey(ci[1]));
+    h.push("act 2", "act 3", "neighboring county", "rallied");
+  }
   for (const d of a.dir || []) h.push(d);
   for (const d of a.dd || []) {
     h.push(d[0], kName(d[0]), d[1], DEMISSION_VARIANT[d[2]] || "");
@@ -4004,6 +4022,10 @@ function audCard(stem, a) {
   if (a.fl && a.fl.length) {
     badges.push(`<span class="badge filler" title="filler scene of the ${esc(a.fl[0])} pack — random pick to fill a cycle, corruption-weighted">filler · ${esc(a.fl[0])}</span>`);
   }
+  if (a.ci && a.ci.length) {
+    const cn = esc(tkey(a.ci[1]) || a.ci[0]);
+    badges.push(`<span class="badge cyc" title="county introduction of ${cn} — scheduled when act 2/3 starts or when a neighboring county is rallied">county intro · ${cn}</span>`);
+  }
   const rqstems = reqsFor(stem);
   if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
   if (a.k && !INDEX.knots[a.k]) badges.push(`<span class="badge knotless">no knot</span>`);
@@ -4083,6 +4105,7 @@ function openAudienceDetail(stem) {
     (a.rq || []).length ? `${a.rq.length} condition${a.rq.length > 1 ? "s" : ""}` : "",
     fu.length ? `fires after ${fu.length} quest${fu.length > 1 ? "s" : ""}` : "",
     rqstems.length ? `triggered by ${rqstems.length} request${rqstems.length > 1 ? "s" : ""}` : "",
+    a.ci && a.ci.length ? `county introduction of ${tkey(a.ci[1]) || a.ci[0]}` : "",
   ].filter(Boolean)) {
     const s = document.createElement("span");
     s.className = "chip";
@@ -4117,6 +4140,18 @@ function openAudienceDetail(stem) {
     d.className = "qdesc";
     d.textContent = a.c.map((c) => tkey(c) || c).join(", ");
     panel.appendChild(d);
+  }
+
+  if (a.ci && a.ci.length) {
+    section("County introduction");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    d.innerHTML = countyIntroSource(a);
+    const p = document.createElement("p");
+    p.className = "qdesc muted";
+    p.textContent = "This is the scene that introduces the county. The ActManager is the only scheduler: at each act 1→2 / 2→3 transition the act's county intros are queued a few cycles in (per-neighbor shuffle delay, brimwood first), and when a county is rallied the introductions of its not-yet-introduced neighbors follow.";
+    panel.appendChild(d);
+    panel.appendChild(p);
   }
 
   const scheds = doleanceSchedulers().get(stem);

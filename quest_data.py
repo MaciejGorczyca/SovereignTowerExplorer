@@ -980,6 +980,36 @@ def load_knight_demissions():
     return out
 
 
+def load_county_introductions():
+    """Parse content/world/counties/*.tres -> {audience stem: [county ink id, name key]}.
+
+    Channel 6 of the audience-condition research: a county's
+    `county_introduction` field is the narrated scene that introduces it (the
+    `county_quest_<id>_1` audiences of the county_quests folder). The ActManager
+    is the only scheduler (act_manager.gd): at each act 1->2 / 2->3 transition
+    `set_next_counties_introductions()` (:58) schedules the act's county intros
+    with a `2 + i*3` (or `2 + i*4` when the act-2 list is short) cycle delay
+    (brimwood first, then the shuffled rest), and `_on_county_rallied()` (:102)
+    schedules the intros of the not-yet-introduced neighbors of a just-rallied
+    county. Values are `[county ink_id, county_name loc key]`.
+    """
+    d = f"{GAME}/content/world/counties"
+    out = {}
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tres"):
+            continue
+        tf = TresFile.load(os.path.join(d, fn), d)
+        intro = tf.props.get("county_introduction")
+        stem = _ref_stem(intro, tf) if intro else None
+        if not stem:
+            continue
+        out[stem] = [tf.props.get("ink_id") or os.path.splitext(fn)[0],
+                     tf.props.get("county_name") or ""]
+    return out
+
+
 # FillerAudiencesManager pack arrays of systems/autoloads/cycles_manager.tscn
 # -> the runtime unlock name. The four "representatives" packs are always
 # available from the start (filler_audiences_manager.gd `set_up()`); every
@@ -1093,7 +1123,8 @@ def load_audience_catalog(idx):
     Each audience resource becomes {k: ink_path, f: folder, c: [char name
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
     special-intervention notes, dd: knight death-follow-up / demission links,
-    fl: [filler pack, targeted population, corruption score]} — the reverse
+    fl: [filler pack, targeted population, corruption score], ci: [county ink
+    id, name key] when the audience is a county introduction} — the reverse
     lookup the knot drawer needs ("how does this knot fire, and under what
     conditions?").
     """
@@ -1106,6 +1137,7 @@ def load_audience_catalog(idx):
     death_followups = load_knight_death_followups()
     demissions = load_knight_demissions()
     filler = load_filler_packs()
+    county_intros = load_county_introductions()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -1141,6 +1173,9 @@ def load_audience_catalog(idx):
             fl = filler.get(stem)
             if fl:
                 entry["fl"] = fl
+            ci = county_intros.get(stem)
+            if ci:
+                entry["ci"] = ci
             catalog[stem] = entry
     return catalog
 
