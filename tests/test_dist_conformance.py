@@ -245,6 +245,11 @@ class DatasetsTest(unittest.TestCase):
                     self.assertTrue(cd[0], stem)
                     self.assertIsInstance(cd[1], str)
                     self.assertTrue(cd[1], stem)
+                if a.get("unused"):
+                    self.assertEqual(a["unused"], True, stem)
+                    unote = a.get("unote")
+                    self.assertIsInstance(unote, str, stem)
+                    self.assertTrue(unote, stem)
         # channel 14: exactly the code-scheduled knight-event audiences carry `code`
         self.assertEqual(
             {s for s, a in self.quests["audiences"].items() if a.get("code")},
@@ -252,6 +257,15 @@ class DatasetsTest(unittest.TestCase):
              "dulahan_candidacy",
              "lost_child_plotline_groveshire_gavault_confrontation",
              "intervention_tarcus_county_quest_kutnar_first_audience"})
+        # channel 15: exactly the legacy/orphan audiences carry `unused`
+        self.assertEqual(
+            {s for s, a in self.quests["audiences"].items() if a.get("unused")},
+            {"belladona_classic_recruitment",
+             "rowan_classic_recruitment",
+             "rupin_classic_recruitment",
+             "sagadin_classic_recruitment",
+             "brizh_nobles_grievance_first_meeting",
+             "brizh_scholars_grievance_first_meeting"})
 
     def test_audiences_json_schema(self):
         aud = self.audiences
@@ -289,6 +303,10 @@ class DatasetsTest(unittest.TestCase):
                 self.assertTrue(cd[0], stem)
                 self.assertIsInstance(cd[1], str)
                 self.assertTrue(cd[1], stem)
+            if a.get("unused"):
+                self.assertEqual(a["unused"], True, stem)
+                self.assertIsInstance(a.get("unote"), str, stem)
+                self.assertTrue(a.get("unote"), stem)
 
     def test_inventory_schema(self):
         inv = self.inventory

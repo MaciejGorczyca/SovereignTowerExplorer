@@ -529,7 +529,12 @@ scheduled audience's scene — the 6 brimwood-trial interventions, `county_quest
 Conditions box "Plays inside <parent audience>" resolved from the knot→divert graph, e.g.
 `county_quest_brimwood_3_testimony_2` → the doleance-scheduled `county_quest_brimwood_3_before_testimony`,
 plus the same-ink duplicate `county_quest_brimwood_3_testimony_1` marked "Same scene as"
-`county_quest_brimwood_3_before_testimony`); 34 audience
+`county_quest_brimwood_3_before_testimony`); 6 legacy-orphan flags (the `unused`/`unote` field —
+never queued by any channel: the four `*_classic_recruitment` scenes, dead (superseded by the
+request recruitment mechanic, whose successor `*_audience_request_recruitment` resources live on),
+and the two `brizh_*_grievance_first_meeting` orphan knots, real knots that no doleance /
+divert / quest / request / special / director / code source ever plays — each shown as a dashed
+`legacy · unused` card badge and a "Legacy resource:" Conditions row); 34 audience
 requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
 roundtable, they invite the knight back), and every request's **ink unlock sources** rendered in
 its drawer ("Unlocked by ink": the `UnlockAudienceRequest` call sites — e.g. `rowan_request` is

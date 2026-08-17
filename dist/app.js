@@ -1094,7 +1094,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [], um: a.um || [], umc: a.umc || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [], um: a.um || [], umc: a.umc || [], unused: a.unused || false, unote: a.unote || "" });
     }
   }
   return _knotAud || new Map();
@@ -1668,8 +1668,8 @@ function codeGateHtml(cd) {
 // the quests that fire it as a follow-up (rev.qf), the requests that unlock it,
 // the doleance schedulers, the special instructions that schedule it, the
 // director/intervention scenes (dir), knight death/demission triggers (dd), the
-// filler pack (fl), county introductions (ci), ultimatum follow-ups (um) and the
-// code-scheduled knight events (code).
+// filler pack (fl), county introductions (ci), ultimatum follow-ups (um), the
+// code-scheduled knight events (code) and the legacy-orphan flags (unused, N5).
 // Each entry is { kind, html }; `kind` lets the knot drawer drop the rows that
 // already have dedicated knot-level lines (quest follow-ups, special triggers).
 // This is the "base" set — the scheduling channels the audience resource
@@ -1725,6 +1725,9 @@ function baseAudienceGates(stem, a) {
   const um = ultimatumSource(a);
   if (um) gates.push({ kind: "um", html: um });
   for (const cd of a.code || []) gates.push({ kind: "code", html: codeGateHtml(cd) });
+  if (a.unused) {
+    gates.push({ kind: "unused", html: `<b>Legacy resource:</b> ${esc(a.unote || "never scheduled in the shipped game")}` });
+  }
   return gates;
 }
 // audienceGates = the base scheduling channels + the N2 divert-in labels. The
@@ -4390,6 +4393,9 @@ function aHaystack(stem, a) {
   for (const cd of a.code || []) {
     h.push((CODE_SOURCE_LABELS[cd[0]] || "code-scheduled"), cd[0], cd[1]);
   }
+  if (a.unused) {
+    h.push("legacy", "unused", "never scheduled", "orphan", a.unote || "");
+  }
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }
@@ -4495,6 +4501,7 @@ function audCard(stem, a) {
   }
   const rqstems = reqsFor(stem);
   if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
+  if (a.unused) badges.push(`<span class="badge unused" title="${esc(a.unote || "")}">legacy · unused</span>`);
   if (a.k && !INDEX.knots[a.k]) badges.push(`<span class="badge knotless">no knot</span>`);
   const chars = (a.c || []).map(tkey).filter(Boolean);
   const open = () => go("aud", stem);

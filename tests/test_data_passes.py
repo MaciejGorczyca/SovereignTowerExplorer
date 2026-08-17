@@ -627,6 +627,52 @@ class AudiencesDataPassTest(unittest.TestCase):
         for stem in expect:
             self.assertTrue(self.quests["audiences"][stem].get("code"), stem)
 
+    def test_unused_legacy_sources(self):
+        aud = _passes()["audiences"]
+        # channel 15: legacy/orphan audience resources the shipped game never
+        # queues. The four `*_classic_recruitment` scenes are dead (their ink
+        # path never got a compiled knot; the request recruitment mechanic
+        # superseded them) and the two `brizh_*_grievance_first_meeting` knots
+        # exist in the compiled story but no channel ever references them.
+        expect = {
+            "belladona_classic_recruitment",
+            "rowan_classic_recruitment",
+            "rupin_classic_recruitment",
+            "sagadin_classic_recruitment",
+            "brizh_nobles_grievance_first_meeting",
+            "brizh_scholars_grievance_first_meeting",
+        }
+        self.assertEqual(
+            {s for s, a in aud["audiences"].items() if a.get("unused")},
+            expect)
+        for stem in expect:
+            with self.subTest(audience=stem):
+                self.assertEqual(aud["audiences"][stem]["unused"], True, stem)
+                note = aud["audiences"][stem].get("unote")
+                self.assertTrue(note, stem)
+                self.assertIn("shipped game", note, (stem, note))
+        for stem in expect:
+            if stem.startswith("brizh"):
+                self.assertIn("orphan knot",
+                              aud["audiences"][stem]["unote"], stem)
+            else:
+                self.assertIn("request recruitment",
+                              aud["audiences"][stem]["unote"], stem)
+        # the successors live in the request catalog
+        successors = {
+            "belladonna_request": "belladona_audience_request_recruitment",
+            "rowan_request": "rowan_audience_request_recruitment",
+            "rupin_request": "rupin_audience_request_recruitment",
+            "sagadin_request": "sagadin_audience_request_recruitment",
+        }
+        for stem, audstem in successors.items():
+            self.assertIn(stem, aud["requests"], stem)
+            self.assertIn(audstem, aud["audiences"], stem)
+        # the flag also rides the quests.json catalog copy
+        for stem in expect:
+            self.assertTrue(self.quests["audiences"][stem].get("unused"), stem)
+            self.assertTrue(self.quests["audiences"][stem].get("unote"), stem)
+
     def test_rev_qf_resolves(self):
         aud = _passes()["audiences"]
         for stem, entries in aud["rev"]["qf"].items():

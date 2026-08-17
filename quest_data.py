@@ -1325,6 +1325,40 @@ def load_code_scheduled():
     return code
 
 
+def load_unused_audiences():
+    """Mark the legacy/orphan audience resources the shipped game never queues.
+
+    Channel 15 of the audience-condition research: the final no-conditions
+    audit's legacy-orphan family. Two flavors, both dead:
+
+    - the four `*_classic_recruitment` resources (`doleances` folder) — their
+      ink path never got a compiled knot (superseded by the request recruitment
+      mechanic; the follower `*_request` / `*_audience_request_recruitment`
+      resources replaced them), and
+    - the two `brizh_*_grievance_first_meeting` resources — real knots that
+      exist in the compiled story but no channel (doleance / divert / quest /
+      request / special / director / code) ever references.
+
+    Honest display is a `unused` flag + `unote` note rendered as an audience
+    Conditions row and card badge. Values are {stem: note} — the additive
+    `unused`/`unote` audience fields.
+    """
+    return {
+        "belladona_classic_recruitment": "legacy recruitment — superseded by the "
+            "belladonna request recruitment; never scheduled in the shipped game",
+        "rowan_classic_recruitment": "legacy recruitment — superseded by the "
+            "rowan request recruitment; never scheduled in the shipped game",
+        "rupin_classic_recruitment": "legacy recruitment — superseded by the "
+            "rupin request recruitment; never scheduled in the shipped game",
+        "sagadin_classic_recruitment": "legacy recruitment — superseded by the "
+            "sagadin request recruitment; never scheduled in the shipped game",
+        "brizh_nobles_grievance_first_meeting": "orphan knot — never referenced "
+            "by any scheduler; not played in the shipped game",
+        "brizh_scholars_grievance_first_meeting": "orphan knot — never referenced "
+            "by any scheduler; not played in the shipped game",
+    }
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
@@ -1332,9 +1366,10 @@ def load_audience_catalog(idx):
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
     special-intervention notes, dd: knight death-follow-up / demission links,
     fl: [filler pack, targeted population, corruption score], ci: [county ink
-    id, name key] when the audience is a county introduction} — the reverse
-    lookup the knot drawer needs ("how does this knot fire, and under what
-    conditions?").
+    id, name key] when the audience is a county introduction, code: code-
+    scheduled knight-event pairs, unused+unote: legacy-orphan flags} — the
+    reverse lookup the knot drawer needs ("how does this knot fire, and under
+    what conditions?").
     """
     catalog = {}
     if not os.path.isdir(AUDIENCE_DIR):
@@ -1348,6 +1383,7 @@ def load_audience_catalog(idx):
     county_intros = load_county_introductions()
     ultimatums = load_ultimatums(idx)
     code_scheduled = load_code_scheduled()
+    unused = load_unused_audiences()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -1394,6 +1430,10 @@ def load_audience_catalog(idx):
             cds = code_scheduled.get(stem)
             if cds:
                 entry["code"] = list(cds)
+            unote = unused.get(stem)
+            if unote:
+                entry["unused"] = True
+                entry["unote"] = unote
             catalog[stem] = entry
     return catalog
 

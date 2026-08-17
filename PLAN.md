@@ -861,8 +861,27 @@ the single best feature of this app:
   Consolidated Conditions box (`CODE_SOURCE_LABELS`: Knight gimmick / Family
   reunion / Knight death / Special instruction), counts them in the gating badge
   + `acond` filter and indexes the notes into audience search. Data-layer
-  (`quest_data.py`) + frontend (`web/app.js`) + tests + docs; rebuild `dist/`;
-  suite green.
+(`quest_data.py`) + frontend (`web/app.js`) + tests + docs; rebuild `dist/`;
+   suite green.
+- Legacy-orphan flags (2026-08-17): task N5 — the final no-conditions audit's
+  legacy family. 6 audience resources are never queued by any channel in the
+  shipped game: the four `*_classic_recruitment` scenes (dead — their ink path
+  never got a compiled knot, the request recruitment mechanic superseded them)
+  and the two `brizh_*_grievance_first_meeting` scenes (real knots that exist
+  in the compiled story but that no doleance / divert / quest / request /
+  special / director / code channel ever references). `quest_data.py` now marks
+  them with an additive **`unused: true` + `unote`** audience field
+  (channel 15, `load_unused_audiences()` — "legacy recruitment — superseded by
+  the … request recruitment; never scheduled in the shipped game" /
+  "orphan knot — never referenced by any scheduler; not played in the shipped
+  game"). The frontend renders `unote` as a "Legacy resource" row in the
+  Consolidated Conditions box, counts it in the gating badge + `acond` filter,
+  shows a dashed `legacy · unused` card badge, indexes the note into audience
+  search and carries it into the knot drawer's "Where it comes from" audience
+  rows (the brizh orphan knots). Covers the last 6 of the 28 no-conditions
+  audiences (26/28 solved by N1–N5; the 2+1 documented E4/E5 strays need no
+  code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
+  + tests + docs; rebuild `dist/`; suite green.
 
 
 ---

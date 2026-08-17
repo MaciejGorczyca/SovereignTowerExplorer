@@ -310,6 +310,7 @@ a.knotlink { color: var(--blue); text-decoration: underline; cursor: pointer; }
 .badge.aud { color: var(--blue); }
 .badge.cyc { color: #78c2e7; border-color: #25455c; background: #152a3a; }
 .badge.knotless { opacity: 0.55; }
+.badge.unused { opacity: 0.6; color: var(--mut); border-color: #4a4436; border-style: dashed; }
 a.audiencelink { color: var(--blue); text-decoration: underline; cursor: pointer; }
 a.speciallink { color: var(--acc); text-decoration: underline; cursor: pointer; }
 a.reqlink { color: #b691d8; text-decoration: underline; cursor: pointer; }
