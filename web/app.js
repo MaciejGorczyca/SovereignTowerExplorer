@@ -19,8 +19,8 @@ const DLG_ROOMS = [
 // technical-layer display toggles (persisted in localStorage)
 const SHOW_KEY = "st_tower_ink_show";
 const SHOW_DEFAULTS = {
-  diverts: true, stitches: true, markers: true, conds: true,
-  fPres: true, fSound: true, fSet: true, fReq: true, fState: true,
+  diverts: true, stitches: true, markers: false, conds: true,
+  fPres: false, fSound: false, fSet: true, fReq: true, fState: true,
   fBbc: false,
 };
 const SHOW_ITEMS = [
