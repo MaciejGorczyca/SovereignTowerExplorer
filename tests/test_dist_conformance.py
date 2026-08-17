@@ -269,9 +269,13 @@ class DatasetsTest(unittest.TestCase):
                 for key, kind in (("knots", list), ("quests", list),
                                   ("signal", str), ("note", str), ("knight", str),
                                   ("dlg", list), ("goto", list), ("auds", list),
-                                  ("affects", list), ("vars", list), ("ending", str)):
+                                  ("affects", list), ("vars", list), ("ending", str),
+                                  ("cond", list)):
                     if key in inst:
                         self.assertTrue(isinstance(inst[key], kind), key)
+                for c in inst.get("cond", []):
+                    self.assertIsInstance(c, str)
+                    self.assertTrue(c)
         # new cross-link fields resolve into the other datasets where present
         for name, inst in s["instructions"].items():
             with self.subTest(instruction=name):

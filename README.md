@@ -415,7 +415,12 @@ The other data files (loaded by the other five tabs) are: `quests.json` (312 que
 `inventory.json` (154 items, 71 quest-linked, 24 ink-unlocked), `knights.json` (24
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
-12 knight evolutions, 23 with effect cross-links) and `audiences.json` (511 audiences: 18 with firing
+12 knight evolutions, 23 with effect cross-links; 12 carry decoded `cond`
+firing-condition rows — the tarcus/ursule/epicrate availability gates, the
+golden-key quest guards, the almor-duel guard and the traitor-plot guards — with
+the `CHECK_FOR_EPICRATE_*` cases inheriting the full `_is_epicrate_available()`
+sub-guard set (roundtable-busy, dead, brimwood-trial-ongoing, serpent-knight-met,
+cycle-bounds, Epicrate/Marian audience conflict)) and `audiences.json` (511 audiences: 18 with firing
 conditions, 20 director-scheduled (serpent-knight reset, civil wars, act-ending victories, Arlin
 act intros, Rupin's corruption-gated grievances), 28 special interventions (the ultimatum second
 encounters, the king/dragon allied plots, the traitor's-plot intro + murder, Dulahan's human form,

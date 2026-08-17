@@ -68,6 +68,7 @@ def set_special_root(root):
     GAME = str(Path(root).expanduser().resolve())
 
 INSTRUCTION_CASE = re.compile(r'^\s*&\s*"([^"]+)"\s*:\s*$')
+HELPER_FUNC = re.compile(r"^func\s+(\w+)\s*\(")
 SIGNAL_EMIT = re.compile(r"SignalsEventBus\.(\w+)\.emit\b")
 # effect patterns mined from each match-case body:
 DLG_EMIT = re.compile(r'SignalsEventBus\.unlock_special_dialogue\.emit\(\s*&\s*"([^"]+)"\s*,\s*&\s*"([^"]+)"\s*\)')
@@ -85,7 +86,8 @@ SCENE_PROP = re.compile(r'(\w+)\s*=\s*(ExtResource\("(\d+)"\)|&"([^"]+)")')
 
 # firing-condition decoders: each `if ...:` guard line inside an instruction's
 # case body is turned into a human-readable "how to proc" note. Patterns are
-# keyed to the known guard forms in special_instruction_manager.gd.
+# keyed to the known guard forms in special_instruction_manager.gd. Order is
+# significant only for readability (every matching pattern contributes a note).
 COND_PATTERNS = [
     (re.compile(r"ursule\s+in\s+\S*roundtable_knights"),
      "only fires when Ursule is at the roundtable"),
@@ -101,17 +103,40 @@ COND_PATTERNS = [
      "only fires when the traitor still has an assigned quest"),
     (re.compile(r"traitor\.assigned_quest\.duration\s*<=\s*0"),
      "only fires while the traitor's quest still has time left"),
+    # epicrate-availability variants (the sub-guards of _is_epicrate_available):
+    (re.compile(r"epicrate\s+in\s+\S*roundtable_knights\s+and\s+not\s+epicrate\.is_available"),
+     "does not fire while Epicrate is at the roundtable but busy/unavailable"),
+    (re.compile(r"epicrate\.is_dead\s*:"),
+     "does not fire while Epicrate is dead"),
+    (re.compile(r"get_variable\(\s*\"brimwood_trial_ongoing\"\s*\)"),
+     "does not fire while the brimwood trial is ongoing"),
+    (re.compile(r"not\s+\S*get_variable\(\s*\"serpent_knight_met\"\s*\)"),
+     "only fires once the serpent knight has been met"),
+    (re.compile(r"character_ink_id\s+in\s+\[\s*&\s*\"epicrate\"\s*,\s*&\s*\"marian\"\s*\]"),
+     "does not fire while an Epicrate or Marian audience is scheduled for the current or next cycle"),
+    (re.compile(r"is_instance_valid\(\s*GameState\.current_cycle\s*\)"),
+     "only checks the current cycle when it exists (cycle-bounds guard)"),
+    (re.compile(r"current_cycle_index\s*\+\s*1\s*<\s*GameState\.cycles\.size\("),
+     "only checks the next cycle when one exists (cycle-bounds guard)"),
+    # golden-key quest guards (GOLKEN_KEY_FOUND_*):
+    (re.compile(r"quest\.quest_id\s*!=\s*&\s*\"quest_angelica_golden_key\""),
+     "only affects the golden-key quest quest_angelica_golden_key (removes it and frees its knights)"),
+    (re.compile(r"quest\.quest_id\s*!=\s*&\s*\"quest_search_for_the_golden_key\""),
+     "only affects the golden-key search quest quest_search_for_the_golden_key (removes it and frees its knights)"),
+    # almor duel quest guard (SET_ALMOR_WINNER_GENDER):
+    (re.compile(r"quest\.quest_id\s*!=\s*&\s*\"quest_almor_the_great_duel\""),
+     "only affects the almor duel quest quest_almor_the_great_duel (sets the winner-gender story var from its assigned knight)"),
 ]
 
 
-def _decode_conditions(body):
-    """Turn the `if`-guard lines of an instruction body into condition notes.
+def _guard_expressions(body):
+    """Re-join the `if`-guard lines of a body into full expressions.
 
     A guard may span continuation lines (a line ending in `\\` continues the
     condition on the next line), so the full guard expression is re-joined
     before matching.
     """
-    conds = []
+    guards = []
     guard = ""
     for line in body.splitlines():
         stripped = line.lstrip()
@@ -120,13 +145,61 @@ def _decode_conditions(body):
         elif guard:
             guard = guard + " " + stripped.rstrip()
         if guard and not guard.endswith("\\"):
-            full = guard
+            guards.append(guard)
             guard = ""
-            for rx, note in COND_PATTERNS:
-                if rx.search(full):
-                    if note not in conds:
-                        conds.append(note)
+    return guards
+
+
+def _decode_conditions(body):
+    """Turn the `if`-guard lines of an instruction body into condition notes."""
+    conds = []
+    for full in _guard_expressions(body):
+        for rx, note in COND_PATTERNS:
+            if rx.search(full):
+                if note not in conds:
+                    conds.append(note)
     return conds
+
+
+def _undecoded_guards(body):
+    """Guard expressions in `body` that no COND_PATTERNS entry decodes."""
+    return [full for full in _guard_expressions(body)
+            if not any(rx.search(full) for rx, _ in COND_PATTERNS)]
+
+
+def load_helper_guards():
+    """Decode the `if`-guards of the manager's helper functions.
+
+    The match cases delegate real conditions to helper funcs (`_is_epicrate_available`
+    backs every `CHECK_FOR_EPICRATE_*` case's `epicrate_available` guard; its
+    sub-guards — epicrate at the roundtable but busy, dead, brimwood trial
+    ongoing, serpent knight unmet, no Epicrate/Marian audience this/next cycle —
+    are the actual gates). Returns {func_name: [cond notes]} for each helper
+    whose body has decoded guards.
+    """
+    path = f"{GAME}/systems/autoloads/special_instruction_manager.gd"
+    if not os.path.exists(path):
+        return {}
+    funcs = {}
+    cur = None
+    body = []
+    for line in open(path, encoding="utf-8"):
+        m = HELPER_FUNC.match(line)
+        if m:
+            if cur is not None:
+                funcs[cur] = "\n".join(body)
+            cur = m.group(1)
+            body = []
+            continue
+        if cur is not None:
+            body.append(line.rstrip("\n"))
+    if cur is not None:
+        funcs[cur] = "\n".join(body)
+    # _parse_special_instruction is the match table itself (its guards are the
+    # per-case bodies already decoded); _ready only wires signals.
+    skip = {"_parse_special_instruction", "_ready"}
+    return {name: _decode_conditions(b) for name, b in funcs.items()
+            if name not in skip and _decode_conditions(b)}
 
 
 def load_special_instructions():
@@ -153,9 +226,16 @@ def load_special_instructions():
             body = []
             continue
         if cur is not None:
-            body.append(line.rstrip("\n"))
+            stripped = line.rstrip("\n")
+            # Case bodies are indented 2+ tabs; a shallower non-blank line
+            # means we have left the match table (the function tail / helper
+            # funcs). Stop collecting so the last case isn't polluted.
+            if stripped.strip() and not stripped.startswith("\t\t"):
+                break
+            body.append(stripped)
     if cur is not None:
         out[cur] = {"body": "\n".join(body)}
+    helper_guards = load_helper_guards()
     for name, info in out.items():
         b = info["body"]
         sm = SIGNAL_EMIT.search(b)
@@ -169,7 +249,35 @@ def load_special_instructions():
         info["vars"] = SET_VAR.findall(b)
         info["endings"] = ENDING.findall(b)
         info["killed"] = bool(IS_DEAD.search(b))
-        info["cond"] = _decode_conditions(b)
+        conds = _decode_conditions(b)
+        # cases that delegate a guard to a helper (e.g. `if epicrate_available:`
+        # backed by `_is_epicrate_available()`) also inherit the helper's
+        # sub-guards, so the cond row reflects the real gates.
+        for helper, notes in helper_guards.items():
+            if re.search(r"\b%s\s*\(" % re.escape(helper), b):
+                for note in notes:
+                    if note not in conds:
+                        conds.append(note)
+        info["cond"] = conds
+    return out
+
+
+def audit_undecoded_guards(instr_source, helper_guards=None):
+    """Task-list of instruction cases whose `if`-guard lines still decode to
+    nothing (a guard form COND_PATTERNS has no entry for).
+
+    Returns {case_name: [undecoded guard expressions]}, including guards that
+    arrive via a referenced helper (e.g. `_is_epicrate_available`) so gaps in
+    the helper's own sub-guards are surfaced too.
+    """
+    helper_guards = helper_guards if helper_guards is not None else load_helper_guards()
+    out = {}
+    for name, info in instr_source.items():
+        b = info.get("body", "")
+        missing = [g for g in _guard_expressions(b)
+                   if not any(rx.search(g) for rx, _ in COND_PATTERNS)]
+        if missing:
+            out[name] = missing
     return out
 
 
@@ -545,6 +653,15 @@ def build_special(out_dir, quests_data, index, knights_data, game_root=None):
     print(f"Special instructions: {data['stats']['total']} catalogued · "
           f"{data['stats']['in_ink']} emitted in ink · {data['stats']['in_quests']} as quest rewards · "
           f"{data['stats']['knights']} knight evolutions")
+    undecoded = audit_undecoded_guards(instr_source)
+    if undecoded:
+        print("Special-instruction guard audit — cases with `if`-guards still decoding to nothing:")
+        for case, guards in sorted(undecoded.items()):
+            print(f"  - {case}:")
+            for g in guards:
+                print(f"      {g}")
+    else:
+        print("Special-instruction guard audit: every case `if`-guard decodes to a condition")
     return data
 
 

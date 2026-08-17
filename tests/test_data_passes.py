@@ -216,6 +216,23 @@ class SpecialDataPassTest(unittest.TestCase):
         # firing conditions decoded from the manager's `if` guards
         tarcus = special["instructions"]["SOUTHBAY_TARCUS_INTERVENTION"]
         self.assertTrue(any("Tarcus" in c and "roundtable" in c.lower() for c in tarcus.get("cond", [])))
+        # E7: golden-key quest guards and the almor-duel quest guard decode
+        gk = special["instructions"]["GOLKEN_KEY_FOUND_KNIGHTS"]
+        self.assertTrue(any("quest_angelica_golden_key" in c for c in gk.get("cond", [])))
+        gka = special["instructions"]["GOLKEN_KEY_FOUND_ANGELICA"]
+        self.assertTrue(any("quest_search_for_the_golden_key" in c for c in gka.get("cond", [])))
+        almor = special["instructions"]["SET_ALMOR_WINNER_GENDER"]
+        self.assertTrue(any("quest_almor_the_great_duel" in c for c in almor.get("cond", [])))
+        # E7: CHECK_FOR_EPICRATE_* inherit the _is_epicrate_available() sub-guards
+        epi = special["instructions"]["CHECK_FOR_EPICRATE_1"]
+        self.assertTrue(any("serpent knight" in c for c in epi.get("cond", [])))
+        self.assertTrue(any("brimwood" in c for c in epi.get("cond", [])))
+        self.assertTrue(any("Marian" in c for c in epi.get("cond", [])))
+        # E7: every case with an `if`-guard decodes a condition; audit is clean
+        instr = SD.load_special_instructions()
+        guarded = {k for k, v in instr.items() if SD._guard_expressions(v["body"])}
+        self.assertEqual(guarded, set(k for k, v in instr.items() if v.get("cond")))
+        self.assertEqual(SD.audit_undecoded_guards(instr), {})
         # character-manager signal→audience scheduling (GWENDAN_REFORMED schedules
         # gwendan_humble_candidacy a few cycles later)
         reformed = special["instructions"]["GWENDAN_REFORMED"]

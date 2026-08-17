@@ -642,6 +642,23 @@ the single best feature of this app:
   `test_callback_request_sources` (24 requests, knight-descriptor mapping for
   23 knights + alwena's field-less request) + a `cb`-consistency assertion in
   `test_dist_conformance`; 94 tests green.
+- Special-instruction guard audit (2026-08-17): E7 of the audience-condition
+  research. The special-instruction `cond` decoding only covered 9 of the
+  manager's guarded cases (7 `COND_PATTERNS`, and the last case's body was
+  polluted by the function tail + the `_is_epicrate_available` helper). Now:
+  (1) the case-body parser stops at the end of the match table, so
+  `DRAGON_KNIGHT_DEAD` and friends carry only their own lines; (2) the pattern
+  table is extended with the golden-key quest guards (`GOLKEN_KEY_FOUND_*`),
+  the almor-duel quest guard (`SET_ALMOR_WINNER_GENDER`), the epicrate
+  availability variants, the serpent/brimwood variable guards and the
+  cycle-bounds guards — every case with an `if`-guard (12) now decodes a `cond`
+  row; (3) the `_is_epicrate_available()` helper's sub-guards (busy, dead,
+  brimwood trial, serpent knight, cycle-bounds, Epicrate/Marian audience) are
+  decoded once and inherited by the `CHECK_FOR_EPICRATE_*` cases that delegate
+  to it; (4) `build_special` prints a guard audit task-list of any case whose
+  guards still decode to nothing (currently clean). Tests: cond assertions in
+  `test_data_passes` (golden-key, almor, epicrate sub-guards, guarded-iff-cond)
+  + a `cond` schema check in `test_dist_conformance`; 94 tests green.
 
 
 ---
