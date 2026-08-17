@@ -498,7 +498,11 @@ transitions or when a neighboring county is rallied), 6 ultimatum follow-up scen
 emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 61 fired after
 quests, 4 knotless; 34 audience
 requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
-roundtable, they invite the knight back)) and `dialogues.json` (235 free-time dialogs — 82 affinity
+roundtable, they invite the knight back), and every request's **ink unlock sources** rendered in
+its drawer ("Unlocked by ink": the `UnlockAudienceRequest` call sites — e.g. `rowan_request` is
+offered by `arlin_introduction_to_act_2`'s `!groom_recruited` branch plus the recruitment knot's
+re-unlock — with the unlock knots cross-linked into the Dialogues tab, an unlock chip on each
+request card and the unlock knots indexed into request search)) and `dialogues.json` (235 free-time dialogs — 82 affinity
 dialogs, 77 knight conversations (incl. the inline `candidature_alwena`), 76 reaction / special
 dialogs — each with its locating room, the affinity-conversation gates (`aff`: knight + min-affinity
 rank, incl. the subclass variant dicts: arron violent/kind, dulahan body-possession, edith possessed,

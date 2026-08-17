@@ -788,6 +788,23 @@ the single best feature of this app:
   (the drawer second), the modal has its own dimmed backdrop and never closes
   an open drawer, and the drawer's close also dismisses the modal. Ship-ready:
   full suite green (105 tests) + logic verified in a VM harness.
+- Request unlock sources in the request drawer (2026-08-17): task N1 of the
+  audience-condition research — `rowan_request`-style AudienceRequests rendered
+  their follow-up audience/cost/exclusion but not *where they come from*. The
+  request drawer now shows an **"Unlocked by ink"** section: `requestUnlocks()`
+  inverts the existing `knotRequests()` reverse map (the `UnlockAudienceRequest`
+  call sites) per request stem — all 34 requests resolve ≥1 unlock knot, e.g.
+  `rowan_request` ← `arlin_introduction_to_act_2` (+ the recruitment knot's
+  re-unlock), `bettie_request_victoria` ← the enberg finale + the victoria intro
+  knot, the `call_back_*` requests ← their `*_come_back_later` / candidacy
+  knots. Each unlock knot cross-links into the Dialogues tab; a curated gate
+  note explains the story-gated branch (rowan: the unlock sits in
+  `arlin_introduction_to_act_2`'s `!groom_recruited` branch — only offered when
+  the act-2 intro plays and the groom has not been recruited yet; the
+  AUDIENCE_PLAYED exclusion still applies once the follow-up audience has run).
+  Request cards carry an "unlocked by N knots" chip and request search indexes
+  the unlock knot names. Frontend-only (`web/app.js`) + smoke assertions +
+  docs; full suite green.
 
 
 ---

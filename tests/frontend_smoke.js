@@ -199,6 +199,56 @@ waitReady().then(() => {
   vm.runInContext("renderAudienceResults()", sandbox);
   vm.runInContext("openAudienceDetail(Object.keys(AUDIENCE.audiences)[0])", sandbox);
   vm.runInContext("openRequestDetail(Object.keys(AUDIENCE.requests)[0])", sandbox);
+  // Task N1: request unlock sources. requestUnlocks() inverts knotRequests()
+  // (UnlockAudienceRequest call sites) per request stem; the request drawer
+  // renders an "Unlocked by ink" section and the request cards a chip.
+  const drawerText = () => {
+    const parts = [];
+    const walk = (n) => {
+      if (!n) return;
+      if (n.textContent) parts.push(n.textContent);
+      if (n.innerHTML) parts.push(n.innerHTML.replace(/<[^>]+>/g, " "));
+      for (const c of n.children || []) walk(c);
+    };
+    walk(elById.get("drawerpanel"));
+    return parts.join(" ").toLowerCase();
+  };
+  // The DOM stub's innerHTML="" does not detach children (real DOM would), so
+  // clear the panel between drawer opens to keep the tree small and honest.
+  const clearPanel = () => { elById.get("drawerpanel").children.length = 0; };
+  const rowanUnl = vm.runInContext("requestUnlocks().get('rowan_request') || []", sandbox);
+  if (!rowanUnl.includes("arlin_introduction_to_act_2") ||
+      !rowanUnl.includes("rowan_audience_request_recruitment")) {
+    throw new Error("rowan_request unlock sites wrong: " + JSON.stringify(rowanUnl));
+  }
+  if (vm.runInContext("requestUnlocks().size", sandbox) !== 34) {
+    throw new Error("requestUnlocks does not cover all 34 requests");
+  }
+  clearPanel();
+  vm.runInContext("openRequestDetail('rowan_request')", sandbox);
+  if (drawerText().indexOf("arlin_introduction_to_act_2") < 0 ||
+      drawerText().indexOf("unlocked by ink") < 0) {
+    throw new Error("rowan_request drawer missing its unlock sources: " + drawerText());
+  }
+  for (const [stem, r] of vm.runInContext("Object.entries(AUDIENCE.requests)", sandbox)) {
+    const unlocks = vm.runInContext(
+      "requestUnlocks().get(" + JSON.stringify(stem) + ") || []", sandbox);
+    if (!unlocks.length) continue;
+    clearPanel();
+    vm.runInContext("openRequestDetail(" + JSON.stringify(stem) + ")", sandbox);
+    const txt = drawerText();
+    if (txt.indexOf("unlocked by ink") < 0 ||
+        !unlocks.some((k) => txt.indexOf(k) >= 0)) {
+      throw new Error("request drawer missing unlock rows for " + stem + ": " + txt);
+    }
+  }
+  const rowanCard = vm.runInContext("reqCard('rowan_request', AUDIENCE.requests.rowan_request)", sandbox);
+  if (!/unlocked by 2 knots/.test(rowanCard.innerHTML)) {
+    throw new Error("rowan_request card missing unlock chip: " + rowanCard.innerHTML);
+  }
+  if (!vm.runInContext("rhay('rowan_request', AUDIENCE.requests.rowan_request).indexOf('arlin_introduction_to_act_2') >= 0", sandbox)) {
+    throw new Error("request unlock knot not indexed in the request haystack");
+  }
   // channel 10: knight death-follow-up audiences carry a dd link and search in
   // the audience haystack (both tabs consume the reversed field)
   const ddCount = vm.runInContext("AUDIENCE.stats.with_death_followup", sandbox);

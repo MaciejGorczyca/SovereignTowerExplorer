@@ -1184,6 +1184,28 @@ function knotRequests() {
   }
   return _knotRequest;
 }
+// request stem -> [knots that unlock it via UnlockAudienceRequest] (the
+// reverse of knotRequests, for the request drawer / cards / haystack)
+let _reqUnlock = null;
+function requestUnlocks() {
+  if (_reqUnlock) return _reqUnlock;
+  _reqUnlock = new Map();
+  for (const [knot, stems] of knotRequests()) {
+    for (const stem of stems) {
+      if (!_reqUnlock.has(stem)) _reqUnlock.set(stem, []);
+      _reqUnlock.get(stem).push(knot);
+    }
+  }
+  return _reqUnlock;
+}
+// gate note for a request whose ink unlock call sits inside a story-gated
+// branch of its unlocking knot (honest reading of the flow, curated per the
+// audience-condition research — the request is only offered when the gate
+// passes, e.g. rowan's act-2 intro unlock only runs while the groom is not
+// yet recruited).
+const REQUEST_GATE_NOTES = {
+  "rowan_request": "the unlock call sits inside arlin_introduction_to_act_2's !groom_recruited branch — the request is only offered when the act-2 intro plays and the groom has not been recruited yet",
+};
 // ---------------------------------------------------------------------------
 // chain of events — the narrative sequence a knot belongs to. Primary edges:
 // doleance scheduling (AddDoleanceForNextCycle → the scheduled audience knot),
@@ -4271,6 +4293,9 @@ function rHaystack(stem, r) {
     const a = AUDIENCE && AUDIENCE.audiences[r.fua];
     if (a) h.push(a.k || "");
   }
+  for (const k of requestUnlocks().get(stem) || []) {
+    h.push(k, "unlocked by", "unlock");
+  }
   for (const q of r.q || []) {
     h.push(q);
     const rec = QUEST && QUEST.quests[q];
@@ -4368,6 +4393,10 @@ function reqCard(stem, r) {
   el.tabIndex = 0;
   const badges = [`<span class="badge req">request</span>`];
   if (r.cb) badges.push(`<span class="badge cb" title="call-back request — offered when ${esc(tkey(r.ck) || r.ch)} leaves the roundtable, to invite them back">call-back</span>`);
+  const reqUnlocks = requestUnlocks().get(stem) || [];
+  if (reqUnlocks.length) {
+    badges.push(`<span class="badge sp-quest" title="unlocked by ink: ${esc(reqUnlocks.join(", "))}">unlocked by ${reqUnlocks.length} knot${reqUnlocks.length > 1 ? "s" : ""}</span>`);
+  }
   badges.push(`<span class="badge cost">${r.cst} gold</span>`);
   if (r.ch) badges.push(`<span class="badge quiet">${esc(tkey(r.ck) || r.ch)}</span>`);
   if (r.hd) badges.push(`<span class="badge sp-none">hidden</span>`);
@@ -4541,6 +4570,24 @@ function openRequestDetail(stem) {
     h.textContent = t;
     panel.appendChild(h);
   };
+
+  const reqUnlocks = requestUnlocks().get(stem) || [];
+  if (reqUnlocks.length) {
+    section("Unlocked by ink");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    const kn = reqUnlocks.map((n) => INDEX.knots[n]
+      ? `<a class="chip knobtn knotlink" data-knot="${esc(n)}">${esc(n)}</a>`
+      : `<span class="chip">${esc(n)}</span>`).join(" ");
+    d.innerHTML = `The ink scene${reqUnlocks.length > 1 ? "s" : ""} below emit ${esc("UnlockAudienceRequest")} for this request — it is offered to the player when the scene plays (the AUDIENCE_PLAYED exclusion below still applies once the follow-up audience has run). <span class="readers">${kn}</span>`;
+    panel.appendChild(d);
+    if (REQUEST_GATE_NOTES[stem]) {
+      const p = document.createElement("div");
+      p.className = "what-hint";
+      p.textContent = REQUEST_GATE_NOTES[stem];
+      panel.appendChild(p);
+    }
+  }
 
   if (r.d) {
     section("Description");
