@@ -382,6 +382,35 @@ class AudiencesDataPassTest(unittest.TestCase):
                                     and d[1] == "demission" and d[2] == variant
                                     for d in dd), (stem, dd, aud["audiences"][stem]))
 
+    def test_callback_request_sources(self):
+        aud = _passes()["audiences"]
+        knights = _passes()["knights"]
+        # channel 12: the 24 call_back_* requests are unlocked when the knight
+        # leaves the roundtable (world_manager.gd:197-198,229); they are never
+        # granted by a quest and always point at the knight + a return audience
+        self.assertEqual(aud["stats"]["with_callbacks"], 24)
+        cb = {stem: r for stem, r in aud["requests"].items() if r.get("cb")}
+        self.assertEqual(
+            {s for s in cb} - {s for s in aud["requests"] if s.startswith("call_back_")},
+            set())
+        self.assertEqual(
+            {s for s in aud["requests"] if s.startswith("call_back_")} - set(cb),
+            set())
+        for stem, r in cb.items():
+            self.assertTrue(r.get("ch"), stem)
+            self.assertTrue(r.get("ck"), stem)
+            self.assertTrue(r.get("fua"), stem)
+            self.assertFalse(r.get("q"), stem)
+        # the knight descriptors' call_back_audience_request fields map onto the
+        # requests (23 knights; alwena's request has no descriptor field)
+        knight_callbacks = {k: kd["callback"] for k, kd in knights["knights"].items()
+                            if kd.get("callback")}
+        self.assertEqual(len(knight_callbacks), 23)
+        for stem, reqstem in knight_callbacks.items():
+            with self.subTest(knight=stem):
+                self.assertIn(reqstem, cb)
+                self.assertEqual(cb[reqstem]["ch"], stem)
+
     def test_filler_pack_sources(self):
         aud = _passes()["audiences"]
         # channel 13: the content/filler_audiences FillerAudience wrappers

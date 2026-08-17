@@ -427,4 +427,5 @@ Dulahan human/possessed, Edith possessed and Gwendan's reformed humble candidacy
 234 filler-pack scenes (pack + corruption tier + targeted population per audience, in 27
 unlockable packs — the four representative packs + 23 region packs — unlocked by the
 first-grievance knots calling `UnlockFillerAudiencesPack`), 61 fired after quests, 4 knotless; 34 audience
-requests).
+requests — 24 of them `call_back_*` call-backs (flagged `cb`: unlocked when the knight leaves the
+roundtable, they invite the knight back)).

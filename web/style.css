@@ -220,6 +220,7 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
 .badge.sp-start { color: var(--txt); }
 .badge.sp-quest { color: var(--green); }
 .badge.filler { color: #8fd1b0; border-color: #2c4a3a; background: #16251d; }
+.badge.cb { color: #b691d8; border-color: #3a2a4a; background: #221627; }
 .badge.sp-ink { color: var(--acc); border-color: #4a3d22; background: #2a2416; }
 .badge.sp-none { opacity: 0.55; }
 .badge.type-relic { color: var(--acc); border-color: #4a3d22; background: #2a2416; }

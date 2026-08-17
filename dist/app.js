@@ -3928,6 +3928,9 @@ function ahay(stem, a) {
 function rHaystack(stem, r) {
   const h = [stem, tkey(r.n), r.n, tkey(r.d), r.d];
   if (r.ch) h.push(r.ch, tkey(r.ck));
+  if (r.cb) {
+    h.push("call-back", "callback", "call back", "leaves the roundtable", "invite back", "offer to return");
+  }
   if (r.fua) {
     h.push(r.fua);
     const a = AUDIENCE && AUDIENCE.audiences[r.fua];
@@ -4020,6 +4023,7 @@ function reqCard(stem, r) {
   el.className = "card";
   el.tabIndex = 0;
   const badges = [`<span class="badge req">request</span>`];
+  if (r.cb) badges.push(`<span class="badge cb" title="call-back request — offered when ${esc(tkey(r.ck) || r.ch)} leaves the roundtable, to invite them back">call-back</span>`);
   badges.push(`<span class="badge cost">${r.cst} gold</span>`);
   if (r.ch) badges.push(`<span class="badge quiet">${esc(tkey(r.ck) || r.ch)}</span>`);
   if (r.hd) badges.push(`<span class="badge sp-none">hidden</span>`);
@@ -4244,6 +4248,7 @@ function openRequestDetail(stem) {
   chips.className = "chips";
   for (const c of [
     `${r.cst} gold`,
+    r.cb ? "call-back request" : "",
     r.hd ? "character hidden" : "",
     r.ch ? `character ${tkey(r.ck) || r.ch}` : "",
     (r.q || []).length ? `granted by ${r.q.length} quest${r.q.length > 1 ? "s" : ""}` : "",
@@ -4275,6 +4280,15 @@ function openRequestDetail(stem) {
     const d = document.createElement("div");
     d.className = "qdesc";
     d.innerHTML = (KNIGHTS && KNIGHTS.knights[r.ch]) ? knightLink(r.ch) : esc(tkey(r.ck) || r.ch);
+    panel.appendChild(d);
+  }
+
+  if (r.cb) {
+    section("Call-back");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    const who = (KNIGHTS && KNIGHTS.knights[r.ch]) ? knightLink(r.ch) : esc(tkey(r.ck) || r.ch);
+    d.innerHTML = `Unlocked when ${who} leaves the roundtable — a call-back request offering to invite them back.`;
     panel.appendChild(d);
   }
 

@@ -219,6 +219,8 @@ class DatasetsTest(unittest.TestCase):
             with self.subTest(request=stem):
                 for key in ("n", "d", "ch", "ck", "hd", "cst", "fua"):
                     self.assertIn(key, r)
+                if r.get("cb"):
+                    self.assertTrue(stem.startswith("call_back_"), stem)
                 for lst in ("exc", "rem", "q"):
                     for x in r.get(lst, []):
                         self.assertTrue(isinstance(x, str), (stem, lst, x))

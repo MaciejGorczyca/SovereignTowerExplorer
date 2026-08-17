@@ -55,8 +55,10 @@ def load_audience_requests(idx):
     """Parse content/audience_requests/*.tres -> {stem: request dict}.
 
     Each request carries its loc keys, the resolved character descriptor stem +
-    name key, the follow-up audience stem, cost, hidden flag and the audience
-    stems its excluding_conditions / audiences_to_remove reference.
+    name key, the follow-up audience stem, cost, hidden flag, the audience
+    stems its excluding_conditions / audiences_to_remove reference, and the
+    `cb` flag marking the 24 call-back requests (channel 12): unlocked when
+    the knight leaves the roundtable, they invite the knight back.
     """
     req_dir = f"{GAME}/content/audience_requests"
     requests = {}
@@ -69,12 +71,17 @@ def load_audience_requests(idx):
         tf = TresFile.load(path, req_dir)
         P = tf.props
         stem = os.path.splitext(fn)[0]
+        # channel 12: call-back requests are unlocked from ink when the knight
+        # leaves the roundtable (world_manager.gd:197-198,229) — they are never
+        # granted by a quest and re-fire the returning-knight follow-up when sent.
         entry = {
             "n": P.get("request_name", ""),
             "d": P.get("description", ""),
             "hd": bool(P.get("character_hidden", False)),
             "cst": int(P.get("audience_request_cost", 10)),
         }
+        if stem.startswith("call_back_"):
+            entry["cb"] = True
         ch = P.get("character")
         chstem = _stem(ch, tf) if ch else None
         if chstem:
@@ -202,6 +209,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
             "with_demission": sum(1 for a in audiences.values()
                                   if any(d[1] == "demission" for d in (a.get("dd") or []))),
             "with_filler": sum(1 for a in audiences.values() if a.get("fl")),
+            "with_callbacks": sum(1 for r in requests.values() if r.get("cb")),
             "knotless": len(knotless),
             "fires_after_quests": len(rev["qf"]),
         },
@@ -217,6 +225,7 @@ def build_audiences(out_dir, quests_data, index, game_root=None):
           f"{data['stats']['with_death_followup']} knight death follow-ups · "
           f"{data['stats']['with_demission']} knight demissions · "
           f"{data['stats']['with_filler']} filler packs · "
+          f"{data['stats']['with_callbacks']} call-backs · "
           f"{data['stats']['requests']} requests · "
           f"{data['stats']['fires_after_quests']} fired after quests · "
           f"{data['stats']['knotless']} without an ink knot")

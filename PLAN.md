@@ -629,6 +629,19 @@ the single best feature of this app:
   pack/population/knot names. Stats + `with_filler` (234). Tests:
   `test_filler_pack_sources` + `fl` schema assertions in both conformance tests
   + smoke assertions; 93 tests green.
+- Call-back unlock triggers (2026-08-16): channel 12 of the audience-condition
+  research — the 24 `call_back_*` audience requests (e.g. `call_back_angelica`
+  → `angelica_come_back`). These are unlocked from ink when the knight leaves
+  the roundtable (world_manager.gd:197-198,229) — never granted by a quest —
+  and inviting the knight back is their whole purpose. `audience_data.py` now
+  marks each with `cb: true` (+ `with_callbacks` stat = 24); the request cards
+  gain a `call-back` badge, the request drawer shows a "Call-back" section
+  ("Unlocked when <knight> leaves the roundtable — a call-back request offering
+  to invite them back", knight cross-linked to the Knights tab), and request
+  search indexes "call-back" / "leaves the roundtable" / "invite back". Tests:
+  `test_callback_request_sources` (24 requests, knight-descriptor mapping for
+  23 knights + alwena's field-less request) + a `cb`-consistency assertion in
+  `test_dist_conformance`; 94 tests green.
 
 
 ---
