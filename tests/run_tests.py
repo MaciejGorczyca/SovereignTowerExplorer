@@ -1,11 +1,21 @@
 #!/usr/bin/env python3
 """Canonical test-suite entrypoint for the explorer build pipeline.
 
-Usage:  python3 tests/run_tests.py  [pattern]
+Usage:
+    python3 tests/run_tests.py                # default suite (no golden build test)
+    python3 tests/run_tests.py --golden       # default suite + golden build test
+    python3 tests/run_tests.py <pattern>      # filter to one module (substring match)
 
 Loads every `test_*.py` module in tests/ and runs it with stdlib unittest
 (no third-party test runner required). Modules that need the game data or a
 runtime (zstandard / node) skip cleanly when those are missing.
+
+The golden build test (`test_build_golden`) is deliberately **not** part of the
+default suite: it rebuilds the whole app and diffs it against a `dist/`, which
+only earns its time on refactor work (confirming the build output did not
+change before/after), not on every feature commit. Opt in with `--golden`, or
+compare against another ref's `dist/` via `python3 tests/check_dist_ref.py
+<branch|commit>` (which runs the suite with `--golden`).
 """
 import importlib
 import os
@@ -25,14 +35,18 @@ MODULES = [
     "test_tresfile",
     "test_dist_conformance",
     "test_data_passes",
-    "test_build_golden",
     "test_frontend",
 ]
 
+GOLDEN_MODULE = "test_build_golden"
 
-def build_suite(pattern):
+
+def build_suite(pattern, golden):
     suite = unittest.TestSuite()
-    for name in MODULES:
+    modules = list(MODULES)
+    if golden or (pattern and pattern.lower() in GOLDEN_MODULE):
+        modules.append(GOLDEN_MODULE)
+    for name in modules:
         if pattern and pattern.lower() not in name:
             continue
         mod = importlib.import_module(name)
@@ -73,9 +87,11 @@ class TimedResult(unittest.TextTestResult):
 
 
 if __name__ == "__main__":
-    pattern = sys.argv[1] if len(sys.argv) > 1 else ""
+    golden = "--golden" in sys.argv
+    args = [a for a in sys.argv[1:] if a != "--golden"]
+    pattern = args[0] if args else ""
     start = time.perf_counter()
-    suite = build_suite(pattern)
+    suite = build_suite(pattern, golden)
     runner = unittest.TextTestRunner(verbosity=2, resultclass=TimedResult)
     result = runner.run(suite)
     wall = time.perf_counter() - start
