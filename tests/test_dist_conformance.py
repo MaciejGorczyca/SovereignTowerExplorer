@@ -212,6 +212,15 @@ class DatasetsTest(unittest.TestCase):
                     self.assertTrue(ci[0])
                     self.assertIsInstance(ci[1], str)
                     self.assertTrue(ci[1])
+                um = a.get("um")
+                if um:
+                    self.assertEqual(len(um), 2)
+                    self.assertIsInstance(um[0], str)
+                    self.assertTrue(um[0])
+                    self.assertIsInstance(um[1], int)
+                    for n in a.get("umc", []):
+                        self.assertIsInstance(n, str)
+                        self.assertTrue(n)
 
     def test_audiences_json_schema(self):
         aud = self.audiences
@@ -239,6 +248,8 @@ class DatasetsTest(unittest.TestCase):
                          sum(1 for a in aud["audiences"].values() if a.get("fl")))
         self.assertEqual(aud["stats"]["with_county_intro"],
                          sum(1 for a in aud["audiences"].values() if a.get("ci")))
+        self.assertEqual(aud["stats"]["with_ultimatum"],
+                         sum(1 for a in aud["audiences"].values() if a.get("um")))
 
     def test_inventory_schema(self):
         inv = self.inventory

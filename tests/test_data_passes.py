@@ -255,6 +255,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["with_county_intro"], 7)
+        self.assertEqual(st["with_ultimatum"], 6)
         self.assertEqual(st["knotless"], 4)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
@@ -307,6 +308,39 @@ class AudiencesDataPassTest(unittest.TestCase):
             self.assertIn(stem, aud["audiences"], stem)
             self.assertEqual(len(ci), 2, (stem, ci))
             self.assertTrue(ci[0] and ci[1], (stem, ci))
+
+    def test_ultimatum_sources(self):
+        aud = _passes()["audiences"]
+        # channel 7: the ultimatum resources reverse-map the follow-up quests'
+        # success/failure audiences onto their ultimatum id + hard deadline cycle
+        for stem, uid, cycle, min_counties in (
+            ("kingslayer_ultimatum_faillure", "kingslayer_ultimatum", 23, 3),
+            ("kingslayer_ultimatum_victory", "kingslayer_ultimatum", 23, 3),
+            ("dragon_knight_ultimatum_faillure", "dragon_knight_ultimatum", 8, 1),
+            ("dragon_knight_ultimatum_victory", "dragon_knight_ultimatum", 8, 1),
+            ("ultimatum_emperor_defeat", "emperor_ultimatum", 45, 7),
+            ("ultimatum_emperor_victory", "emperor_ultimatum", 45, 7),
+        ):
+            with self.subTest(audience=stem):
+                um = aud["audiences"][stem].get("um")
+                self.assertEqual(um, [uid, cycle], (stem, um))
+                umc = aud["audiences"][stem].get("umc", [])
+                self.assertTrue(umc, (stem, umc))
+                self.assertIn("min_rallied_counties %d" % min_counties, umc,
+                              (stem, umc))
+        # every um audience is one of the ultimatum outcome scenes and carries a
+        # well-formed um/umc pair
+        for stem, a in aud["audiences"].items():
+            um = a.get("um")
+            if um is None:
+                continue
+            self.assertEqual(len(um), 2, (stem, um))
+            self.assertIsInstance(um[0], str)
+            self.assertIsInstance(um[1], int)
+            self.assertIn(a["f"], ("ultimatums", "county_quests"), stem)
+            umc = a.get("umc")
+            self.assertTrue(umc, (stem, umc))
+            self.assertTrue(all(isinstance(n, str) and n for n in umc), (stem, umc))
 
     def test_director_sources(self):
         aud = _passes()["audiences"]

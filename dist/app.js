@@ -1035,7 +1035,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [] });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [], um: a.um || [], umc: a.umc || [] });
     }
   }
   return _knotAud || new Map();
@@ -1424,6 +1424,17 @@ function countyIntroSource(a) {
   const name = esc(tkey(ci[1]) || ci[0]);
   return `County introduction of <b>${name}</b> — scheduled when act 2 or 3 starts (a few cycles in, per-neighbor shuffle delay) or when a neighboring county is rallied`;
 }
+// human-readable "where it comes from" for an ultimatum follow-up audience (the
+// `um` field): the ultimatum id + deadline cycle whose follow-up quests play
+// this scene on failure/success, plus a note on the condition set the follow-up
+// quests demand (decoded QuestExtraCondition rows — ultimatum.gd /
+// quest_extra_condition.gd). Returns HTML ("" when not an ultimatum follow-up).
+function ultimatumSource(a) {
+  const um = a.um;
+  if (!um || !um.length) return "";
+  const notes = (a.umc || []).length ? ` — condition set: ${esc(a.umc.join(", "))}` : "";
+  return `Ultimatum <b>${esc(um[0])}</b> — follow-up quest failure/success — hard deadline cycle <b>${esc(um[1])}</b>${notes}`;
+}
 // human-readable rendering of a decoded audience requirement
 function audienceReqText(r) {
   const tag = r[0];
@@ -1473,6 +1484,8 @@ function originSection(name) {
       const flk = fl ? ` <span class="mut">· ${fl}</span>` : "";
       const ci = countyIntroSource(a);
       const cik = ci ? ` <span class="mut">· ${ci}</span>` : "";
+      const um = ultimatumSource(a);
+      const umk = um ? ` <span class="mut">· ${um}</span>` : "";
       const scheds = doleanceSchedulers().get(a.stem);
       const audTarget = AUDIENCE && AUDIENCE.audiences[a.stem]
         ? `audience ${audienceLink(a.stem)}`
@@ -1481,9 +1494,9 @@ function originSection(name) {
         const from = scheds.map((s) => INDEX.knots[s.knot]
           ? `<a class="chip knobtn knotlink" data-knot="${esc(s.knot)}">${esc(s.knot)}</a>`
           : `<span class="chip">${esc(s.knot)}</span>`).join(" ");
-        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}`);
+        add(`Comes from <span class="readers">${from}</span> as a <b>${esc(folder)}</b> doleance ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}${umk}`);
       } else {
-        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}`);
+        add(`Played as <b>${esc(folder)}</b> ${audTarget}${reqs}${cyc}${dir}${dd}${flk}${cik}${umk}`);
       }
     }
   }
@@ -3919,6 +3932,12 @@ function aHaystack(stem, a) {
     h.push("county introduction", "introduction", ci[0], tkey(ci[1]));
     h.push("act 2", "act 3", "neighboring county", "rallied");
   }
+  const um = a.um;
+  if (um && um.length) {
+    h.push("ultimatum", um[0], "hard deadline", "deadline cycle " + um[1],
+      "follow-up quest", "failure", "success");
+    for (const n of a.umc || []) h.push(n);
+  }
   for (const d of a.dir || []) h.push(d);
   for (const d of a.dd || []) {
     h.push(d[0], kName(d[0]), d[1], DEMISSION_VARIANT[d[2]] || "");
@@ -4026,6 +4045,9 @@ function audCard(stem, a) {
     const cn = esc(tkey(a.ci[1]) || a.ci[0]);
     badges.push(`<span class="badge cyc" title="county introduction of ${cn} — scheduled when act 2/3 starts or when a neighboring county is rallied">county intro · ${cn}</span>`);
   }
+  if (a.um && a.um.length) {
+    badges.push(`<span class="badge cyc" title="ultimatum follow-up — ${esc(a.um[0])}, hard deadline cycle ${esc(a.um[1])}">ultimatum · ${esc(a.um[0])}</span>`);
+  }
   const rqstems = reqsFor(stem);
   if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
   if (a.k && !INDEX.knots[a.k]) badges.push(`<span class="badge knotless">no knot</span>`);
@@ -4106,6 +4128,7 @@ function openAudienceDetail(stem) {
     fu.length ? `fires after ${fu.length} quest${fu.length > 1 ? "s" : ""}` : "",
     rqstems.length ? `triggered by ${rqstems.length} request${rqstems.length > 1 ? "s" : ""}` : "",
     a.ci && a.ci.length ? `county introduction of ${tkey(a.ci[1]) || a.ci[0]}` : "",
+    a.um && a.um.length ? `ultimatum follow-up (cycle ${a.um[1]})` : "",
   ].filter(Boolean)) {
     const s = document.createElement("span");
     s.className = "chip";
@@ -4150,6 +4173,18 @@ function openAudienceDetail(stem) {
     const p = document.createElement("p");
     p.className = "qdesc muted";
     p.textContent = "This is the scene that introduces the county. The ActManager is the only scheduler: at each act 1→2 / 2→3 transition the act's county intros are queued a few cycles in (per-neighbor shuffle delay, brimwood first), and when a county is rallied the introductions of its not-yet-introduced neighbors follow.";
+    panel.appendChild(d);
+    panel.appendChild(p);
+  }
+
+  if (a.um && a.um.length) {
+    section("Ultimatum follow-up");
+    const d = document.createElement("div");
+    d.className = "qdesc";
+    d.innerHTML = ultimatumSource(a);
+    const p = document.createElement("p");
+    p.className = "qdesc muted";
+    p.textContent = "This scene plays when one of the ultimatum's follow-up quests ends. The ultimatum is triggered from ink (UltimatumTriggered); its follow-up quests then carry the selected condition set as extra conditions and a hard deadline (remaining cycles = target cycle − current cycle) — failing one plays the defeat scene, completing one plays the victory scene.";
     panel.appendChild(d);
     panel.appendChild(p);
   }

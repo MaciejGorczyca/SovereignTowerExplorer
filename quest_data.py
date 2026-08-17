@@ -1010,6 +1010,92 @@ def load_county_introductions():
     return out
 
 
+def _decode_ultimatum_condition(filer, ref, pop_names):
+    """Decode one QuestExtraCondition sub-resource into a human note.
+
+    QuestExtraCondition.Types (quest_extra_condition.gd:5-9):
+      0 MIN_RALLIED_COUNTIES (the .tres omits `type` for the default 0, so the
+        sub-resource carries only min_rallied_counties)
+      1 SATISFACTION_REQUIREMENT (type = 1, targeted_population + amount)
+      2 MIN_FUNDS (type = 2, amount)
+    """
+    if not isinstance(ref, dict) or "_sub" not in ref:
+        return None
+    props = filer.sub_props(ref["_sub"])
+    ctype = props.get("type", 0)
+    if ctype == 0:
+        return "min_rallied_counties %d" % props.get("min_rallied_counties", 0)
+    if ctype == 1:
+        pop = pop_names.get(props.get("targeted_population", 0), "population")
+        return "%s \u2265 %d" % (pop, props.get("amount", 0))
+    if ctype == 2:
+        return "funds \u2265 %d" % props.get("amount", 0)
+    return None
+
+
+def load_ultimatums(idx):
+    """Parse content/ultimatums/*.tres -> {audience stem: {"um": [uid, cycle], "umc": [notes]}}.
+
+    Channel 7 of the audience-condition research: an ultimatum (dragon knight /
+    kingslayer / emperor) is a story-level deadline. When it is triggered from
+    ink (`UltimatumTriggered`), its `ultimatum_follow_up_quests` become the
+    active "face the ultimatum" contracts and gain the selected condition set as
+    extra conditions plus a hard `remaining_cycles_before_faillure` deadline
+    (targeted_cycle_index - current cycle, ultimatum_manager.gd:67). The narrated
+    scenes those quests play as success/failure follow-ups (and their
+    unexpected-outcome follow-ups) are the ultimatum's victory/defeat audiences,
+    e.g. kingslayer_ultimatum_faillure fired by all five kingslayer quests on
+    failure. Values carry `um` (ultimatum id + deadline cycle) and `umc` (the
+    decoded condition-set notes, flattened + de-duplicated across the three sets).
+    """
+    pop_names = {v: n.lower() for n, v in (idx.enums.get("Population") or [])}
+    out = {}
+    d = f"{GAME}/content/ultimatums"
+    if not os.path.isdir(d):
+        return out
+    for fn in sorted(os.listdir(d)):
+        if not fn.endswith(".tres"):
+            continue
+        tf = TresFile.load(os.path.join(d, fn), d)
+        P = tf.props
+        uid = P.get("ultimatum_id") or os.path.splitext(fn)[0]
+        cycle = P.get("targeted_cycle_index", 1)
+        umc = []
+        for setname in ("first_conditions_set", "second_conditions_set",
+                        "third_conditions_set"):
+            for ref in P.get(setname, []) or []:
+                note = _decode_ultimatum_condition(tf, ref, pop_names)
+                if note and note not in umc:
+                    umc.append(note)
+        for qref in P.get("ultimatum_follow_up_quests", []) or []:
+            qstem = _ref_stem(qref, tf)
+            if not qstem:
+                continue
+            qpath = os.path.join(QUEST_DIR, qstem + ".tres")
+            if not os.path.exists(qpath):
+                continue
+            qtf = TresFile.load(qpath, QUEST_DIR)
+            for key in ("success_follow_up_audience", "failure_follow_up_audience"):
+                ref = qtf.props.get(key)
+                astem = _ref_stem(ref, qtf) if ref else None
+                if astem:
+                    out.setdefault(astem, {"um": [uid, cycle], "umc": list(umc)})
+            for sref in qtf.props.get("special_outcomes", []) or []:
+                so_path = qtf.ext_path(sref["_ext"]) if isinstance(sref, dict) and "_ext" in sref else None
+                if not so_path:
+                    continue
+                if so_path.startswith("res://"):
+                    so_path = f"{GAME}/{so_path[6:]}"
+                if not os.path.exists(so_path):
+                    continue
+                sotf = TresFile.load(so_path, os.path.dirname(so_path))
+                fu = sotf.props.get("follow_up_audience")
+                astem = _ref_stem(fu, sotf) if fu not in (None, "null") else None
+                if astem:
+                    out.setdefault(astem, {"um": [uid, cycle], "umc": list(umc)})
+    return out
+
+
 # FillerAudiencesManager pack arrays of systems/autoloads/cycles_manager.tscn
 # -> the runtime unlock name. The four "representatives" packs are always
 # available from the start (filler_audiences_manager.gd `set_up()`); every
@@ -1138,6 +1224,7 @@ def load_audience_catalog(idx):
     demissions = load_knight_demissions()
     filler = load_filler_packs()
     county_intros = load_county_introductions()
+    ultimatums = load_ultimatums(idx)
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -1176,6 +1263,11 @@ def load_audience_catalog(idx):
             ci = county_intros.get(stem)
             if ci:
                 entry["ci"] = ci
+            um = ultimatums.get(stem)
+            if um:
+                entry["um"] = um["um"]
+                if um["umc"]:
+                    entry["umc"] = um["umc"]
             catalog[stem] = entry
     return catalog
 

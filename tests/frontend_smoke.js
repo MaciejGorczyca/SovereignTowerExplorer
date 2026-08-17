@@ -279,6 +279,27 @@ waitReady().then(() => {
   const ciInKnot = vm.runInContext("(() => { const r = knotAudiences().get('county_quest_enberg_first_audience'); return r ? r.some(x => x.stem === 'county_quest_enberg_1' && x.ci && x.ci[0] === 'enberg') : false; })()", sandbox);
   if (!ciInKnot) throw new Error("ci not carried into knotAudiences");
   vm.runInContext("openAudienceDetail('county_quest_enberg_1')", sandbox);
+  // channel 7: ultimatum follow-up audiences carry a um link (ultimatum id +
+  // hard deadline cycle), render a source note, index in the audience haystack
+  // and in the knot drawer rows, and surface in the stats
+  const umCount = vm.runInContext("AUDIENCE.stats.with_ultimatum", sandbox);
+  if (umCount !== 6) throw new Error("with_ultimatum != 6: " + umCount);
+  const umKL = vm.runInContext("AUDIENCE.audiences['kingslayer_ultimatum_faillure'].um", sandbox);
+  if (!umKL || umKL.length !== 2 || umKL[0] !== "kingslayer_ultimatum" ||
+      umKL[1] !== 23) {
+    throw new Error("kingslayer_ultimatum_faillure um wrong: " + JSON.stringify(umKL));
+  }
+  const umSrc = vm.runInContext("ultimatumSource(AUDIENCE.audiences['kingslayer_ultimatum_faillure'])", sandbox);
+  if (umSrc.indexOf("kingslayer_ultimatum") < 0 || umSrc.indexOf("deadline cycle") < 0 ||
+      umSrc.indexOf("23") < 0 || umSrc.indexOf("min_rallied_counties 3") < 0) {
+    throw new Error("ultimatumSource render missing: " + umSrc);
+  }
+  if (!vm.runInContext("ahay('kingslayer_ultimatum_faillure', AUDIENCE.audiences['kingslayer_ultimatum_faillure']).indexOf('ultimatum') >= 0", sandbox)) {
+    throw new Error("ultimatum not in audience haystack");
+  }
+  const umInKnot = vm.runInContext("(() => { const r = knotAudiences().get('ultimatum_kingslayer_failure'); return r ? r.some(x => x.stem === 'kingslayer_ultimatum_faillure' && x.um && x.um[0] === 'kingslayer_ultimatum') : false; })()", sandbox);
+  if (!umInKnot) throw new Error("um not carried into knotAudiences");
+  vm.runInContext("openAudienceDetail('kingslayer_ultimatum_faillure')", sandbox);
   // drawer rendering must not throw on a demission variant either
   vm.runInContext("openAudienceDetail('knight_leaving_arron_dragonheart')", sandbox);
   // the knot drawer's "Where it comes from" section is built from the AUDIENCE
