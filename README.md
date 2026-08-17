@@ -307,7 +307,14 @@ actions)"), the doleance schedulers and special-instruction schedulers (the ones
 with dedicated knot-level rows — quest follow-ups and special triggers — are kept
 on their own lines to avoid duplication), the director/intervention notes, knight
 death/demission triggers, the filler pack, county introduction and ultimatum
-follow-up sources — plus the **divert-reached sub-scene labels** for audiences
+follow-up sources, and the **code-scheduled knight events** (audiences queued
+directly by game code rather than any of the above channels — the `code` field:
+Edith's killing-quest possession gimmick `edith_gimmick_introduction_demon_possession`,
+Goberto's death → Dulahan's `dulahan_candidacy` arrival, the groveshire/gavault
+family-reunion `lost_child_plotline_groveshire_gavault_confrontation` 7-gate
+check, and the `KUTNAR_TARCUS_INTERVENTION` special-goto reachable
+`intervention_tarcus_county_quest_kutnar_first_audience`) — plus the
+**divert-reached sub-scene labels** for audiences
 never queued by any of those channels: "Same scene as <scheduled sibling>"
 (identical ink path, e.g. `county_quest_brimwood_3_testimony_1` = its doleance-scheduled
 twin) and "Plays inside <parent audience>" (the nearest scheduled ancestor audience
@@ -508,7 +515,13 @@ transitions or when a neighboring county is rallied), 6 ultimatum follow-up scen
 emperor (45) ultimatums — `um`/`umc`, with the decoded condition sets), 62 fired after
 quests (incl. `county_quest_southbay_final_father_dead_tarcus_unexpected`, the inline
 special outcome of `quest_southbay_political_instabilities` with `k:[tarcus]` + its
-follow-up audience), 4 knotless, 14 divert-reached sub-scene audiences
+follow-up audience), 4 code-scheduled knight events (the `code` field — audiences queued directly
+by game code rather than any scheduling channel: Edith's killing-quest possession gimmick
+`edith_gimmick_introduction_demon_possession`, Goberto's death → Dulahan's `dulahan_candidacy`
+arrival, the groveshire/gavault family-reunion
+`lost_child_plotline_groveshire_gavault_confrontation` 7-gate check and the `KUTNAR_TARCUS_INTERVENTION`
+special-goto `intervention_tarcus_county_quest_kutnar_first_audience`, each with its scheduling
+note in the Conditions box), 4 knotless, 14 divert-reached sub-scene audiences
 (never queued by any channel: their ink knot is reached via an ink divert inside another,
 scheduled audience's scene — the 6 brimwood-trial interventions, `county_quest_brimwood_3_testimony_2`,
 `intervention_childeric_county_quest_almor_audience_3`, the childeric/ligia/tarcus candidacies,

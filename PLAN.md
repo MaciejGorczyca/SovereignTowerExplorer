@@ -843,6 +843,26 @@ the single best feature of this app:
   fired-after-quest audiences); quests-with-unexpected 82 → 91. The modifier
   `un` loop and the ultimatum reverse-map read the same refs both ways.
   Data-layer (`quest_data.py`) + tests + docs; rebuild `dist/`; suite green.
+- Code-scheduled knight events (2026-08-17): task N4 of the audience-condition
+  research — a handful of audiences are queued directly by game code rather than
+  by a quest / doleance / request / special-`auds` / director / divert channel,
+  so their drawer still showed no Conditions. `quest_data.py` now mines those
+  sources into an additive **`code: [[channel, note], …]`** audience field
+  (channel 14): the knight descriptors' `new_gimmick_intro_path`
+  (edith.tres:86 → `edith_gimmick_introduction_demon_possession`, queued by
+  `update_for_kill()` after a killing quest completes with Edith assigned while
+  not yet possessed); `character_manager.tscn`'s `family_reunion_audience`
+  (→ `lost_child_plotline_groveshire_gavault_confrontation`, the 7-gate
+  `_check_for_family_reunion` check) and `dulahan_arrival`
+  (→ `dulahan_candidacy`, queued 2 cycles after Goberto dies); and the
+  `KUTNAR_TARCUS_INTERVENTION` special-`goto`
+  (→ `intervention_tarcus_county_quest_kutnar_first_audience`, re-stated with
+  its roundtable/available gate). The frontend renders `code` rows in the
+  Consolidated Conditions box (`CODE_SOURCE_LABELS`: Knight gimmick / Family
+  reunion / Knight death / Special instruction), counts them in the gating badge
+  + `acond` filter and indexes the notes into audience search. Data-layer
+  (`quest_data.py`) + frontend (`web/app.js`) + tests + docs; rebuild `dist/`;
+  suite green.
 
 
 ---

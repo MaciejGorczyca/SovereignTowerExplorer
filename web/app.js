@@ -1647,12 +1647,29 @@ function ultimatumSource(a) {
   const notes = (a.umc || []).length ? ` — condition set: ${esc(a.umc.join(", "))}` : "";
   return `Ultimatum <b>${esc(um[0])}</b> — follow-up quest failure/success — hard deadline cycle <b>${esc(um[1])}</b>${notes}`;
 }
+// channel 14: code-scheduled knight events (the `code` field) — audiences queued
+// directly by game code rather than a quest / doleance / request / special `auds`
+// / director / divert channel. Each entry is [channel, note]; the label names the
+// scheduling code, the note the gates (e.g. `gimmick` = Edith's killing-quest
+// possession, `death` = Goberto's death → Dulahan's arrival, `family_reunion` =
+// the groveshire/gavault confrontation, `special` = a special-instruction goto).
+const CODE_SOURCE_LABELS = {
+  gimmick: "Knight gimmick",
+  family_reunion: "Family reunion",
+  death: "Knight death",
+  special: "Special instruction",
+};
+function codeGateHtml(cd) {
+  const label = CODE_SOURCE_LABELS[cd && cd[0]] || "Code-scheduled";
+  return `<b>${esc(label)}:</b> ${esc(cd[1])}`;
+}
 // one consolidated "Conditions" list for an audience — every gate that makes it
 // fire, in one place: story/knight requirements (rq), the hardcoded cycle (cyc),
 // the quests that fire it as a follow-up (rev.qf), the requests that unlock it,
 // the doleance schedulers, the special instructions that schedule it, the
 // director/intervention scenes (dir), knight death/demission triggers (dd), the
-// filler pack (fl), county introductions (ci) and ultimatum follow-ups (um).
+// filler pack (fl), county introductions (ci), ultimatum follow-ups (um) and the
+// code-scheduled knight events (code).
 // Each entry is { kind, html }; `kind` lets the knot drawer drop the rows that
 // already have dedicated knot-level lines (quest follow-ups, special triggers).
 // This is the "base" set — the scheduling channels the audience resource
@@ -1707,6 +1724,7 @@ function baseAudienceGates(stem, a) {
   if (ci) gates.push({ kind: "ci", html: ci });
   const um = ultimatumSource(a);
   if (um) gates.push({ kind: "um", html: um });
+  for (const cd of a.code || []) gates.push({ kind: "code", html: codeGateHtml(cd) });
   return gates;
 }
 // audienceGates = the base scheduling channels + the N2 divert-in labels. The
@@ -4369,6 +4387,9 @@ function aHaystack(stem, a) {
     for (const k of fillerPackUnlocks().get(fl[0]) || []) h.push("unlocked by " + k, k);
   }
   for (const g of divertInRows(stem, a)) h.push(g.html.replace(/<[^>]+>/g, " "));
+  for (const cd of a.code || []) {
+    h.push((CODE_SOURCE_LABELS[cd[0]] || "code-scheduled"), cd[0], cd[1]);
+  }
   for (const [rstem, r] of Object.entries(AUDIENCE.requests)) {
     if (r.fua === stem) { h.push(rstem, tkey(r.n), tkey(r.d)); }
   }

@@ -1227,6 +1227,104 @@ def load_filler_packs():
     return out
 
 
+def load_code_scheduled():
+    """Parse the code-scheduled knight-event audiences -> {stem: [[channel, note]]}.
+
+    Channel 14 of the audience-condition research: a handful of audiences are
+    queued directly by game code rather than by a quest, an ink doleance call,
+    a request, a special-instruction `auds` array, a director scene or a divert
+    — the gaps the final no-conditions audit found. Sources:
+
+    - `gimmick`     — the knight descriptors' `new_gimmick_intro_path` field
+                      (edith.tres:86): the audience Edith's `update_for_kill()`
+                      queues after a killing quest she was assigned to completes
+                      while she is not yet possessed
+                      (character_special_instructions_manager.gd:86-93).
+    - `family_reunion` — `character_manager.tscn` `family_reunion_audience`:
+                      the groveshire/gavault confrontation queued by the manager
+                      `_check_for_family_reunion` 7-gate check at the cycle
+                      transition (gavault+groveshire intros played, reconciled,
+                      both rallied, Gideon available, not brunhilda_countess).
+    - `death`       — `character_manager.tscn` `dulahan_arrival`: the Dulahan
+                      candidacy queued 2 cycles after Goberto dies
+                      (character_special_instructions_manager.gd:221-223).
+    - `special`     — `intervention_tarcus_county_quest_kutnar_first_audience`:
+                      reached via the KUTNAR_TARCUS_INTERVENTION special
+                      instruction's goto (decoded `cond`, mirrors special.json).
+
+    Values are `[channel, note]` pairs — the additive `code` audience field
+    rendered in the Conditions box like `dir`.
+    """
+    code = {}
+
+    kdir = f"{GAME}/content/character_descriptors/knights"
+    if os.path.isdir(kdir):
+        for fn in sorted(os.listdir(kdir)):
+            if not fn.endswith(".tres"):
+                continue
+            tf = TresFile.load(os.path.join(kdir, fn), kdir)
+            intro = tf.props.get("new_gimmick_intro_path")
+            if not intro:
+                continue
+            stem = os.path.splitext(os.path.basename(intro))[0]
+            knight = os.path.splitext(fn)[0].capitalize()
+            code[stem] = [[
+                "gimmick",
+                "fires after a killing quest completes with %s assigned "
+                "and not yet possessed" % knight,
+            ]]
+
+    tscn = os.path.join(GAME, "systems/autoloads/character_manager.tscn")
+    if os.path.exists(tscn):
+        lines = open(tscn, encoding="utf-8").read().splitlines()
+        ext = {}
+        for m in re.finditer(r"\[ext_resource type=\"[^\"]*\"[^]]*path=\"([^\"]+)\"[^]]*id=\"(\d+)\"\]",
+                             "\n".join(lines)):
+            ext[m.group(2)] = m.group(1)
+
+        def refstem(tok):
+            m = re.match(r'ExtResource\("(\d+)"\)', tok.strip())
+            if not m or m.group(1) not in ext:
+                return None
+            return os.path.splitext(os.path.basename(ext[m.group(1)]))[0]
+
+        start = None
+        for i, line in enumerate(lines):
+            if line.startswith('[node name="CharacterSpecialInstructionsManager"'):
+                start = i + 1
+                break
+        if start is not None:
+            props = {}
+            for i in range(start, len(lines)):
+                line = lines[i].strip()
+                if line.startswith("["):
+                    break
+                m = re.match(r"^([A-Za-z0-9_]+)\s*=\s*(.*)$", line)
+                if m:
+                    props[m.group(1)] = m.group(2).strip()
+            reunion = refstem(props.get("family_reunion_audience", ""))
+            if reunion:
+                code[reunion] = [[
+                    "family_reunion",
+                    "7-gate check at the cycle transition — gavault + groveshire "
+                    "first-grievance intros played, groveshire_gavault_reconciled, "
+                    "both counties rallied, Gideon at the roundtable and "
+                    "available, not brunhilda_countess",
+                ]]
+            arrival = refstem(props.get("dulahan_arrival", ""))
+            if arrival and not any(c == "death" for c, _ in code.get(arrival, [])):
+                code.setdefault(arrival, []).append([
+                    "death",
+                    "Goberto dies → Dulahan arrives (+2 cycles)",
+                ])
+
+    code.setdefault("intervention_tarcus_county_quest_kutnar_first_audience", []).append([
+        "special",
+        "KUTNAR_TARCUS_INTERVENTION — only when Tarcus is at the roundtable and available",
+    ])
+    return code
+
+
 def load_audience_catalog(idx):
     """Walk content/audiences/** and build the full audience catalog.
 
@@ -1249,6 +1347,7 @@ def load_audience_catalog(idx):
     filler = load_filler_packs()
     county_intros = load_county_introductions()
     ultimatums = load_ultimatums(idx)
+    code_scheduled = load_code_scheduled()
     for root, _, files in os.walk(AUDIENCE_DIR):
         for fn in sorted(files):
             if not fn.endswith(".tres"):
@@ -1292,6 +1391,9 @@ def load_audience_catalog(idx):
                 entry["um"] = um["um"]
                 if um["umc"]:
                     entry["umc"] = um["umc"]
+            cds = code_scheduled.get(stem)
+            if cds:
+                entry["code"] = list(cds)
             catalog[stem] = entry
     return catalog
 

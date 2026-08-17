@@ -310,6 +310,56 @@ waitReady().then(() => {
       drawerText().indexOf("ink-divert") < 0) {
     throw new Error("testimony_2 drawer missing the divert row: " + drawerText());
   }
+  // Task N4: code-scheduled knight events. Audiences queued directly from game
+  // code (no quest/doleance/request/special-`auds`/director/divert channel) carry
+  // a `code` field rendered as a Conditions row, counted in the gating badge +
+  // acond filter and indexed in the audience haystack.
+  const codeCount = vm.runInContext(
+    "Object.keys(AUDIENCE.audiences).filter((s) => AUDIENCE.audiences[s].code).length", sandbox);
+  if (codeCount !== 4) throw new Error("code-scheduled audiences != 4: " + codeCount);
+  const codeEdith = vm.runInContext(
+    "codeGateHtml(AUDIENCE.audiences['edith_gimmick_introduction_demon_possession'].code[0])", sandbox);
+  if (codeEdith.indexOf("Knight gimmick") < 0 || codeEdith.indexOf("killing quest") < 0 ||
+      codeEdith.indexOf("Edith") < 0) {
+    throw new Error("edith gimmick code row render wrong: " + codeEdith);
+  }
+  const codeEdithRows = vm.runInContext(
+    "audienceConditionRows('edith_gimmick_introduction_demon_possession', AUDIENCE.audiences['edith_gimmick_introduction_demon_possession']).join(' | ')", sandbox);
+  if (codeEdithRows.indexOf("fires after a killing quest completes with Edith") < 0) {
+    throw new Error("edith gimmick condition row missing: " + codeEdithRows);
+  }
+  if (vm.runInContext(
+    "audienceConditionCount('edith_gimmick_introduction_demon_possession', AUDIENCE.audiences['edith_gimmick_introduction_demon_possession'])", sandbox) < 1) {
+    throw new Error("edith gimmick has no gating conditions after N4");
+  }
+  if (!vm.runInContext("ahay('edith_gimmick_introduction_demon_possession', AUDIENCE.audiences['edith_gimmick_introduction_demon_possession']).indexOf('killing quest') >= 0", sandbox)) {
+    throw new Error("edith gimmick code note not in audience haystack");
+  }
+  const codeArrivalRows = vm.runInContext(
+    "audienceConditionRows('dulahan_candidacy', AUDIENCE.audiences['dulahan_candidacy']).join(' | ')", sandbox);
+  if (codeArrivalRows.indexOf("Goberto") < 0 || codeArrivalRows.indexOf("Dulahan") < 0) {
+    throw new Error("dulahan candidacy code row missing: " + codeArrivalRows);
+  }
+  const codeReunionRows = vm.runInContext(
+    "audienceConditionRows('lost_child_plotline_groveshire_gavault_confrontation', AUDIENCE.audiences['lost_child_plotline_groveshire_gavault_confrontation']).join(' | ')", sandbox);
+  if (codeReunionRows.indexOf("groveshire_gavault_reconciled") < 0 ||
+      codeReunionRows.indexOf("brunhilda_countess") < 0) {
+    throw new Error("family-reunion code row missing: " + codeReunionRows);
+  }
+  const codeKutnarRows = vm.runInContext(
+    "audienceConditionRows('intervention_tarcus_county_quest_kutnar_first_audience', AUDIENCE.audiences['intervention_tarcus_county_quest_kutnar_first_audience']).join(' | ')", sandbox);
+  if (codeKutnarRows.indexOf("KUTNAR_TARCUS_INTERVENTION") < 0 ||
+      codeKutnarRows.indexOf("roundtable") < 0) {
+    throw new Error("kutnar intervention code row missing: " + codeKutnarRows);
+  }
+  const codeCondFilter = vm.runInContext(
+    "(() => { ASTATE.cond = true; const r = visibleAudiences().some(([s]) => s === 'edith_gimmick_introduction_demon_possession'); ASTATE.cond = false; return r; })()", sandbox);
+  if (!codeCondFilter) throw new Error("code-scheduled audience not matched by the gating filter");
+  clearPanel();
+  vm.runInContext("openAudienceDetail('edith_gimmick_introduction_demon_possession')", sandbox);
+  if (drawerText().indexOf("knight gimmick") < 0) {
+    throw new Error("edith gimmick drawer missing the code row: " + drawerText());
+  }
   // channel 10: knight death-follow-up audiences carry a dd link and search in
   // the audience haystack (both tabs consume the reversed field)
   const ddCount = vm.runInContext("AUDIENCE.stats.with_death_followup", sandbox);

@@ -587,6 +587,46 @@ class AudiencesDataPassTest(unittest.TestCase):
             for q in r.get("q", []):
                 self.assertIn(q, self.quests["quests"], (stem, q))
 
+    def test_code_scheduled_sources(self):
+        aud = _passes()["audiences"]
+        # channel 14: code-scheduled knight events — audiences queued directly
+        # from game code (edith.tres `new_gimmick_intro_path`,
+        # character_manager.tscn `family_reunion_audience` / `dulahan_arrival`,
+        # and the KUTNAR_TARCUS_INTERVENTION special `goto`) rather than by a
+        # quest / doleance / request / special-`auds` / director / divert channel
+        expect = {
+            "edith_gimmick_introduction_demon_possession": ["gimmick"],
+            "dulahan_candidacy": ["death"],
+            "lost_child_plotline_groveshire_gavault_confrontation": ["family_reunion"],
+            "intervention_tarcus_county_quest_kutnar_first_audience": ["special"],
+        }
+        self.assertEqual(
+            {s for s, a in aud["audiences"].items() if a.get("code")},
+            set(expect))
+        for stem, channels in expect.items():
+            with self.subTest(audience=stem):
+                code = aud["audiences"][stem].get("code")
+                self.assertTrue(code, stem)
+                self.assertEqual([c for c, _ in code], channels, stem)
+                for c, n in code:
+                    self.assertTrue(c and n, (stem, c, n))
+        edith = aud["audiences"]["edith_gimmick_introduction_demon_possession"]["code"]
+        self.assertTrue(any("Edith" in n and "killing quest" in n
+                            for c, n in edith), edith)
+        arrival = aud["audiences"]["dulahan_candidacy"]["code"]
+        self.assertTrue(any("Goberto" in n and "+2 cycles" in n
+                            for c, n in arrival), arrival)
+        reunion = aud["audiences"]["lost_child_plotline_groveshire_gavault_confrontation"]["code"]
+        self.assertTrue(any("groveshire_gavault_reconciled" in n
+                            and "brunhilda_countess" in n
+                            and "rallied" in n for c, n in reunion), reunion)
+        kutnar = aud["audiences"]["intervention_tarcus_county_quest_kutnar_first_audience"]["code"]
+        self.assertTrue(any("KUTNAR_TARCUS_INTERVENTION" in n
+                            and "roundtable" in n for c, n in kutnar), kutnar)
+        # the code field also rides the quests.json catalog copy
+        for stem in expect:
+            self.assertTrue(self.quests["audiences"][stem].get("code"), stem)
+
     def test_rev_qf_resolves(self):
         aud = _passes()["audiences"]
         for stem, entries in aud["rev"]["qf"].items():

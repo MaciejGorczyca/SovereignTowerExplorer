@@ -238,6 +238,20 @@ class DatasetsTest(unittest.TestCase):
                     for n in a.get("umc", []):
                         self.assertIsInstance(n, str)
                         self.assertTrue(n)
+                for cd in a.get("code", []):
+                    self.assertIsInstance(cd, list)
+                    self.assertEqual(len(cd), 2, (stem, cd))
+                    self.assertIsInstance(cd[0], str)
+                    self.assertTrue(cd[0], stem)
+                    self.assertIsInstance(cd[1], str)
+                    self.assertTrue(cd[1], stem)
+        # channel 14: exactly the code-scheduled knight-event audiences carry `code`
+        self.assertEqual(
+            {s for s, a in self.quests["audiences"].items() if a.get("code")},
+            {"edith_gimmick_introduction_demon_possession",
+             "dulahan_candidacy",
+             "lost_child_plotline_groveshire_gavault_confrontation",
+             "intervention_tarcus_county_quest_kutnar_first_audience"})
 
     def test_audiences_json_schema(self):
         aud = self.audiences
@@ -267,6 +281,14 @@ class DatasetsTest(unittest.TestCase):
                          sum(1 for a in aud["audiences"].values() if a.get("ci")))
         self.assertEqual(aud["stats"]["with_ultimatum"],
                          sum(1 for a in aud["audiences"].values() if a.get("um")))
+        for stem, a in aud["audiences"].items():
+            for cd in a.get("code", []):
+                self.assertIsInstance(cd, list, (stem, cd))
+                self.assertEqual(len(cd), 2, (stem, cd))
+                self.assertIsInstance(cd[0], str)
+                self.assertTrue(cd[0], stem)
+                self.assertIsInstance(cd[1], str)
+                self.assertTrue(cd[1], stem)
 
     def test_inventory_schema(self):
         inv = self.inventory
