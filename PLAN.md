@@ -1,6 +1,6 @@
 # PLAN — Sovereign Tower Explorer (quests + shared systems)
 
-> Status: **IMPLEMENTED (dialogue + quests + inventory + knights + special + audiences) + routes/SEO**
+> Status: **IMPLEMENTED (dialogue + quests + inventory + knights + special + audiences) + routes/SEO + shareable deep-link URLs**
 
 ---
 
@@ -945,6 +945,26 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   meta descriptions — `gothild_accept_recruit_reaction` and
   `scriptedquest_follow_up_assassination_attempt_free_prisoner` (and its audience page) were
   affected. Full rebuild + golden `dist/` with the cleaned shells.
+- Shareable URL deep links (2026-08-18): the SPA previously kept its whole
+  navigation state in `history.state` and never touched the URL, so every open
+  entry was `/` and a shared link always landed on the home tab. `web/app.js`
+  now maps locations onto the `route_pages.py` URL scheme with an exact inverse
+  pair — `urlFromLoc(loc)` (`/`, `/dialogues/<knot>/`, `/quests/`, `/quests/<id>/`,
+  `/inventory/<stem>/`, `/knights/<stem>/`, `/special/<name>/`,
+  `/audiences/<stem>/`, `/audiences/requests/<stem>/`) and `locFromUrl(path)` —
+  and `pushLoc`/`go`/`goTab`/`goClose` write the path with every `pushState`
+  (dedupe intact). Boot: `init()` parses `location.pathname` into the initial
+  location (`history.replaceState`, guarded `typeof location === "object"` for
+  the headless smoke VM) and calls `applyLoc()` once after the datasets load, so
+  a directly-linked `/quests/<id>/` (or knot/knight/item/special/audience/
+  request) opens straight into that drawer; `popstate` is deferred until then
+  (`navReady`) and prefers `history.state`, falling back to the URL. Unknown /
+  mistyped paths degrade to the default Dialogues tab through the existing
+  `validLoc` guard. Frontend-only (`web/app.js`) + smoke tests (new `location`
+  stub — the boot URL is a knot deep link whose drawer must open; urlFromLoc/
+  locFromUrl round-trips for all seven kinds incl. requests; applyLoc/go/goClose
+  URL + drawer assertions) + docs (README "Routes / SEO" + "Frontend internals");
+  rebuild `dist/`; full suite green (145 tests).
 
 
 ---

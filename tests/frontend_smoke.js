@@ -95,7 +95,15 @@ const documentStub = {
 };
 
 const localStorageStub = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
-const historyStub = { state: null, replaceState() {}, pushState() {}, back() {} };
+const historyStub = {
+  state: null,
+  // T4: record the URL each call writes so the smoke can assert push/replace
+  // writes the shareable path (the boot URL is a /dialogues/<knot>/ deep link).
+  _url: "/",
+  replaceState(s, t, u) { this.state = s; if (u) this._url = u; },
+  pushState(s, t, u) { this.state = s; if (u) this._url = u; },
+  back() {},
+};
 const alertStub = () => {};
 
 const fetchStub = async (url) => {
@@ -120,6 +128,9 @@ const sandbox = {
   document: documentStub,
   localStorage: localStorageStub,
   history: historyStub,
+  // T4: a deep link (knot detail) so the boot URL parsing + post-load replay
+  // are exercised; the app reads it guarded (typeof location === "object").
+  location: { pathname: "/dialogues/county_quest_enberg_first_audience/" },
   fetch: fetchStub,
   alert: alertStub,
   addEventListener: () => {},
@@ -164,6 +175,25 @@ waitReady().then(() => {
   const api = sandbox.window.stExplorer;
   if (!api || typeof api.renderDialogue !== "function" || typeof api.tokensOf !== "function") {
     throw new Error("stExplorer API surface missing from dist/app.js");
+  }
+
+  // Task T4: URL deep links. The boot URL (location.pathname) must be parsed
+  // into the history state and replayed once every dataset has loaded, opening
+  // the drawer for the directly-linked knot (init()'s post-load applyLoc).
+  const bootState = vm.runInContext("JSON.stringify(history.state)", sandbox);
+  if (bootState !== JSON.stringify({ t: "ink", d: { k: "knot", v: "county_quest_enberg_first_audience" } })) {
+    throw new Error("boot replaceState did not parse the url loc: " + bootState);
+  }
+  if (historyStub._url !== "/dialogues/county_quest_enberg_first_audience/") {
+    throw new Error("boot replaceState url wrong: " + historyStub._url);
+  }
+  if (elById.get("drawer").hidden !== false) {
+    throw new Error("deep-link boot did not open the drawer");
+  }
+  const bootPanelBits = (elById.get("drawerpanel").children || [])
+    .map((c) => c.textContent || c.innerHTML || "").join(" ");
+  if (bootPanelBits.indexOf("county_quest_enberg_first_audience") < 0) {
+    throw new Error("deep-link drawer did not render the linked knot");
   }
 
   const knots = vm.runInContext("INDEX.knots", sandbox);
@@ -249,6 +279,79 @@ waitReady().then(() => {
   if (!vm.runInContext("rhay('rowan_request', AUDIENCE.requests.rowan_request).indexOf('arlin_introduction_to_act_2') >= 0", sandbox)) {
     throw new Error("request unlock knot not indexed in the request haystack");
   }
+  // Task T4: URL <-> state sync. urlFromLoc/locFromUrl are exact inverses for
+  // every kind (root, each tab, all seven detail kinds incl. the two-level
+  // request paths), the emitted paths match the route_pages.py scheme, and
+  // pushLoc/applyLoc drive the drawer and the URL together.
+  const t4Locs = [
+    { t: "ink", d: null },
+    { t: "ink", d: { k: "knot", v: "county_quest_enberg_first_audience" } },
+    { t: "quest", d: null },
+    { t: "quest", d: { k: "quest", v: "contract_cleankeeper_goose_part_two" } },
+    { t: "inv", d: null },
+    { t: "inv", d: { k: "inv", v: "demon_heart" } },
+    { t: "knight", d: null },
+    { t: "knight", d: { k: "knight", v: "arron" } },
+    { t: "special", d: null },
+    { t: "special", d: { k: "special", v: "ARRON_KIND" } },
+    { t: "aud", d: null },
+    { t: "aud", d: { k: "aud", v: "county_quest_enberg_1" } },
+    { t: "aud", d: { k: "areq", v: "rowan_request" } },
+  ];
+  for (const x of t4Locs) {
+    const s = JSON.stringify(x);
+    if (vm.runInContext("JSON.stringify(locFromUrl(urlFromLoc(" + s + ")))", sandbox) !== s) {
+      throw new Error("url round-trip failed for " + s);
+    }
+  }
+  const t4Urls = [
+    [{ t: "ink", d: null }, "/"],
+    [{ t: "ink", d: { k: "knot", v: "county_quest_enberg_1" } }, "/dialogues/county_quest_enberg_1/"],
+    [{ t: "quest", d: null }, "/quests/"],
+    [{ t: "inv", d: null }, "/inventory/"],
+    [{ t: "knight", d: null }, "/knights/"],
+    [{ t: "special", d: null }, "/special/"],
+    [{ t: "aud", d: null }, "/audiences/"],
+    [{ t: "aud", d: { k: "areq", v: "rowan_request" } }, "/audiences/requests/rowan_request/"],
+    [{ t: "aud", d: { k: "aud", v: "county_quest_enberg_1" } }, "/audiences/county_quest_enberg_1/"],
+  ];
+  for (const [x, u] of t4Urls) {
+    const got = vm.runInContext("urlFromLoc(" + JSON.stringify(x) + ")", sandbox);
+    if (got !== u) throw new Error("urlFromLoc(" + JSON.stringify(x) + ") = " + got + " (want " + u + ")");
+  }
+  const t4RevUrls = [
+    ["/", { t: "ink", d: null }],
+    ["/dialogues/", { t: "ink", d: null }],
+    ["/quests/", { t: "quest", d: null }],
+    ["/quests/contract_cleankeeper_goose_part_two/", { t: "quest", d: { k: "quest", v: "contract_cleankeeper_goose_part_two" } }],
+    ["/audiences/requests/rowan_request/", { t: "aud", d: { k: "areq", v: "rowan_request" } }],
+    ["/bogus/whatever/", { t: "ink", d: null }],
+  ];
+  for (const [u, x] of t4RevUrls) {
+    const got = vm.runInContext("JSON.stringify(locFromUrl(" + JSON.stringify(u) + "))", sandbox);
+    if (got !== JSON.stringify(x)) throw new Error("locFromUrl(" + u + ") = " + got);
+  }
+  clearPanel();
+  // deep-link style applyLoc with a loaded kind opens the drawer
+  vm.runInContext("applyLoc({ t: 'quest', d: { k: 'quest', v: 'contract_cleankeeper_goose_part_two' } })", sandbox);
+  if (elById.get("drawer").hidden !== false ||
+      drawerText().indexOf("contract_cleankeeper_goose_part_two") < 0) {
+    throw new Error("applyLoc did not open the quest drawer: " + drawerText());
+  }
+  // ... and pushLoc (via go) writes the matching shareable URL into the history
+  vm.runInContext("go('areq', 'rowan_request')", sandbox);
+  if (historyStub._url !== "/audiences/requests/rowan_request/") {
+    throw new Error("go() did not write the request url: " + historyStub._url);
+  }
+  if (drawerText().indexOf("rowan_request") < 0) {
+    throw new Error("request detail drawer did not open on the pushed url");
+  }
+  vm.runInContext("goClose()", sandbox);
+  if (elById.get("drawer").hidden !== true || historyStub._url !== "/audiences/") {
+    throw new Error("goClose did not close the drawer onto /audiences/: " + historyStub._url);
+  }
+  vm.runInContext("goTab('ink')", sandbox);
+  if (historyStub._url !== "/") throw new Error("goTab('ink') url wrong: " + historyStub._url);
   // Task N2: divert-reached sub-scene audiences. Audiences whose ink knot is
   // reached via an ink divert inside another, scheduled audience's scene get a
   // divt row ("Plays inside <parent>") resolved from knotIncoming (nearest

@@ -105,9 +105,11 @@ via URL-relative paths, so no server logic is required (GitHub Pages, `file://`,
 
 ## Routes / SEO
 
-The SPA keeps its state in `history.state` (never in the URL), so out of the box every
-URL is `/`. Since GitHub Pages has **no server-side rewrites** (and `python -m http.server`
-neither), a pushed `/quests/<id>` URL would 404 on refresh. `route_pages.py` fixes that the
+The SPA keeps its navigation state in `history.state` and **mirrors it into the URL** —
+every `pushState` writes the matching path and the boot parses `location.pathname` back
+into a location, so deep links and refreshes land on the same view (see "Frontend internals"
+below). GitHub Pages has **no server-side rewrites** (and `python -m http.server`
+neither), so a pushed `/quests/<id>` URL would 404 on refresh. `route_pages.py` fixes that the
 only way static hosting allows: **prerender every route as a directory with an `index.html`**.
 Each route is a trailing-slash path backed by `<route>/index.html`:
 
@@ -325,6 +327,19 @@ Single-page, zero deps. State lives in one `state` object passed through
 `renderResults()` → `visibleKnots()` (filtering) → category-grouped cards.
 Per-card searchable text is cached in `_hcache`. Highlighting is substring-based (922 knots,
 fine for pure client-side search; no FTS needed at this scale).
+
+**Navigation & URLs.** The history stack stores locations as `{ t: tab, d: null | { k: kind,
+v: key } }` (`INIT_LOC = { t: "ink", d: null }`). `pushLoc`/`go`/`goTab`/`goClose` push an entry
+**and** write it to the URL; `urlFromLoc(loc)` ⇄ `locFromUrl(path)` are exact inverses mapping
+onto the `route_pages.py` directory scheme (`/` for the Dialogues tab, `/dialogues/<knot>/`,
+`/quests/`, `/quests/<id>/`, `/inventory/<stem>/`, `/knights/<stem>/`,
+`/special/<name>/`, `/audiences/<stem>/`, `/audiences/requests/<stem>/`). On boot `init()`
+parses `location.pathname` into the initial location (`history.replaceState`), and once every
+dataset has loaded it calls `applyLoc()` once to replay a direct/refresh visit — so a shared
+`/quests/<id>/` link opens straight into the quest drawer. `popstate` is deferred until that
+point (`navReady`) and prefers `history.state`, falling back to the URL when state is missing;
+all `location` access is guarded (`typeof location === "object"`) so the app still boots
+headlessly in the frontend smoke VM, and unknown/mistyped paths degrade to the default tab.
 
 Filters (sidebar): text search, speaker, category (17 auto-classified via `classify()`),
 variable (read / write / either), **function/requirement** (any game-API call

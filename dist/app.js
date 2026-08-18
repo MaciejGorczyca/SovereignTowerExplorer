@@ -2053,8 +2053,49 @@ function maybeShowDonation() {
 // Each location is { t: tab, d: null | { k: kind, v: key } }; opening a
 // detail, jumping between details, switching tabs or closing the drawer
 // pushes an entry; popstate replays the entry without pushing again.
+// Every push also writes the location to the URL using the GitHub-Pages
+// directory scheme (trailing-slash paths backed by dist/<dir>/index.html
+// shells, see route_pages.py) so deep links and refreshes land back on the
+// same view; urlFromLoc ⇄ locFromUrl are exact inverses.
 // ---------------------------------------------------------------------------
 const INIT_LOC = { t: "ink", d: null };
+// tab internal names -> route dirs (mirror route_pages.py TABS + DETAILS);
+// requests are special-cased into /audiences/requests/<stem>/.
+const TAB_DIRS = {
+  ink: "dialogues", quest: "quests", inv: "inventory",
+  knight: "knights", special: "special", aud: "audiences",
+};
+const DIR_TABS = {
+  dialogues: "ink", quests: "quest", inventory: "inv",
+  knights: "knight", special: "special", audiences: "aud",
+};
+let navReady = false;  // popstate is deferred until init() has loaded the data
+
+function urlFromLoc(loc) {
+  if (!loc || !loc.t) return "/";
+  if (loc.t === "ink") {
+    return loc.d && loc.d.k === "knot" ? `/dialogues/${loc.d.v}/` : "/";
+  }
+  const dir = TAB_DIRS[loc.t] || loc.t;
+  if (!loc.d) return `/${dir}/`;
+  if (loc.d.k === "areq") return `/audiences/requests/${loc.d.v}/`;
+  return `/${dir}/${loc.d.v}/`;
+}
+function locFromUrl(pathname) {
+  const parts = String(pathname || "/")
+    .replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  if (!parts.length) return { t: "ink", d: null };
+  const tab = DIR_TABS[parts[0]];
+  if (!tab) return { t: "ink", d: null };
+  if (parts.length === 1) return { t: tab, d: null };
+  if (tab === "aud" && parts[1] === "requests" && parts.length === 3) {
+    return { t: "aud", d: { k: "areq", v: parts[2] } };
+  }
+  return { t: tab, d: { k: tab === "ink" ? "knot" : tab, v: parts[1] } };
+}
+function locFromCurrentUrl() {
+  return locFromUrl(typeof location === "object" && location ? location.pathname : "");
+}
 
 function activeTab() {
   if ($("tab-quest").classList.contains("active")) return "quest";
@@ -2095,7 +2136,7 @@ function applyLoc(loc) {
 function pushLoc(loc) {
   const cur = history.state;
   if (cur && JSON.stringify(cur) === JSON.stringify(loc)) return;
-  history.pushState(loc, "");
+  history.pushState(loc, "", urlFromLoc(loc));
   applyLoc(loc);
 }
 // navigate to a detail (kind: knot/quest/inv/knight/special/aud/areq) on its own tab
@@ -2110,7 +2151,8 @@ function goTab(name) { pushLoc({ t: name, d: null }); }
 // close the drawer, staying on the current tab
 function goClose() { pushLoc({ t: activeTab(), d: null }); }
 window.addEventListener("popstate", (e) => {
-  applyLoc(e.state && e.state.t ? e.state : INIT_LOC);
+  if (!navReady) return;  // boot not finished — init() replays the URL itself
+  applyLoc(e.state && e.state.t ? e.state : locFromCurrentUrl());
 });
 
 function applyVarFilter(v, mode) {
@@ -2261,7 +2303,8 @@ async function switchLocale(loc) {
 }
 
 async function init() {
-  history.replaceState(INIT_LOC, "");
+  const bootLoc = locFromCurrentUrl();
+  history.replaceState(bootLoc, "", urlFromLoc(bootLoc));
   renderResults(); // show "Loading data…" before the first fetch resolves
   const resp = await fetch("index.json");
   INDEX = await resp.json();
@@ -2287,6 +2330,8 @@ async function init() {
   if (SPECIAL && SPECIAL.stats) parts.push(`${SPECIAL.stats.total} special`);
   if (AUDIENCE && AUDIENCE.stats) parts.push(`${AUDIENCE.stats.audiences} audiences · ${AUDIENCE.stats.requests} requests`);
   $("stats").textContent = parts.join(" · ");
+  navReady = true;
+  applyLoc(bootLoc);  // replay a direct/refresh visit once every dataset is loaded
 }
 init();
 window.stExplorer = { renderDialogue, tokensOf };
