@@ -965,6 +965,21 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   locFromUrl round-trips for all seven kinds incl. requests; applyLoc/go/goClose
   URL + drawer assertions) + docs (README "Routes / SEO" + "Frontend internals");
   rebuild `dist/`; full suite green (145 tests).
+- BASE-aware data fetches + teaser removal (2026-08-18): the app resolved every
+  `fetch()` URL-relative against the page, so a nested route shell
+  (`/quests/<id>/`, `/audiences/requests/<r>/`) booted but fetched from the
+  wrong directory. `web/app.js` now computes the app root once at the top —
+  `const BASE = document.currentScript.src.replace(/app\.js[^/]*$/, "")`, empty
+  without `document.currentScript` (flat `dist/`, the headless smoke VM) — and
+  prefixes every data fetch (`index.json`, the six dataset JSONs, `endings.json`
+  and `locales/*.json`) with it, so deep-link pages load their data from the
+  app root regardless of depth. On boot `init()` also removes the static
+  `.seo-teaser` shell block (`document.querySelector('.seo-teaser')?.remove()`,
+  guarded — null on the root shell, a stub element in the smoke VM) since the
+  SPA re-renders everything client-side. Frontend-only (`web/app.js`) + smoke
+  assertion (BASE is "" in the VM sandbox, keeping fetches relative against
+  `dist/`; the conformance route-page asset-prefix test already locks the
+  matching `../`-depth tags); rebuild `dist/`; full suite green.
 
 
 ---

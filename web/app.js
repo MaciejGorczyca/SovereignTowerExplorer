@@ -2,6 +2,16 @@
 
 const $ = (id) => document.getElementById(id);
 
+// App base directory: the directory the shell's app.js was loaded from, so data
+// fetches keep resolving relative to the app even on nested route pages
+// (/quests/<id>/, /audiences/requests/<r>/) whose asset tags point at
+// ../app.js. Empty when running from a flat dist/ — and in the headless smoke
+// VM, which has no document.currentScript — where plain relative fetches are
+// already correct.
+const BASE = (document.currentScript && document.currentScript.src
+  ? document.currentScript.src.replace(/app\.js[^/]*$/, "")
+  : "");
+
 let INDEX = null;           // en metadata + tokens
 let LOC = {};               // active locale token overrides (merged)
 
@@ -2280,7 +2290,7 @@ async function switchLocale(loc) {
   state.locale = loc;
   if (loc === "en") { LOC = {}; renderResults(); if (QUEST) renderQuestResults(); if (INV) renderInvResults(); if (KNIGHTS) renderKnightResults(); if (SPECIAL) { _shair.clear(); buildSpecialFilterUI(); renderSpecialResults(); } if (AUDIENCE) { _ahair.clear(); buildAudienceFilterUI(); renderAudienceResults(); } return; }
   try {
-    const resp = await fetch(`locales/${loc}.json`);
+    const resp = await fetch(`${BASE}locales/${loc}.json`);
     if (!resp.ok) throw new Error(resp.status);
     LOC = await resp.json();
   } catch (err) {
@@ -2303,10 +2313,12 @@ async function switchLocale(loc) {
 }
 
 async function init() {
+  const teaser = document.querySelector(".seo-teaser");
+  if (teaser) teaser.remove();  // the SPA re-renders everything; drop the static shell teaser
   const bootLoc = locFromCurrentUrl();
   history.replaceState(bootLoc, "", urlFromLoc(bootLoc));
   renderResults(); // show "Loading data…" before the first fetch resolves
-  const resp = await fetch("index.json");
+  const resp = await fetch(BASE + "index.json");
   INDEX = await resp.json();
   buildFilterUI();
   $("hidefn").checked = state.hideFn;
@@ -3235,7 +3247,7 @@ function switchTab(name) {
 }
 
 async function initQuests() {
-  const resp = await fetch("quests.json");
+  const resp = await fetch(BASE + "quests.json");
   QUEST = await resp.json();
   buildQuestFilterUI();
   renderQuestResults();
@@ -3642,7 +3654,7 @@ function openInvDetail(stem) {
 }
 
 async function initInventory() {
-  const resp = await fetch("inventory.json");
+  const resp = await fetch(BASE + "inventory.json");
   INV = await resp.json();
   buildInvFilterUI();
   renderInvResults();
@@ -4082,7 +4094,7 @@ function knotLink(knot) {
 }
 
 async function initKnights() {
-  const resp = await fetch("knights.json");
+  const resp = await fetch(BASE + "knights.json");
   KNIGHTS = await resp.json();
   buildKnightFilterUI();
   renderKnightResults();
@@ -4376,7 +4388,7 @@ function buildSpecialFilterUI() {
 }
 
 async function initSpecial() {
-  const resp = await fetch("special.json");
+  const resp = await fetch(BASE + "special.json");
   SPECIAL = await resp.json();
   buildSpecialFilterUI();
   renderSpecialResults();
@@ -4909,7 +4921,7 @@ function toggleAudienceOnly() {
 }
 
 async function initAudiences() {
-  const resp = await fetch("audiences.json");
+  const resp = await fetch(BASE + "audiences.json");
   AUDIENCE = await resp.json();
   buildAudienceFilterUI();
   toggleAudienceOnly();
@@ -4917,12 +4929,12 @@ async function initAudiences() {
 }
 
 async function initDialogues() {
-  const resp = await fetch("dialogues.json");
+  const resp = await fetch(BASE + "dialogues.json");
   DIALOGUE = await resp.json();
 }
 
 async function initEndings() {
-  const resp = await fetch("endings.json");
+  const resp = await fetch(BASE + "endings.json");
   ENDINGS = await resp.json();
 }
 

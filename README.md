@@ -99,7 +99,9 @@ needs the compiled ink
 JSON (`INK_ROOT`) plus the game root (`GAME_ROOT`) as inputs.
 
 Deploy the whole `dist/` directory anywhere; the UI fetches `index.json` and `locales/*.json`
-via URL-relative paths, so no server logic is required (GitHub Pages, `file://`, anything).
+via paths relative to `app.js`'s own directory (a `BASE` prefix derived from
+`document.currentScript` — empty on a flat `dist/`), so no server logic is required
+(GitHub Pages, `file://`, anything).
 
 ---
 
@@ -340,6 +342,12 @@ dataset has loaded it calls `applyLoc()` once to replay a direct/refresh visit �
 point (`navReady`) and prefers `history.state`, falling back to the URL when state is missing;
 all `location` access is guarded (`typeof location === "object"`) so the app still boots
 headlessly in the frontend smoke VM, and unknown/mistyped paths degrade to the default tab.
+
+All data fetches (`index.json`, the six dataset JSONs, `endings.json`, `locales/*.json`) are
+prefixed with `BASE`, the app root computed once from `document.currentScript.src`
+(empty without one) — so a nested route shell boots against the app root instead of resolving
+relative to its page URL. On boot `init()` also removes the static `.seo-teaser` shell block
+(guarded) once the SPA is about to render its own content.
 
 Filters (sidebar): text search, speaker, category (17 auto-classified via `classify()`),
 variable (read / write / either), **function/requirement** (any game-API call

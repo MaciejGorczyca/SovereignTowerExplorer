@@ -196,6 +196,15 @@ waitReady().then(() => {
     throw new Error("deep-link drawer did not render the linked knot");
   }
 
+  // Task T5: BASE-aware fetches. The VM has no document.currentScript, so BASE
+  // must fall back to "" — the plain relative fetches that the fetchStub below
+  // resolves against dist/. A non-empty BASE here would mean the guard broke
+  // and every nested route page would fetch from the wrong directory.
+  if (vm.runInContext("BASE", sandbox) !== "") {
+    throw new Error("BASE must be '' without document.currentScript, got: "
+                    + vm.runInContext("BASE", sandbox));
+  }
+
   const knots = vm.runInContext("INDEX.knots", sandbox);
   let total = 0;
   const failures = [];
