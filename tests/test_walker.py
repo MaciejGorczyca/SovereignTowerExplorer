@@ -164,6 +164,36 @@ class WalkerStubCondDivertTest(unittest.TestCase):
         ])
 
 
+class WalkerStubBlankTextTest(unittest.TestCase):
+    """county_quest_brimwood_audience_2 (c-4 stub): a choice stub that opens
+    with a stray blank line ("^ ") must NOT be treated as having follow-up
+    content. The blank compiles to a whitespace-only text token with no speaker;
+    attaching it as the stub's flow would render an empty choice-flow under the
+    choice card (a stray wide line). The choice stays a pure redirect: dest +
+    effects on the card, no nested flow."""
+
+    def test_tokens(self):
+        w, tok, params = walk_knot(F.STUB_BLANK_TEXT)
+        self.assertEqual(params, [])
+        self.assertEqual(tok, [
+            ["2", "I think Brunhilda from Gavault will be the ideal witness.",
+             ["brunhilda_countess"], 5, "accept_trial",
+             [["set:VAR=", ["brunhilda_invited_to_testify", "true"]],
+              ["AddDoleanceForNextCycle",
+               ["county_quest_brimwood_3_before_testimony", "COUNTY_QUEST"]]]],
+        ])
+
+    def test_no_empty_followup(self):
+        w, tok, params = walk_knot(F.STUB_BLANK_TEXT)
+        choice = tok[0]
+        self.assertLessEqual(len(choice), 6, choice)
+        self.assertFalse(any(
+            (len(t) > 7 and isinstance(t[7], list)
+             and all(nt[0] == "0" and not nt[1].strip()
+                     and not (len(nt) > 2 and nt[2]) for nt in t[7]))
+            for t in tok))
+
+
 class WalkerStubEndLoopTest(unittest.TestCase):
     """lady_tower_act_2_reached_reaction: a choice stub whose if-branch ends the
     dialogue and whose else-branch loops back must surface `(end)`/`(options)`

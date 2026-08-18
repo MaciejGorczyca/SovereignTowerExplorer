@@ -252,6 +252,39 @@ STUB_COND_DIVERT = [
     {"#f": 1},
 ]
 
+# county_quest_brimwood_audience_2 (c-4 stub): a choice stub that opens with a
+# stray blank line ("^ ") in the compiled ink. That blank line compiles to a
+# whitespace-only text token with no speaker, which must NOT count as follow-up
+# content — the choice renders as a pure redirect (dest + effects only, no
+# empty choice-flow) instead of an empty flow under the card.
+STUB_BLANK_TEXT = [
+    [
+        "ev",
+        "str", "^I think Brunhilda from Gavault will be the ideal witness.", "/str",
+        {"VAR?": "brunhilda_countess"},
+        "/ev",
+        {"*": ".^.c-4", "flg": 5},
+        {
+            "c-4": [
+                "^ ",
+                "\n",
+                "ev", True, "/ev",
+                {"VAR=": "brunhilda_invited_to_testify", "re": True},
+                "ev",
+                {"VAR?": "county_quest_brimwood_3_before_testimony"},
+                {"VAR?": "COUNTY_QUEST"},
+                {"f()": "AddDoleanceForNextCycle"},
+                "pop",
+                "/ev",
+                "\n",
+                {"->": ".^.^.^.^.accept_trial"},
+                {"#f": 5},
+            ]
+        },
+    ],
+    {"#f": 1},
+]
+
 # lady_tower_act_2_reached_reaction (c-0 stub): a choice stub whose if-branch
 # ends the dialogue and whose else-branch loops back to the options. The
 # `end` opcode and the empty-tail divert must surface as branch outcomes.

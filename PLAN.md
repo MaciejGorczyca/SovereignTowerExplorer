@@ -1069,6 +1069,24 @@ absolute canonicals. `route_pages.py` now defines `DEFAULT_SITE_BASE =
   small screens. Frontend-only (`web/index.html` + `web/style.css`) — no JS
   edits, the `#stats`/`#locale` ids are unchanged; rebuild `dist/` and every
   route shell; full suite green (147 tests).
+- Empty choice-flows from stray blank stub lines (2026-08-18): some choice
+  stubs in the compiled ink open with a blank line (`"^ "`) that compiled into
+  a whitespace-only text token with no speaker. `Walker._stub_info` treated any
+  `"0"` token as real dialogue text, so those stubs got a follow-up stream
+  attached to the choice card and the frontend rendered it as an empty
+  `choice-flow` — a stray wide line under the choice (e.g. the witness choices
+  in `county_quest_brimwood_audience_2`). `_stub_info` now ignores
+  whitespace-only, speaker-less text tokens (they do not set `has_text` and are
+  dropped from the inline flow), so a pure-redirect stub stays a pure redirect
+  (dest + effects on the card, no nested flow); real dialogue beats — a blank
+  with a speaker, e.g. Ignacius's pause — are still kept. Bonus: the two
+  `county_quest_almor_final_success` choices whose stubs divert to
+  `knight(choice_1)` now correctly surface those divert args (they were
+  silently dropped whenever a follow-up existed). Build-side only; golden
+  `dist/` (all 6 locales) rebuilt. Tests: new `WalkerStubBlankTextTest` on a
+  byte-faithful `STUB_BLANK_TEXT` fixture (the real c-4 stub) + a
+  `test_dist_conformance` guard that no choice-flow text token is a
+  whitespace-only `"0"` with no speaker; full suite green (149 tests).
 
 
 ---

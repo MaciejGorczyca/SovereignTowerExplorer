@@ -919,8 +919,13 @@ class Walker:
                 else:
                     inline.append(t)
             elif t[0] == "0":
-                has_text = True
-                inline.append(t)
+                # a stray blank line in the source ("^ ") compiles to a
+                # whitespace-only text token with no speaker — it carries no
+                # dialogue and must not count as follow-up content (would render
+                # an empty choice-flow under the card)
+                if t[1].strip() or (len(t) > 2 and t[2]):
+                    has_text = True
+                    inline.append(t)
             elif t[0] == "7":
                 inline.append(t)
                 if len(t) > 3 and t[3] == "1":
