@@ -1007,6 +1007,21 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   blocks before boot and asserts they survive every init-time render plus a full
   `switchTab()` cycle. Frontend + tests + docs; no build-output change; full
   suite green.
+- SITE_BASE placeholder inert + placeholder warning (2026-08-18): the shipped
+  `viewer.env.example` carried a live `SITE_BASE = https://example.com/explorer/`
+  value, so a documented copy to `viewer.env` would have silently baked
+  `example.com` canonical / Open Graph / sitemap / robots URLs into every build
+  (a wrong SITE_BASE fails quietly — the site still renders, only the SEO head
+  points at the wrong origin). The example value is now commented out, with a
+  nearby comment pointing at the commented `SITE_BASE = https://<user>.github.io/
+  <repo>/` line to uncomment for the real deployment; and `route_pages.py`'s
+  `normalize_site_base()` now prints a stderr WARNING (never an error) whenever
+  a SITE_BASE looks like a placeholder (`example.com`, `localhost`, `127.0.0.1`,
+  `your…`, `<…>`), so a bad value is loud instead of silent. Tests: unit check in
+  `test_route_pages.py` (placeholder values warn, a real origin stays silent) and
+  a new `ViewerEnvExampleTest` asserting the example file can never enable an
+  active SITE_BASE. Docs only + tests — no build-output change, no golden
+  `dist/` rebuild.
 
 
 ---

@@ -114,9 +114,21 @@ def truncate(s, n=200):
     return (head + "…") if head else cut + "…"
 
 
+# substrings that never name a real deployment origin — a SITE_BASE containing
+# one is almost certainly a copy-pasted placeholder that would silently rewrite
+# every canonical/OG/sitemap URL (see ../research/hosting/REPORT_FOLLOWUP.md)
+_SUSPECT = ("example.com", "localhost", "127.0.0.1", "your", "<")
+
+
 def normalize_site_base(site_base):
-    """Coerce a SITE_BASE value to a trailing-slash string ("" when unset)."""
+    """Coerce a SITE_BASE value to a trailing-slash string ("" when unset).
+
+    Warns (never errors) when the value looks like a placeholder, so a wrong
+    SITE_BASE is loud instead of silently poisoning the emitted canonicals."""
     s = (site_base or "").strip()
+    if s and any(x in s.lower() for x in _SUSPECT):
+        print("WARNING: SITE_BASE %r looks like a placeholder — canonical/OG/"
+              "sitemap URLs will point at it" % s, file=sys.stderr)
     if s and not s.endswith("/"):
         s += "/"
     return s

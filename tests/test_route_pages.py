@@ -11,6 +11,7 @@ references). Runs against the checked-in dist/ only (no game data needed).
 import json
 import re
 import unittest
+from pathlib import Path
 
 from helpers import DIST, load_dist
 from route_pages import (SITE_NAME, abs_url, esc, normalize_site_base, render_page,
@@ -208,6 +209,25 @@ class RouteHelpersTest(unittest.TestCase):
         self.assertEqual(normalize_site_base("https://x.io"), "https://x.io/")
         self.assertEqual(normalize_site_base("https://x.io/"), "https://x.io/")
 
+    def test_normalize_site_base_warns_on_placeholders(self):
+        """A SITE_BASE that looks like a placeholder warns (never errors), so a
+        copy-pasted example value is loud instead of silently poisoning the
+        emitted canonical/OG/sitemap URLs."""
+        import contextlib
+        import io
+        for bad in ("https://example.com/", "http://localhost:8000",
+                    "https://yourdomain.io/"):
+            buf = io.StringIO()
+            with self.subTest(site_base=bad):
+                with contextlib.redirect_stderr(buf):
+                    out = normalize_site_base(bad)
+                self.assertTrue(out.endswith("/"))
+                self.assertIn("placeholder", buf.getvalue())
+        buf = io.StringIO()
+        with contextlib.redirect_stderr(buf):
+            normalize_site_base("https://x.io/")
+        self.assertEqual(buf.getvalue(), "", "no warning for a real origin")
+
     def test_abs_url(self):
         self.assertEqual(abs_url("", "quests/x/"), "/quests/x/")
         self.assertEqual(abs_url("https://x.io/", "quests/x/"), "https://x.io/quests/x/")
@@ -382,6 +402,21 @@ class TeaserHelpersTest(unittest.TestCase):
                 self.assertTrue(b["desc"])
                 self.assertNotIn("[", b["desc"])
                 self.assertNotIn("[/", b["teaser"])
+
+
+class ViewerEnvExampleTest(unittest.TestCase):
+    """The shipped viewer.env.example must never enable SITE_BASE: the only
+    mention is a commented example, so a copy to viewer.env can never bake a
+    placeholder origin into a build (see ../research/hosting/REPORT_FOLLOWUP.md)."""
+
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def test_site_base_example_is_inert(self):
+        text = (self.ROOT / "viewer.env.example").read_text(encoding="utf-8")
+        for line in text.splitlines():
+            if line.lstrip().startswith("SITE_BASE"):
+                self.assertTrue(line.lstrip().startswith("# "),
+                                "active SITE_BASE in the example: %r" % line)
 
 
 if __name__ == "__main__":
