@@ -80,6 +80,69 @@ function fnCat(name) {
   if (FN_CATS.req.has(name)) return "fReq";
   return "fState";
 }
+// signed "+n / -n" for badge text — a leading + keeps positive game-API effects
+// readable as additions rather than bare numbers ("Scholars +1", "gold −50")
+function signedArg(v) {
+  if (v == null) return "";
+  const n = Number(v);
+  return (n > 0 ? "+" : "") + String(v);
+}
+// friendly one-liner for a game-API call (the badge label): turns internal
+// function names / ids into plain English ("RequiresMinSatisfaction(Merchants,
+// 1)" → "needs Merchants ≥ 1"). Returns an HTML string (already escaped or
+// cross-linked) or null to fall back to the raw "⚙ Name(args)" form; the raw
+// technical call is always preserved in the badge tooltip either way.
+function fnFriendly(name, args) {
+  const a = args || [];
+  const s = (v) => esc(String(v));
+  const L = (v) => linkArg(v);
+  switch (name) {
+    case "RequiresMinSatisfaction": return "needs " + s(a[0]) + " ≥ " + s(a[1]);
+    case "HintSat": return s(a[0]) + " " + s(signedArg(a[1]));
+    case "RequiresFunds": return s(a[0]) + " gold";
+    case "RequiresTag": return "tag " + s(a[0]) + " Lv " + s(a[1]);
+    case "RequiresTagRanked": return "tag " + s(a[0]) + " ranked " + s(a[1]);
+    case "RequiresItem": return "needs " + L(a[0]);
+    case "RequiresKnight": return "needs " + L(a[0]);
+    case "RequiresServant": return "needs servant " + L(a[0]);
+    case "RequiresMinRomantism": return "romance " + L(a[0]) + " ≥ " + s(a[1]);
+    case "IsSovereignCentrist": return "Centrist required";
+    case "HintModification": {
+      const kind = s(a[0]);
+      if (a.length < 2) return "hint " + kind;
+      const num = Number(a[1]);
+      if (!isNaN(num)) return "hint " + kind + " " + s(signedArg(a[1]));
+      return "hint " + kind + " " + L(a[1]);
+    }
+    case "UpdateSatisfaction": return s(a[0]) + " " + s(signedArg(a[1]));
+    case "UpdateFunds": return "gold " + s(signedArg(a[0]));
+    case "UpdateKnightAffinity": return L(a[0]) + " " + s(signedArg(a[1]));
+    case "UpdateServantRomance": return L(a[0]) + " " + s(signedArg(a[1]));
+    case "UpdateSovereignValue": return "sovereign " + s(a[0]) + (a.length > 1 ? " " + s(signedArg(a[1])) : "");
+    case "ChangeTaxes": return "taxes " + s(a[0]) + (a.length > 1 ? " " + s(signedArg(a[1])) : "");
+    case "UnlockQuest": return "unlocks " + questIdLink(a[0]);
+    case "UnlockEquipment": return "unlocks " + L(a.length > 1 ? a[1] : a[0]);
+    case "UnlockTag": return "unlocks " + s(a[1]) + " (" + L(a[0]) + ")";
+    case "UnlockAudienceRequest": return "unlocks request " + L(a[0]);
+    case "KnightRecruitment": return "recruit " + L(a[0]);
+    case "KnightDemission": return L(a[0]) + " leaves";
+    default: return null;
+  }
+}
+// badge tint for a function call: +/- effects get a green/red tint (mirrors the
+// in-game hint colors), requirement gates get the accent tint, the rest stay muted
+function fnBadgeClass(name, args) {
+  if (name.startsWith("set:")) return "";
+  const ai = { HintSat: 1, HintModification: 1, UpdateSatisfaction: 1,
+               UpdateFunds: 0, UpdateKnightAffinity: 1,
+               UpdateServantRomance: 1, UpdateSovereignValue: 1,
+               ChangeTaxes: 1 }[name];
+  if (ai != null && args && args[ai] != null) {
+    const n = Number(args[ai]);
+    return n > 0 ? "pos" : (n < 0 ? "neg" : "");
+  }
+  return FN_CATS.req.has(name) ? "req" : "";
+}
 function loadShowPrefs() {
   try {
     const p = JSON.parse(localStorage.getItem(SHOW_KEY));
@@ -626,9 +689,12 @@ function renderDialogue(k, root) {
   const toks = tokensOf(k);
   const stack = [root];                       // open if-blocks (bottom: root)
   let lastLine = null;                        // current .line for "c" continuations
+  let fnRow = null;                           // open inline row of function badges
+  let fnRowDepth = -1;                        // stack depth the open row lives at
   const mount = (el) => (stack[stack.length - 1].appendChild(el), el);
   const renderToks = (list) => {
     for (const t of list) {
+      if (t[0] !== "3") fnRow = null;         // a "3" token opens a badge run
       switch (t[0]) {
         case "0": {
           const sp = t[2] || "";
@@ -756,18 +822,30 @@ function renderDialogue(k, root) {
         }
         case "3": {
           if (!state.show[fnCat(t[1])]) break;
-          const fn = document.createElement("div");
-          fn.className = "fn";
           const name = t[1], args = (t[2] || []);
+          const chip = document.createElement("span");
+          chip.className = "fn-chip";
           if (name.startsWith("set:")) {
             const target = args[0] === undefined ? "" : args[0];
             const rhs = args.length > 1 ? args[1] : "";
-            fn.innerHTML = `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(target)}${rhs ? " = " + esc(rhs) : ""}</span>`;
+            chip.innerHTML = `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(target)}${rhs ? " = " + esc(rhs) : ""}</span>`;
           } else {
-            fn.innerHTML = "⚙ " + esc(name) + "(" + args.map(linkArg).join(", ") + ")";
-            fn.title = "game / ink function call";
+            const fr = fnFriendly(name, args);
+            chip.innerHTML = fr != null
+              ? fr
+              : "⚙ " + esc(name) + "(" + args.map(linkArg).join(", ") + ")";
+            const cls = fnBadgeClass(name, args);
+            if (cls) chip.classList.add(cls);
           }
-          mount(fn); lastLine = null;
+          chip.title = "game / ink function call: " + name + "(" + args.map((a) => String(a)).join(", ") + ")";
+          if (fnRow == null || fnRowDepth !== stack.length) {
+            fnRow = document.createElement("div");
+            fnRow.className = "fn-row";
+            mount(fnRow);
+            fnRowDepth = stack.length;
+          }
+          fnRow.appendChild(chip);
+          lastLine = null;
           break;
         }
         case "4": {

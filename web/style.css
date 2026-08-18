@@ -255,10 +255,21 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
   margin: 8px 0 2px; padding: 8px 10px; border-left: 2px solid #5a5033;
   border-radius: 0 6px 6px 0; background: rgba(0,0,0,.18);
 }
-.choice-flow .cond, .choice-flow .divert, .choice-flow .fn { margin-left: 0; }
+.choice-flow .cond, .choice-flow .divert, .choice-flow .fn-row { margin-left: 0; }
 .choice-flow .cond { margin-left: 0; }
-.fn { font-family: var(--mono); font-size: 11px; color: var(--mut); opacity: .8; margin: 2px 0 2px 14px; }
-.fn .set { color: var(--green); }
+.fn-row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+  margin: 3px 0 3px 14px;
+}
+.fn-chip {
+  font-family: var(--mono); font-size: 11px; color: var(--mut);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 5px;
+  padding: 1px 7px; opacity: .85; cursor: default; white-space: nowrap;
+}
+.fn-chip .set { color: var(--green); }
+.fn-chip.pos { color: var(--green); border-color: #2a3a2e; background: #1a241d; }
+.fn-chip.neg { color: var(--red); border-color: #462a26; background: #24191a; }
+.fn-chip.req { color: var(--acc); border-color: #4a3d22; background: #2a2416; }
 .divert { font-family: var(--mono); font-size: 12px; color: var(--blue); margin: 3px 0; cursor: pointer; }
 .divert:hover { text-decoration: underline; }
 .stitch {
