@@ -1039,19 +1039,36 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   `build_app.py` (and the standalone `route_pages.py` CLI) previously emitted
   root-relative canonical/OG/JSON-LD/sitemap/robots URLs unless SITE_BASE was
   configured per environment — easy to get wrong, and the deployed site needed
-  absolute canonicals. `route_pages.py` now defines `DEFAULT_SITE_BASE =
-  https://maciejgorczyca.github.io/SovereignTowerExplorer/` (with any subpath),
-  applied as the fallback in `write_routes`/`write_robots`, and
-  `build_app.resolve_site_base()` returns it last (CLI > env > viewer.env >
-  default unchanged), so every default build already carries the
-  production-absolute URLs and no per-env config is needed; hosting changes
-  override it in one place. Tests: `test_dist_conformance.py` sitemap/robots
-  checks are now URL-mode-agnostic — absolute locs have the deployment subpath
-  stripped (`_loc_path` derived from the root loc) and the robots test asserts
-  the `Sitemap:` line for absolute builds, its absence only for root-relative
-  ones. Docs updated (README "Routes / SEO", BUILD.md, viewer.env.example,
-  build help). Golden `dist/` rebuilt with absolute shells / sitemap / robots;
-  full suite green.
+absolute canonicals. `route_pages.py` now defines `DEFAULT_SITE_BASE =
+   https://maciejgorczyca.github.io/SovereignTowerExplorer/` (with any subpath),
+   applied as the fallback in `write_routes`/`write_robots`, and
+   `build_app.resolve_site_base()` returns it last (CLI > env > viewer.env >
+   default unchanged), so every default build already carries the
+   production-absolute URLs and no per-env config is needed; hosting changes
+   override it in one place. Tests: `test_dist_conformance.py` sitemap/robots
+   checks are now URL-mode-agnostic — absolute locs have the deployment subpath
+   stripped (`_loc_path` derived from the root loc) and the robots test asserts
+   the `Sitemap:` line for absolute builds, its absence only for root-relative
+   ones. Docs updated (README "Routes / SEO", BUILD.md, viewer.env.example,
+   build help). Golden `dist/` rebuilt with absolute shells / sitemap / robots;
+   full suite green.
+- Mobile-friendly top bar (2026-08-18): the sticky `#topbar` was a single
+  no-wrap flex row, so a small viewport pushed the row wider than the screen
+  and forced sideways scrolling, while the dataset stats line and the Locale
+  select stayed pinned 24/7 and hogged vertical space. The stats (`#stats`,
+  "N knots · N choices · …") and the Locale `<select>` now sit in a new,
+  **non-sticky `#topstrip`** above the header — scroll past it and it goes
+  away — and the sticky topbar keeps only what should persist while scrolling:
+  the brand, the six tab buttons and the Support pill. `web/style.css` gives
+  `#topbar` `flex-wrap: wrap` (with a tight `row-gap`) so elements stack above
+  each other as whole blocks instead of wrapping alone or overflowing, and on
+  small screens (≤760px) the `◆` logo is hidden (its tall glyph forced a
+  full-height brand column with nothing below it) so the brand reads as one
+  inline "Sovereign Tower Explorer" unit that the tab/Support buttons wrap
+  below; `#topstrip` and `#topbar` also tighten their horizontal padding on
+  small screens. Frontend-only (`web/index.html` + `web/style.css`) — no JS
+  edits, the `#stats`/`#locale` ids are unchanged; rebuild `dist/` and every
+  route shell; full suite green (147 tests).
 
 
 ---
