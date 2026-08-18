@@ -1943,6 +1943,7 @@ function openDetail(name) {
       c.className = "chip " + (cls || "");
       c.textContent = item;
       if (cls === "f") c.addEventListener("click", () => { applyFnFilter(item); });
+      else if (cls === "s") c.addEventListener("click", () => { applySpkFilter(item.replace(/ ×\d+$/, "")); });
       else c.addEventListener("click", () => { applyVarFilter(item, cls === "w" ? "writes" : "reads"); });
       chips.appendChild(c);
     }
@@ -1952,7 +1953,7 @@ function openDetail(name) {
     panel.appendChild(sec);
     panel.appendChild(chips);
   }
-  chipRow("Speakers", Object.entries(k.sp || {}).map(([s, c]) => `${s} ×${c}`));
+  chipRow("Speakers", Object.entries(k.sp || {}).map(([s, c]) => `${s} ×${c}`), "s");
   chipRow("Functions invoked", k.funcs, "f");
   chipRow("Variables read", k.reads, "r");
   chipRow("Variables written", k.writes, "w");
@@ -2119,6 +2120,12 @@ function applyVarFilter(v, mode) {
   $("var").value = v;
   const radios = document.querySelectorAll('input[name=varuse]');
   for (const r of radios) r.checked = (r.value === (mode || "either"));
+  renderResults();
+}
+function applySpkFilter(s) {
+  goClose();
+  state.spk = s;
+  $("spk").value = s;
   renderResults();
 }
 function applyFnFilter(f) {
