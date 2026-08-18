@@ -12,6 +12,19 @@ const BASE = (document.currentScript && document.currentScript.src
   ? document.currentScript.src.replace(/app\.js[^/]*$/, "")
   : "");
 
+// App root as a path segment ("" when served at the origin root, or when BASE
+// is empty — flat dist/ or the headless smoke VM): the site may be deployed
+// under a subpath (e.g. GitHub Pages project pages at /<repo>/), and every
+// pushed/parsed URL must keep that prefix — otherwise a pushState path like
+// /quests/<id>/ escapes the app directory and 404s on refresh. Derived from
+// BASE's own pathname so it can never drift from where app.js actually lives.
+const APP_BASE = (function () {
+  if (!BASE) return "";
+  const m = /^[a-z][a-z0-9+.\-]*:\/\/[^/]*/i.exec(BASE);
+  const p = m ? BASE.slice(m[0].length) : "/";
+  return p.replace(/^\/+|\/+$/g, "");
+})();
+
 let INDEX = null;           // en metadata + tokens
 let LOC = {};               // active locale token overrides (merged)
 
@@ -2066,7 +2079,10 @@ function maybeShowDonation() {
 // Every push also writes the location to the URL using the GitHub-Pages
 // directory scheme (trailing-slash paths backed by dist/<dir>/index.html
 // shells, see route_pages.py) so deep links and refreshes land back on the
-// same view; urlFromLoc ⇄ locFromUrl are exact inverses.
+// same view; urlFromLoc ⇄ locFromUrl are exact inverses. When the site is
+// served under a subpath (/<repo>/ on GitHub Pages project pages) the paths
+// carry APP_BASE as a prefix, so pushed URLs stay inside the app directory
+// and a refresh hits the real shell instead of 404ing.
 // ---------------------------------------------------------------------------
 const INIT_LOC = { t: "ink", d: null };
 // tab internal names -> route dirs (mirror route_pages.py TABS + DETAILS);
@@ -2082,18 +2098,26 @@ const DIR_TABS = {
 let navReady = false;  // popstate is deferred until init() has loaded the data
 
 function urlFromLoc(loc) {
-  if (!loc || !loc.t) return "/";
+  const p = (rel) => "/" + (APP_BASE ? APP_BASE + "/" : "") + rel;
+  if (!loc || !loc.t) return p("");
   if (loc.t === "ink") {
-    return loc.d && loc.d.k === "knot" ? `/dialogues/${loc.d.v}/` : "/";
+    return loc.d && loc.d.k === "knot" ? p(`dialogues/${loc.d.v}/`) : p("");
   }
   const dir = TAB_DIRS[loc.t] || loc.t;
-  if (!loc.d) return `/${dir}/`;
-  if (loc.d.k === "areq") return `/audiences/requests/${loc.d.v}/`;
-  return `/${dir}/${loc.d.v}/`;
+  if (!loc.d) return p(`${dir}/`);
+  if (loc.d.k === "areq") return p(`audiences/requests/${loc.d.v}/`);
+  return p(`${dir}/${loc.d.v}/`);
 }
 function locFromUrl(pathname) {
-  const parts = String(pathname || "/")
-    .replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+  let s = String(pathname || "/");
+  if (APP_BASE) {
+    // strip the app-root subpath so the rest of the scheme parses as if the
+    // site were served at the origin root (/SovereignTowerExplorer/quests/x/
+    // -> /quests/x/)
+    const prefix = "/" + APP_BASE;
+    if (s === prefix || s.startsWith(prefix + "/")) s = s.slice(prefix.length) || "/";
+  }
+  const parts = s.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
   if (!parts.length) return { t: "ink", d: null };
   const tab = DIR_TABS[parts[0]];
   if (!tab) return { t: "ink", d: null };

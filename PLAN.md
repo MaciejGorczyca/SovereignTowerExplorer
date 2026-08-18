@@ -1022,6 +1022,19 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   a new `ViewerEnvExampleTest` asserting the example file can never enable an
   active SITE_BASE. Docs only + tests — no build-output change, no golden
   `dist/` rebuild.
+- Subpath-aware deep-link URLs (2026-08-18): the SPA's URL scheme built
+  origin-root-relative paths (`/quests/x/`), so on GitHub Pages project pages —
+  served under `/SovereignTowerExplorer/` — every pushed URL escaped the app
+  directory and a refresh 404'd. `web/app.js` now derives `APP_BASE` from `BASE`
+  (the app root from `document.currentScript.src`): `urlFromLoc`/`locFromUrl`
+  prepend/strip it, so pushed and boot-parsed URLs keep `/<repo>/` at any
+  deployment depth (empty at the origin root and in the headless smoke VM —
+  behaviour there unchanged). Frontend-only + smoke: the smoke test re-boots
+  the shipped `dist/app.js` with a `document.currentScript` pointing at the
+  subpath and asserts the boot `replaceState` URL/state keep
+  `/SovereignTowerExplorer/`, `urlFromLoc` writes prefixed paths (home, knot,
+  request) and the functions stay exact inverses under the prefix; rebuilt
+  golden `dist/app.js`; full suite green.
 
 
 ---

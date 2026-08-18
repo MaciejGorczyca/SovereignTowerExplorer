@@ -903,8 +903,118 @@ waitReady().then(() => {
       throw new Error("tabdesc block cleared by a render/switchTab: " + tid);
     }
   }
+  subpathBootCheck();
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));
   process.exit(1);
 });
+
+// ---------------------------------------------------------------------------
+// Subpath-aware URLs. GitHub Pages project pages serve the app under a subpath
+// (https://<user>.github.io/<repo>/), so the pushed/parsed URLs built from
+// urlFromLoc/locFromUrl (and the boot replaceState) must keep that prefix —
+// the regression being locked is that they used to drop /<repo>/, sending the
+// URL bar outside the app directory where a refresh 404s. Re-boot the shipped
+// app.js with a document.currentScript pointing at the subpath and check the
+// boot URL/state plus round-trips keep the prefix (BASE + APP_BASE wire-up is
+// exercised end to end, since urlFromLoc/locFromUrl read APP_BASE internally).
+// ---------------------------------------------------------------------------
+function subpathBootCheck() {
+  const elById2 = new Map();
+  const document2 = {
+    currentScript: {
+      src: "https://maciejgorczyca.github.io/SovereignTowerExplorer/app.js",
+    },
+    getElementById: (id) => {
+      if (!elById2.has(id)) elById2.set(id, new El("div"));
+      return elById2.get(id);
+    },
+    createElement: (t) => new El(t),
+    createDocumentFragment: () => new Frag(),
+    querySelector: () => new El("div"),
+    querySelectorAll: () => [],
+    addEventListener: () => {},
+    body: new El("body"),
+  };
+  const localStorage2 = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+  const history2 = {
+    state: null,
+    _url: "/",
+    replaceState(s, t, u) { this.state = s; if (u) this._url = u; },
+    pushState(s, t, u) { this.state = s; if (u) this._url = u; },
+    back() {},
+  };
+  // The app fetches from BASE (absolute, subpath included), so strip that
+  // prefix to recover the dist-relative file path, as the flat-dist stub does.
+  const appBase2 = "https://maciejgorczyca.github.io/SovereignTowerExplorer/";
+  const fetch2 = async (url) => {
+    const rel = String(url).replace(appBase2, "");
+    const p = path.join(DIST, rel);
+    if (!p.startsWith(DIST + path.sep)) throw new Error("fetch outside dist: " + url);
+    const text = fs.readFileSync(p, "utf-8");
+    return { ok: true, status: 200, json: async () => JSON.parse(text) };
+  };
+  const sb = {
+    console, setTimeout, clearTimeout, Date, JSON, Math, RegExp,
+    document: document2,
+    localStorage: localStorage2,
+    history: history2,
+    location: {
+      pathname: "/SovereignTowerExplorer/quests/contract_cleankeeper_goose_part_two/",
+    },
+    fetch: fetch2,
+    alert: () => {},
+    addEventListener: () => {},
+  };
+  sb.window = sb;
+  vm.createContext(sb);
+  vm.runInContext(appSrc, sb, { filename: "dist/app.js" });
+
+  // init() runs synchronously up to its first await, so the boot
+  // replaceState() has already fired: the URL must keep the subpath prefix and
+  // the state must be the deep-linked quest (locFromUrl stripped the prefix).
+  if (history2._url !== "/SovereignTowerExplorer/quests/contract_cleankeeper_goose_part_two/") {
+    throw new Error("subpath boot url lost /SovereignTowerExplorer/: " + history2._url);
+  }
+  const want = JSON.stringify({ t: "quest", d: { k: "quest", v: "contract_cleankeeper_goose_part_two" } });
+  if (JSON.stringify(history2.state) !== want) {
+    throw new Error("subpath boot state wrong: " + JSON.stringify(history2.state));
+  }
+
+  // urlFromLoc/locFromUrl keep the subpath and remain exact inverses.
+  const subLocs = [
+    { t: "ink", d: null },
+    { t: "ink", d: { k: "knot", v: "county_quest_enberg_first_audience" } },
+    { t: "quest", d: { k: "quest", v: "contract_cleankeeper_goose_part_two" } },
+    { t: "inv", d: { k: "inv", v: "demon_heart" } },
+    { t: "knight", d: { k: "knight", v: "arron" } },
+    { t: "special", d: { k: "special", v: "ARRON_KIND" } },
+    { t: "aud", d: { k: "aud", v: "county_quest_enberg_1" } },
+    { t: "aud", d: { k: "areq", v: "rowan_request" } },
+  ];
+  for (const x of subLocs) {
+    const s = JSON.stringify(x);
+    if (vm.runInContext("JSON.stringify(locFromUrl(urlFromLoc(" + JSON.stringify(x) + ")))", sb) !== s) {
+      throw new Error("subpath url round-trip failed for " + s);
+    }
+  }
+  const reqUrl = vm.runInContext("urlFromLoc({t:'aud',d:{k:'areq',v:'rowan_request'}})", sb);
+  if (reqUrl !== "/SovereignTowerExplorer/audiences/requests/rowan_request/") {
+    throw new Error("subpath urlFromLoc dropped the prefix: " + reqUrl);
+  }
+  const knotUrl = vm.runInContext("urlFromLoc({t:'ink',d:{k:'knot',v:'county_quest_enberg_1'}})", sb);
+  if (knotUrl !== "/SovereignTowerExplorer/dialogues/county_quest_enberg_1/") {
+    throw new Error("subpath knot url wrong: " + knotUrl);
+  }
+  const home = vm.runInContext("urlFromLoc({t:'ink',d:null})", sb);
+  if (home !== "/SovereignTowerExplorer/") {
+    throw new Error("subpath home url wrong: " + home);
+  }
+  // a pushed subpath URL parses back to the same detail
+  const back = vm.runInContext(
+    "JSON.stringify(locFromUrl('/SovereignTowerExplorer/quests/contract_cleankeeper_goose_part_two/'))", sb);
+  if (back !== want) {
+    throw new Error("subpath locFromUrl parse wrong: " + back);
+  }
+}

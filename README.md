@@ -110,7 +110,9 @@ via paths relative to `app.js`'s own directory (a `BASE` prefix derived from
 The SPA keeps its navigation state in `history.state` and **mirrors it into the URL** —
 every `pushState` writes the matching path and the boot parses `location.pathname` back
 into a location, so deep links and refreshes land on the same view (see "Frontend internals"
-below). GitHub Pages has **no server-side rewrites** (and `python -m http.server`
+below). The pushed/parsed paths keep the subpath the site is served under
+(`/SovereignTowerExplorer/` on GitHub Pages project pages), so the URL bar never escapes the
+app directory. GitHub Pages has **no server-side rewrites** (and `python -m http.server`
 neither), so a pushed `/quests/<id>` URL would 404 on refresh. `route_pages.py` fixes that the
 only way static hosting allows: **prerender every route as a directory with an `index.html`**.
 Each route is a trailing-slash path backed by `<route>/index.html`:
@@ -346,7 +348,11 @@ headlessly in the frontend smoke VM, and unknown/mistyped paths degrade to the d
 All data fetches (`index.json`, the six dataset JSONs, `endings.json`, `locales/*.json`) are
 prefixed with `BASE`, the app root computed once from `document.currentScript.src`
 (empty without one) — so a nested route shell boots against the app root instead of resolving
-relative to its page URL. On boot `init()` also removes the static `.seo-teaser` shell block
+relative to its page URL. The same source also yields `APP_BASE` (BASE's path, empty at the
+origin root), which `urlFromLoc`/`locFromUrl` prepend/strip — so when the site is served under
+a subpath (GitHub Pages project pages, `https://<user>.github.io/<repo>/`) every pushed URL
+keeps `/<repo>/` and a refresh lands on the real shell instead of 404ing outside the app
+directory. On boot `init()` also removes the static `.seo-teaser` shell block
 (guarded) once the SPA is about to render its own content.
 
 Filters (sidebar): text search, speaker, category (17 auto-classified via `classify()`),
