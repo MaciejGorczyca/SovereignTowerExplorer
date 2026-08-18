@@ -90,7 +90,7 @@ function signedArg(v) {
 // friendly one-liner for a game-API call (the badge label): turns internal
 // function names / ids into plain English ("RequiresMinSatisfaction(Merchants,
 // 1)" → "needs Merchants ≥ 1"). Returns an HTML string (already escaped or
-// cross-linked) or null to fall back to the raw "⚙ Name(args)" form; the raw
+// cross-linked) or null to fall back to the raw "Name(args)" form; the raw
 // technical call is always preserved in the badge tooltip either way.
 function fnFriendly(name, args) {
   const a = args || [];
@@ -124,8 +124,17 @@ function fnFriendly(name, args) {
     case "UnlockEquipment": return "unlocks " + L(a.length > 1 ? a[1] : a[0]);
     case "UnlockTag": return "unlocks " + s(a[1]) + " (" + L(a[0]) + ")";
     case "UnlockAudienceRequest": return "unlocks request " + L(a[0]);
+    case "UnlockSpecialDialogue": return "unlocks dialogue " + L(a[0]) + (a.length > 1 ? " (" + s(a[1]) + ")" : "");
     case "KnightRecruitment": return "recruit " + L(a[0]);
     case "KnightDemission": return L(a[0]) + " leaves";
+    case "AddDoleanceForNextCycle": return "schedules next cycle " + L(a[0]);
+    case "SpecialInstruction": return "special " + L(a[0]);
+    case "CountyRallied": return "rallies " + L(a[0]);
+    case "UltimatumTriggered": return "triggers ultimatum " + L(a[0]);
+    case "RemoveEquipment": return "removes " + L(a.length > 1 ? a[1] : a[0]);
+    case "LocationDestroyed": return "destroyed " + L(a[0]);
+    case "NewCharacterRomanced": return "romance " + L(a[0]);
+    case "MajorCharacterIntroduction": return "introduces " + L(a[0]);
     default: return null;
   }
 }
@@ -142,6 +151,26 @@ function fnBadgeClass(name, args) {
     return n > 0 ? "pos" : (n < 0 ? "neg" : "");
   }
   return FN_CATS.req.has(name) ? "req" : "";
+}
+// render a game-API call as a clean inline badge (no ⚙/➔/✎ glyph prefixes — the
+// badge itself is the visual). Shared by dialogue-level calls (token "3") and
+// choice effects (token "2"'s t[5]): set-writes get the green .set form, known
+// functions their friendly label, everything else the raw "Name(args)" text.
+function fnChip(name, args) {
+  const a = args || [];
+  if (name.startsWith("set:")) {
+    const target = a[0] === undefined ? "" : a[0];
+    const rhs = a.length > 1 ? a[1] : "";
+    return {
+      cls: "",
+      html: `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(String(target))}${rhs ? " = " + esc(String(rhs)) : ""}</span>`,
+    };
+  }
+  const fr = fnFriendly(name, a);
+  return {
+    cls: fr != null ? fnBadgeClass(name, a) : "",
+    html: fr != null ? fr : esc(name) + (a.length ? "(" + a.map(linkArg).join(", ") + ")" : ""),
+  };
 }
 function loadShowPrefs() {
   try {
@@ -791,14 +820,11 @@ function renderDialogue(k, root) {
             eff.className = "effs";
             for (const e of t[5]) {
               const chip = document.createElement("span");
-              if (e[0].startsWith("set:")) {
-                const target = e[1] && e[1][0] !== undefined ? e[1][0] : "";
-                const rhs = e[1] && e[1].length > 1 ? e[1][1] : "";
-                chip.textContent = "✎ " + e[0].slice(4).replace(/=$/, "") + " " + target + (rhs ? " = " + rhs : "");
-              } else {
-                chip.innerHTML = "➔ " + esc(e[0]) + ((e[1] || []).length ? "(" + (e[1] || []).map(linkArg).join(", ") + ")" : "");
-              }
-              chip.title = "effect triggered by this choice";
+              chip.className = "fn-chip";
+              const parts = fnChip(e[0], e[1] || []);
+              chip.innerHTML = parts.html;
+              if (parts.cls) chip.classList.add(parts.cls);
+              chip.title = "effect triggered by this choice: " + e[0] + "(" + (e[1] || []).map((a) => String(a)).join(", ") + ")";
               eff.appendChild(chip);
             }
             choice.appendChild(eff);
@@ -825,18 +851,9 @@ function renderDialogue(k, root) {
           const name = t[1], args = (t[2] || []);
           const chip = document.createElement("span");
           chip.className = "fn-chip";
-          if (name.startsWith("set:")) {
-            const target = args[0] === undefined ? "" : args[0];
-            const rhs = args.length > 1 ? args[1] : "";
-            chip.innerHTML = `<span class="set">set ${esc(name.slice(4).replace(/=$/, ""))} ${esc(target)}${rhs ? " = " + esc(rhs) : ""}</span>`;
-          } else {
-            const fr = fnFriendly(name, args);
-            chip.innerHTML = fr != null
-              ? fr
-              : "⚙ " + esc(name) + "(" + args.map(linkArg).join(", ") + ")";
-            const cls = fnBadgeClass(name, args);
-            if (cls) chip.classList.add(cls);
-          }
+          const parts = fnChip(name, args);
+          chip.innerHTML = parts.html;
+          if (parts.cls) chip.classList.add(parts.cls);
           chip.title = "game / ink function call: " + name + "(" + args.map((a) => String(a)).join(", ") + ")";
           if (fnRow == null || fnRowDepth !== stack.length) {
             fnRow = document.createElement("div");

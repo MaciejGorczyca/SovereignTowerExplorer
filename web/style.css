@@ -249,7 +249,6 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
 .choice .dst:hover { border-color: var(--acc); color: var(--acc); }
 .choice .dst.meta { color: var(--mut); cursor: default; }
 .choice .effs { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
-.choice .effs .chip { color: var(--green); border-color: #2a3a2e; background: #1a241d; cursor: default; }
 .choice .reqs .chip.neg { color: var(--red); border-color: #462a26; background: #24191a; }
 .choice-flow {
   margin: 8px 0 2px; padding: 8px 10px; border-left: 2px solid #5a5033;
