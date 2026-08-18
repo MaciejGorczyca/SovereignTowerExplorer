@@ -23,8 +23,10 @@ viewer's Inventory tab:
   item out in the story / remove it.
 
 Output shape (dist/inventory.json):
-  items:   { "<file stem>": {...} }  — one entry per `.tres` (variants like
-           demon_heart_2 are distinct entries sharing a canonical ID)
+  items:   { "<file stem>": {...} }  — one entry per canonical item ID; `.tres`
+           copies sharing a canonical ID (e.g. demon_heart_2/3/4 = DEMON_HEART)
+           are merged into one entry keyed by the base stem, with their source
+           lists unioned and the surviving resource stems listed under `stems`.
   stats:   header counts per type, orphan items, etc.
 
 Same stdlib-only / portable-path conventions as quest_data.py. Run standalone:
@@ -504,12 +506,77 @@ def attach_ink_sources(items, unlock_map, remove_map):
     def fit(map_, key, target):
         for canon, knots in map_.items():
             if canon.upper() == key:
-                target.extend(sorted(knots))
+                target.extend(sorted(set(knots)))
     for stem, it in items.items():
         key = it["cid"].upper()
         fit(unlock_map, key, it["src"]["ink_unlock"])
         fit(remove_map, key, it["src"]["ink_remove"])
     return sum(1 for it in items.values() if it["src"]["ink_unlock"])
+
+
+def merge_items_by_cid(items):
+    """Collapse duplicate `.tres` copies that share a canonical item ID.
+
+    The game ships physically-separate `.tres` copies of one item — each
+    granting quest/event references its own copy (e.g. demon_heart,
+    demon_heart_2/3/4 all carry relic_ID 23 = DEMON_HEART). The viewer shows
+    one card per item, so those copies are merged into a single entry keyed by
+    the canonical (first) stem, unioning every copy's sources (granted-by
+    quests, forge/stables/witch requirements, ink knots, consumed-by
+    materials). The canonical stem is what the rest of the build links to; the
+    surviving copy stems are kept on the item as `stems` so the variant
+    resource names are not lost."""
+    by_cid = {}
+    for stem, it in items.items():
+        by_cid.setdefault(it["cid"], []).append(stem)
+    merged = {}
+    for cid, stems in by_cid.items():
+        if len(stems) == 1:
+            merged[stems[0]] = items[stems[0]]
+            continue
+        base = sorted(stems)[0]
+        it = dict(items[base])
+        it["stems"] = sorted(stems)
+        src = it["src"]
+        for s in sorted(stems)[1:]:
+            other_item = items[s]
+            other = other_item["src"]
+            src["quests"] = sorted(set(src["quests"]) | set(other["quests"]))
+            src["ink_unlock"] = sorted(set(src["ink_unlock"]) | set(other["ink_unlock"]))
+            src["ink_remove"] = sorted(set(src["ink_remove"]) | set(other["ink_remove"]))
+            src["meals"] = src["meals"] or other["meals"]
+            src["starting"] = src["starting"] or other["starting"]
+            for key in ("forge", "stables", "witch"):
+                src[key] = _dedupe_pairs(src[key] + other[key])
+            src["consumed_by"] = _dedupe_consumed(src["consumed_by"] + other["consumed_by"])
+            for flag in ("ex", "hs", "cp", "rr"):
+                it[flag] = it[flag] or other_item[flag]
+        src["consumed_by"].sort(key=lambda c: (c["shop"], c["act"], c["by"]))
+        merged[base] = it
+    return merged
+
+
+def _dedupe_pairs(pairs):
+    out, seen = [], set()
+    for act, req in pairs:
+        key = (act, json.dumps(req, sort_keys=True) if req is not None else None)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append([act, req])
+    out.sort(key=lambda p: (p[0], json.dumps(p[1], sort_keys=True) if p[1] else ""))
+    return out
+
+
+def _dedupe_consumed(entries):
+    out, seen = [], set()
+    for e in entries:
+        key = (e["by"], e["shop"], e["act"])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(e)
+    return out
 
 
 def load_inventory(quests_data=None, unlock_map=None, remove_map=None, game_root=None):
@@ -530,8 +597,11 @@ def load_inventory(quests_data=None, unlock_map=None, remove_map=None, game_root
     items = load_equipment()
     load_shop_sources(items, enums)
     attach_consumed_by(items)
-    quest_granted = attach_quest_sources(items, quests_data)
-    ink_unlocked = attach_ink_sources(items, unlock_map or {}, remove_map or {})
+    attach_quest_sources(items, quests_data)
+    attach_ink_sources(items, unlock_map or {}, remove_map or {})
+    items = merge_items_by_cid(items)
+    quest_granted = sum(1 for it in items.values() if it["src"]["quests"])
+    ink_unlocked = sum(1 for it in items.values() if it["src"]["ink_unlock"])
 
     by_type = {}
     for it in items.values():
@@ -554,19 +624,31 @@ def load_inventory(quests_data=None, unlock_map=None, remove_map=None, game_root
 
 def ink_equip_maps(index):
     """From dist/index.json, collect {canonical-ID-upper: [knots]} for the
-    UnlockEquipment / RemoveEquipment story-instruction calls."""
+    UnlockEquipment / RemoveEquipment story-instruction calls.
+
+    The calls appear both as top-level instructions (t[0] == "3") and as
+    effects attached to a choice stub (t[0] == "2", funcs at t[5]) — e.g.
+    `scriptedquest_civil_war_event_scholars_revolt` gives up a Dragon/Demon
+    Heart through a choice — so both surfaces are scanned."""
     unlock, remove = {}, {}
     if not index or "knots" not in index:
         return unlock, remove
     for name, k in index["knots"].items():
         for t in k.get("lines", []):
-            if t[0] != "3" or t[1] not in ("UnlockEquipment", "RemoveEquipment"):
-                continue
-            args = t[2] or []
-            if len(args) < 2 or not isinstance(args[1], str):
-                continue
-            canon = args[1].upper()
-            (remove if t[1] == "RemoveEquipment" else unlock).setdefault(canon, set()).add(name)
+            if t[0] == "2" and len(t) > 5 and t[5]:
+                for e in t[5]:
+                    if not e or e[0] not in ("UnlockEquipment", "RemoveEquipment"):
+                        continue
+                    args = e[1] or []
+                    if len(args) >= 2 and isinstance(args[1], str):
+                        canon = args[1].upper()
+                        (remove if e[0] == "RemoveEquipment" else unlock).setdefault(canon, set()).add(name)
+            elif t[0] == "3" and t[1] in ("UnlockEquipment", "RemoveEquipment"):
+                args = t[2] or []
+                if len(args) >= 2 and not isinstance(args[1], str):
+                    continue
+                canon = args[1].upper()
+                (remove if t[1] == "RemoveEquipment" else unlock).setdefault(canon, set()).add(name)
     return {k: sorted(v) for k, v in unlock.items()}, {k: sorted(v) for k, v in remove.items()}
 
 

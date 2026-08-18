@@ -3,7 +3,7 @@
 Static, dependency-free viewer for the game data of *Sovereign Tower*,
 extracted from the decompiled Godot project. Ships six tabs in one shell:
 **Dialogues** (the "ink" story — the original explorer), **Quests** (312 quest
-contracts + unexpected outcomes), **Inventory** (all 154 equipment resources),
+contracts + unexpected outcomes), **Inventory** (all 149 equipment resources),
 **Knights** (the 24 playable knights), **Special** (the 71 `SpecialInstruction`
 game-director switches) and **Audiences** (the 511 narrated scenes + the 34
 `AudienceRequest` resources that unlock them). It walks the **compiled ink
@@ -450,7 +450,7 @@ Layers (each also runs standalone: `python3 tests/test_walker.py`, …):
 | `test_walker.py` | the compiled-ink Walker's exact token output on verbatim real-game knots (speaker attribution, if/else gates, choice dest/effects, `UnlockQuest` semantic writes) | nothing (fixtures in `tests/fixtures/ink_knots.py`) |
 | `test_tresfile.py` | `quest_data.py`'s `.tres`/enum parsing on self-contained fixtures | nothing |
 | `test_dist_conformance.py` | schema + cross-dataset invariants of the shipped `dist/` (token encoding, stats self-consistency, locale knot-set parity, id maps) | checked-in `dist/` only |
-| `test_data_passes.py` | the data passes over the real game root at the documented volumes (312 quests, 154 items, 24 knights, 71 specials, 511 audiences, 235 dialogs, 6 endings) | `../game/SovereignTowerCode` (skips if absent) |
+| `test_data_passes.py` | the data passes over the real game root at the documented volumes (312 quests, 149 items, 24 knights, 71 specials, 511 audiences, 235 dialogs, 6 endings) | `../game/SovereignTowerCode` (skips if absent) |
 | `test_build_golden.py` | a **fresh build is byte-identical to the reference `dist/`** — the highest-value regression net for a refactor; **refactor-only, do not run for routine work** (`run_tests.py --golden` or `check_dist_ref.py`, not run by default) | game root + pip `zstandard` (skips if absent) |
 | `test_frontend.py` + `frontend_smoke.js` | `node --check dist/app.js` + boots the full app in a VM with a minimal DOM stub, renders every tab, and calls `renderDialogue()` across all 922 knots expecting zero throws | node (skips if absent) |
 
@@ -489,7 +489,7 @@ The other data files (loaded by the other five tabs) are: `quests.json` (312 que
 91 quests carrying unexpected outcomes — 10 of which are inline `SubResource`
 special outcomes decoded from the quest file itself — 69 modifier variants, 511
 audiences, 306 ink-unlocked),
-`inventory.json` (154 items, 71 quest-linked, 24 ink-unlocked), `knights.json` (24
+`inventory.json` (149 items, 68 quest-linked, 26 ink-unlocked), `knights.json` (24
 knights, 24 ink-linked, 23 with conversations, 7 with evolution paths),
 `special.json` (71 instructions: 50 emitted in ink, 19 granted as quest rewards,
 12 knight evolutions, 23 with effect cross-links; 12 carry decoded `cond`

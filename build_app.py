@@ -1298,10 +1298,17 @@ def main():
                         unlock_map[a].append(name)
             elif t[0] == "2" and len(t) > 5 and t[5]:
                 for e in t[5]:
-                    if e and e[0] == "UnlockQuest":
+                    if not e:
+                        continue
+                    if e[0] == "UnlockQuest":
                         for a in (e[1] or []):
                             if isinstance(a, str) and a and a != "false" and a != "true":
                                 unlock_map[a].append(name)
+                    elif e[0] in ("UnlockEquipment", "RemoveEquipment"):
+                        args = e[1] or []
+                        if len(args) >= 2 and isinstance(args[1], str):
+                            canon = args[1].upper()
+                            (equip_remove if e[0] == "RemoveEquipment" else equip_unlock)[canon].append(name)
             elif t[0] == "3" and t[1] in ("UnlockEquipment", "RemoveEquipment"):
                 args = t[2] or []
                 if len(args) >= 2 and isinstance(args[1], str):

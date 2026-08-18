@@ -2068,7 +2068,7 @@ function validLoc(loc) {
   const k = loc.d.k, v = loc.d.v;
   if (k === "knot") return !!(INDEX && INDEX.knots[v]);
   if (k === "quest") return !!(QUEST && QUEST.quests[v]);
-  if (k === "inv") return !!(INV && INV.items[v]);
+  if (k === "inv") return !!(INV && INV.items[canonItemStem(v)]);
   if (k === "knight") return !!(KNIGHTS && KNIGHTS.knights[v]);
   if (k === "special") return !!(SPECIAL && SPECIAL.instructions[v]);
   if (k === "aud") return !!(AUDIENCE && AUDIENCE.audiences[v]);
@@ -2346,7 +2346,10 @@ function knightName(stem) {
 // resolve an item reward to its inventory item stem (by item_stem, else by cid)
 function rewardItemStem(r) {
   if (!r) return null;
-  if (r.item_stem && INV && INV.items[r.item_stem]) return r.item_stem;
+  if (r.item_stem && INV) {
+    const s = canonItemStem(r.item_stem);
+    if (INV.items[s]) return s;
+  }
   if (r.item && INV) {
     const s = invalidItemsByCid().get(r.item);
     if (s) return s;
@@ -2410,14 +2413,39 @@ function invIndex() {
     if (INV) for (const stem of Object.keys(INV.items)) {
       const sk = stem.toUpperCase();
       if (!_invIdxMap.has(sk)) _invIdxMap.set(sk, stem);
-      const cid = INV.items[stem].cid;
+      const items = INV.items[stem];
+      const cid = items.cid;
       if (cid != null) {
         const ck = String(cid).toUpperCase();
         if (!_invIdxMap.has(ck)) _invIdxMap.set(ck, stem);
       }
+      // variant .tres copies were merged under one canonical stem; keep their
+      // names resolvable so quest/knight links to a specific copy still work
+      for (const a of (items.stems || [])) {
+        const ak = String(a).toUpperCase();
+        if (!_invIdxMap.has(ak)) _invIdxMap.set(ak, stem);
+      }
     }
   }
   return _invIdxMap;
+}
+// map a variant item stem (a merged-away .tres copy) back to its canonical key
+let _itemAliases = null;
+function itemAliases() {
+  if (!_itemAliases || (_itemAliases.size === 0 && INV)) {
+    _itemAliases = new Map();
+    if (INV) for (const [stem, it] of Object.entries(INV.items)) {
+      for (const s of (it.stems || [])) {
+        if (s !== stem) _itemAliases.set(s, stem);
+      }
+    }
+  }
+  return _itemAliases;
+}
+function canonItemStem(stem) {
+  if (!stem) return stem;
+  const canon = itemAliases().get(stem);
+  return canon || stem;
 }
 function knightIndex() {
   if (!_knightIdxMap || (_knightIdxMap.size === 0 && KNIGHTS)) {
@@ -3405,7 +3433,7 @@ function invCard(stem, it) {
 }
 
 function openInvDetail(stem) {
-  const it = INV.items[stem];
+  const it = INV.items[canonItemStem(stem)];
   if (!it) return;
   const panel = $("drawerpanel");
   panel.innerHTML = "";
@@ -3621,7 +3649,7 @@ function kHaystack(stem, k) {
   }
   k.meals.forEach((m) => h.push("meal " + m + " " + (tkey("MEAL_" + m) || "")));
   k.lt.forEach((t) => h.push("likes " + t)); k.dt.forEach((t) => h.push("dislikes " + t));
-  Object.values(k.equip).forEach((s) => h.push("equip " + s + (INV && INV.items[s] ? " " + tkey(INV.items[s].n) : "")));
+  Object.values(k.equip).forEach((s) => h.push("equip " + s + (INV && INV.items[canonItemStem(s)] ? " " + tkey(INV.items[canonItemStem(s)].n) : "")));
   Object.values(k.react).flat().forEach((r) => h.push(tkey(r)));
   (k.story || []).forEach((kn) => h.push(kn));
   for (const group of ["qa", "qu", "qr"]) for (const q of k[group]) h.push(q + " " + (QUEST && QUEST.quests[q] ? tkey(QUEST.quests[q].n) : ""));
@@ -3751,8 +3779,9 @@ function invalidItemsByCid() {
 }
 
 function invItemLink(kind, stem) {
-  if (INV && INV.items[stem]) {
-    return `<a class="itemlink" data-kind="${esc(kind)}" data-stem="${esc(stem)}">${esc(tkey(INV.items[stem].n))}</a>`;
+  const canon = canonItemStem(stem);
+  if (INV && INV.items[canon]) {
+    return `<a class="itemlink" data-kind="${esc(kind)}" data-stem="${esc(canon)}">${esc(tkey(INV.items[canon].n))}</a>`;
   }
   return `<span class="muted">${esc(stem)}</span>`;
 }

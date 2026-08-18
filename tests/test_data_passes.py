@@ -176,8 +176,8 @@ class InventoryDataPassTest(unittest.TestCase):
 
     def test_volume(self):
         st = self.inv["stats"]
-        self.assertEqual(st["items"], 154)
-        self.assertEqual(st["by_type"]["RELIC"], 70)
+        self.assertEqual(st["items"], 149)
+        self.assertEqual(st["by_type"]["RELIC"], 65)
         self.assertEqual(st["by_type"]["MOUNT"], 29)
         self.assertEqual(st["by_type"]["CONSUMABLE"], 44)
         self.assertEqual(st["by_type"]["MEAL"], 6)
@@ -186,6 +186,24 @@ class InventoryDataPassTest(unittest.TestCase):
     def test_item_stems_unique(self):
         items = self.inv["items"]
         self.assertEqual(len(items), len({os.path.basename(k) for k in items}))
+
+    def test_no_duplicate_item_cards(self):
+        """One card per canonical item id: `.tres` copies sharing an ID (e.g.
+        demon_heart_2/3/4 = DEMON_HEART) are merged into a single item instead
+        of being shown as separate duplicate cards."""
+        items = self.inv["items"]
+        ids = [it["cid"] for it in items.values()]
+        self.assertEqual(len(ids), len(set(ids)),
+                         "duplicate item ids would render as duplicate cards")
+        # the merged Demon Heart carries every copy's granted-by quests
+        demon = items["demon_heart"]
+        self.assertEqual(demon["stems"],
+                         ["demon_heart", "demon_heart_2", "demon_heart_3", "demon_heart_4"])
+        self.assertEqual(
+            set(demon["src"]["quests"]),
+            {"contract_anveld_demon_hunt", "quest_almor_fight_demon",
+             "quest_ultimatum_kingslayer_ursula", "quest_victoria_gank",
+             "quest_victoria_regular_duel", "quest_victoria_surprise_attack"})
 
     def test_material_consumption_reverse_map(self):
         """Shop requirements with a consumed relic material are mirrored back

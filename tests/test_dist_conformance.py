@@ -321,6 +321,18 @@ class DatasetsTest(unittest.TestCase):
                     self.assertIn(src, item["src"])
                 self.assertTrue(isinstance(item["src"]["consumed_by"], list))
 
+    def test_no_duplicate_item_cards(self):
+        """Every item card is unique by canonical id — merged `.tres` copies
+        share the canonical id but must never render as separate cards."""
+        inv = self.inventory
+        ids = [item["cid"] for item in inv["items"].values()]
+        self.assertEqual(len(ids), len(set(ids)))
+        # Dragon Heart is removed in the story by the scholars-revolt choice
+        self.assertIn("scriptedquest_civil_war_event_scholars_revolt",
+                      inv["items"]["dragon_heart"]["src"]["ink_remove"])
+        self.assertIn("scriptedquest_civil_war_event_scholars_revolt",
+                      inv["items"]["demon_heart"]["src"]["ink_remove"])
+
     def test_knights_schema(self):
         k = self.knights
         self.assertEqual(k["stats"]["total"], len(k["knights"]))

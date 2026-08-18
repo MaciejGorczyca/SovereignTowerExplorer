@@ -126,7 +126,7 @@ the single best feature of this app:
   (`[b]`, `[i]`, `[shake …]`, `[wave …]`, `[font_size=N]`, `[color]`, …) while keeping the words
   between them. Off by default; applied to dialogue lines, continuations, and card previews.
   Implemented in pure JS (`stripBbc` regex), no 3rd-party library.
-- Inventory tab (2026-08-13): all 154 equipment resources (70 relics, 29 mounts, 44 consumables,
+- Inventory tab (2026-08-13): all 149 equipment resources (65 relics, 29 mounts, 44 consumables,
   6 meals, 5 quest items) from `inventory_data.py`. Filters: search / type / stat bonus (+ only
   positive) / character tag / acquired-via (forge, stables, witch, meals, starting, quest, story,
   no source) / story-unlock / exclusive / hidden-stats. Card: cost, non-zero stat chips, tag count,
@@ -880,8 +880,28 @@ the single best feature of this app:
   search and carries it into the knot drawer's "Where it comes from" audience
   rows (the brizh orphan knots). Covers the last 6 of the 28 no-conditions
   audiences (26/28 solved by N1–N5; the 2+1 documented E4/E5 strays need no
-  code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
-  + tests + docs; rebuild `dist/`; suite green.
+code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
+   + tests + docs; rebuild `dist/`; suite green.
+- No duplicate item cards (2026-08-18): `.tres` copies of one equipment sharing a
+  canonical id (relic_ID / mount_ID / …) were rendered as separate Inventory
+  cards — e.g. `demon_heart`, `demon_heart_2/3/4` all = `DEMON_HEART`, each with
+  a single "granted by" quest. `inventory_data.py` now merges same-id copies
+  into one entry keyed by the base stem, unioning every copy's sources
+  (granted-by quests, shop requirements, ink knots, consumed-by materials); the
+  surviving resource names live on the item as `stems` and stay resolvable as
+  link aliases (quest `item_stem`, knight preferred gear). Fixes the Inventory
+  card count 154 → 149 (RELIC 70 → 65).
+- Ink `RemoveEquipment`/`UnlockEquipment` choice effects (2026-08-18): the
+  item → "Removed in the story" reverse map only scanned top-level
+  instructions, missing calls attached to a choice stub (`t[5]` funcs) — e.g.
+  `scriptedquest_civil_war_event_scholars_revolt` sacrificing the Dragon/Demon
+  Heart. `build_app.py` and `inventory_data.ink_equip_maps` now scan choice-func
+  calls too, and `attach_ink_sources` dedupes repeated knots. `dragon_heart` and
+  `demon_heart` now list the scholars-revolt knot under "Removed in the story".
+- No-duplicate-cards tests (2026-08-18): `test_no_duplicate_item_cards` in
+  `test_data_passes.py` (on the real game volumes) and in `test_dist_conformance.py`
+  (on shipped dist) assert every inventory item id is unique, so a merged-away
+  copy can never render as a second card again. `test_volume` updated to 149.
 
 
 ---
@@ -889,7 +909,7 @@ the single best feature of this app:
 ## 4. Future extensions (same shell, no new infra)
 - Knights / Characters view (24 knight descriptors + per-knight scripts: stats, affinity,
   preferences, gimmicks; knight ↔ quest preference links) — DONE, Knights tab.
-- Equipment / Relics view (154 equipment resources, 70 relics; reverse "which quest grants it") — DONE, Inventory tab.
+- Equipment / Relics view (149 equipment resources, 65 relics; reverse "which quest grants it") — DONE, Inventory tab.
 - SpecialInstruction catalog view (71 director switches: emitting knots, granting quests,
   owner knight evolutions) — DONE, Special tab.
 - Audiences / Audience-requests view (511 audiences with `ink_path`, 34 requests) — DONE, Audiences tab.
