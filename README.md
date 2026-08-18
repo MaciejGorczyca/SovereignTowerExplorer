@@ -28,6 +28,8 @@ browser.
     build_app.py            one build pass: ink stories (in-memory extraction or
                             --from-disk) + the five data passes -> dist/; modes:
                             --extract-ink [dir] (decode only), --save-ink [dir]
+    route_pages.py          per-route static pages + SEO shells (standalone CLI
+                            too: reads the dist JSONs, no game root needed)
     ink_extract.py          standalone extractor: Godot .res -> master.ink.json
                             (+ per-knot readable txt dumps); CLI + importable
     quest_data.py           quest resources / enums / 6-locale text -> dist/quests.json
@@ -54,10 +56,13 @@ browser.
       dialogues.json        the free-time dialogue catalog (affinity/conversation/reaction)
       endings.json          the ending-type cutscenes + per-character vignette catalog
       locales/{fr,de,cmn,ja,ko}.json   dialogue-token overrides (≈2.7–2.9 MB each)
+      dialogues/, quests/, inventory/, knights/, special/, audiences/
+        <entity>/index.html   per-route static shells (see "Routes / SEO")
     viewer.env              OPTIONAL KEY=VALUE config (see "Paths/config" below)
   ../game/                   game data (SovereignTowerCode, saved_games, optional
                              InkExtracted/en) + extract_save.py
   ../research/               ink_research/REPORT.md — the compiled-ink-format "WHY" doc
+                             hosting/REPORT.md — the URL-routing / SEO plan this is built on
 ```
 
 ## Ink source: in-memory by default, on-disk optional
@@ -95,6 +100,55 @@ JSON (`INK_ROOT`) plus the game root (`GAME_ROOT`) as inputs.
 
 Deploy the whole `dist/` directory anywhere; the UI fetches `index.json` and `locales/*.json`
 via URL-relative paths, so no server logic is required (GitHub Pages, `file://`, anything).
+
+---
+
+## Routes / SEO
+
+The SPA keeps its state in `history.state` (never in the URL), so out of the box every
+URL is `/`. Since GitHub Pages has **no server-side rewrites** (and `python -m http.server`
+neither), a pushed `/quests/<id>` URL would 404 on refresh. `route_pages.py` fixes that the
+only way static hosting allows: **prerender every route as a directory with an `index.html`**.
+Each route is a trailing-slash path backed by `<route>/index.html`:
+
+```
+/                        dist/index.html              (the copied web shell)
+/dialogues/              dialogues/index.html          (canonical → /)
+/dialogues/<knot>/       dialogues/<knot>/index.html
+/quests/                 quests/index.html
+/quests/<quest_id>/      quests/<quest_id>/index.html
+/inventory/              inventory/index.html
+/inventory/<item_stem>/  inventory/<item_stem>/index.html
+/knights/                knights/index.html
+/knights/<knight>/       knights/<knight>/index.html
+/special/                special/index.html
+/special/<name>/         special/<name>/index.html
+/audiences/              audiences/index.html
+/audiences/<stem>/       audiences/<stem>/index.html
+/audiences/requests/<stem>/   audiences/requests/<stem>/index.html
+```
+
+Every shell is the shared `web/index.html` markup (so the app boots identically at any
+depth — asset tags get a `../`-deep prefix) plus a per-page `<title>` / meta description /
+`<link rel="canonical">` / Open Graph / JSON-LD head, and detail pages embed the entity's
+text as a visible `<div class="seo-teaser">` for bots. The SPA still renders everything
+client-side; the shells exist so every deep link answers 200 with crawlable text.
+
+- **The route tree is derived from the emitted JSONs themselves** — `route_pages.py` walks
+  the key maps of `index.json` / `quests.json` / `inventory.json` / `knights.json` /
+  `special.json` / `audiences.json` in `out_dir`, so it can never drift from the data, and
+  it is deterministic (sorted keys, no timestamps → byte-identical rebuilds).
+- **`SITE_BASE`** (CLI `--site-base <url>`, env or `viewer.env`) is the absolute URL of the
+  deployment root; it feeds canonical / OG / JSON-LD URLs and must end in `/`. **Set it
+  before the final build** (GitHub Pages tolerates relative canonicals poorly); when unset
+  the shells use root-relative URLs, which is fine for local serving and `file://`.
+- **Trailing slash.** GitHub Pages 301-redirects `/quests/x` → `/quests/x/` automatically,
+  so both forms work for humans; the emitted (and canonical) form is the trailing-slash one.
+- The six tabs' static description blocks (`.tabdesc`, bottom of each results column) live
+  in `web/index.html` and therefore land in **every** shell verbatim — bots see the active
+  tab's description in each prerendered page.
+- Run it standalone without touching the game tree:
+  `python3 route_pages.py [out_dir] [--site-base <url>]`.
 
 ---
 
@@ -204,7 +258,7 @@ Resolution priority, higher wins:
         · dialogues: `python dialogue_data.py <game_root> [out]` (reads `index.json`/`quests.json`/
         `knights.json`/`special.json`, so run it last)
         · endings: `python ending_data.py <game_root> [out]` (new file, no deps on other passes)
-2. Environment vars — `INK_ROOT`, `INK_OUT`, `GAME_ROOT` (build) · `GAME_ROOT`, `QUEST_OUT` (quest data)
+2. Environment vars — `INK_ROOT`, `INK_OUT`, `GAME_ROOT`, `SITE_BASE` (build) · `GAME_ROOT`, `QUEST_OUT` (quest data)
         · `INK_SOURCE`, `INK_OUT` (extract)
 3. Config file — `viewer.env` (build/quests, shared keys) / `extract.env` (ink_extract.py), `KEY=VALUE`, next to each script
 4. Portable defaults:
@@ -229,6 +283,7 @@ INK_ROOT = /app/game/InkExtracted
 INK_OUT  = /app/explorer/dist
 GAME_ROOT = /app/game/SovereignTowerCode
 QUEST_OUT = /app/explorer/dist/quests.json
+SITE_BASE = https://user.github.io/repo/   # only needed for the final build
 ```
 
 ---

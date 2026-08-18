@@ -412,6 +412,32 @@ a.knightlink { color: var(--acc); text-decoration: underline; cursor: pointer; }
 .techbar button.on { color: var(--txt); border-color: var(--acc); }
 .techbar button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
+/* static per-tab description blocks at the bottom of each results column */
+.tabdesc {
+  margin: 18px 0 10px; padding: 12px 2px 2px;
+  border-top: 1px solid var(--line);
+  color: var(--mut); font-size: 12.5px; line-height: 1.55;
+}
+.tabdesc h2 {
+  margin: 0 0 6px; font-size: 13px; color: var(--txt); letter-spacing: .3px;
+}
+.tabdesc p { margin: 0; }
+.tabdesc p a { color: var(--acc); }
+
+/* pre-JS teaser on detail route pages (removed by app.js on boot, T5) */
+.seo-teaser {
+  margin: 12px 0; padding: 14px 16px;
+  background: var(--panel2); border: 1px solid var(--line); border-radius: 10px;
+  color: var(--txt); font-size: 13.5px; line-height: 1.55;
+}
+.seo-teaser h1 { margin: 0 0 8px; font-size: 19px; line-height: 1.2; }
+.seo-teaser p { margin: 6px 0; }
+.seo-teaser .qid {
+  font-family: var(--mono); font-size: 11px; color: var(--acc); margin: 0 0 8px;
+}
+.seo-teaser .tcat { color: var(--mut); font-size: 12px; margin-top: 2px; }
+.seo-teaser .tprev { color: var(--mut); font-style: italic; }
+
 @media (max-width: 760px) {
   #layout { grid-template-columns: 1fr; }
   #filters, #qfilters, #ifilters, #kfilters, #sfilters, #afilters { position: static; height: auto; }

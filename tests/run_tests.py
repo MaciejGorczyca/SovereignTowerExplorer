@@ -35,6 +35,7 @@ MODULES = [
     "test_walker",
     "test_tresfile",
     "test_dist_conformance",
+    "test_route_pages",
     "test_data_passes",
     "test_frontend",
 ]

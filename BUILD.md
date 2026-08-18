@@ -42,6 +42,7 @@ Outputs written to `out_dir`:
 | `audiences.json` | the audience + audience-request catalog joins |
 | `locales/<locale>.json` | dialogue-token overrides for fr/de/cmn/ja/ko |
 | `app.js`, `style.css`, `index.html` | frontend assets copied from `web/` |
+| `dialogues/`, `quests/`, `inventory/`, `knights/`, `special/`, `audiences/` | per-route static shells — one `<entity>/index.html` per URL the SPA can open (see README "Routes / SEO") |
 
 ---
 
@@ -69,15 +70,33 @@ CWD-independent.
 | `--extract-ink [dir]` | ink extraction only: decode the stories to `<dir>/<locale>/master.ink.json` (default `../game/InkExtracted`), then exit. No build. |
 | `--save-ink [dir]` | build as normal, then **also** write the decoded ink to `<dir>/<locale>/master.ink.json` (default `../game/InkExtracted`). |
 | `--profile` | print per-phase wall/CPU timings of the build. |
+| `--site-base <url>` | absolute URL of the deployed site root (trailing slash optional). Feeds the route shells' canonical / OG / JSON-LD URLs; unset → root-relative URLs. Same key as env/`viewer.env` `SITE_BASE`. |
+
+---
+
+## Serving and deploying (trailing slash)
+
+Every deep link the app can open is prerendered as `<route>/index.html`, so the site works
+on any static host with **no server config**:
+
+- **GitHub Pages** (and `python -m http.server`) resolve `/a/b/` → `a/b/index.html`; a
+  request for `/a/b` (no slash) is **301-redirected** to `/a/b/` automatically. Refresh or
+  share any deep link and it 200s.
+- Rich SEO shells per route (title, meta description, canonical, Open Graph, JSON-LD,
+  visible teaser for details) are emitted at build time — see `README.md` "Routes / SEO".
+- Set `SITE_BASE` to the real deployment origin **before the build you ship** so canonicals
+  are absolute (GitHub Pages tolerates relative canonicals poorly). Unset is fine locally.
+- If the GitHub Actions Pages workflow ever needs the SITE_BASE for the committed dist, the
+  value is decided when `dist/` was built (the workflow itself only deploys).
 
 ---
 
 ## How paths are resolved
 
-Higher wins. All four sources can supply `ink_root`, `out_dir`, `game_root`:
+Higher wins. All four sources can supply `ink_root`, `out_dir`, `game_root` (and `SITE_BASE`):
 
-1. **CLI positional args** — `python3 build_app.py <ink_root> <out_dir> <game_root>`
-2. **Environment variables** — `INK_ROOT`, `INK_OUT`, `GAME_ROOT`
+1. **CLI positional args / flags** — `python3 build_app.py <ink_root> <out_dir> <game_root>` (+ `--site-base <url>`)
+2. **Environment variables** — `INK_ROOT`, `INK_OUT`, `GAME_ROOT`, `SITE_BASE`
 3. **Config file** — `viewer.env` (optional, next to the script), same keys, one per line
 4. **Portable defaults** — see the table above
 

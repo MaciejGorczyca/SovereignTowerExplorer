@@ -1,6 +1,6 @@
 # PLAN — Sovereign Tower Explorer (quests + shared systems)
 
-> Status: **IMPLEMENTED (dialogue + quests + inventory + knights + special + audiences)**
+> Status: **IMPLEMENTED (dialogue + quests + inventory + knights + special + audiences) + routes/SEO**
 
 ---
 
@@ -902,6 +902,26 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   `test_data_passes.py` (on the real game volumes) and in `test_dist_conformance.py`
   (on shipped dist) assert every inventory item id is unique, so a merged-away
   copy can never render as a second card again. `test_volume` updated to 149.
+- Per-route static pages + SEO shells (2026-08-18): `route_pages.py` (new, stdlib, CLI
+  `[out_dir] [--site-base <url>]`) prerenders every URL the SPA can open as a
+  trailing-slash `<route>/index.html` under `dist/` — the six tab pages, all 922 knot /
+  312 quest / 149 item / 24 knight / 71 special / 511 audience detail pages and the 34
+  `audiences/requests/*` request pages (2,029 shells at the current volumes). Each shell
+  is the shared `web/index.html` markup with depth-correct (`../`-deep) asset tags and a
+  per-route `<title>` / meta description / `<link rel=canonical>` / Open Graph / JSON-LD
+  head; detail pages embed a visible `.seo-teaser` (`<h1>` + category/prev/name/desc
+  text, BBCode stripped, from the six `dist/*.json` alone — loc keys resolved en-first via
+  `quests.json#loc`). Routes are derived from the JSON key maps in `out_dir` (sorted →
+  byte-identical rebuilds), so they can never drift from the data, and the `/dialogues/`
+  alias canonicalises to `/`. `build_app.py` gained the `--site-base` flag +
+  `SITE_BASE` env/`viewer.env` key (resolved with the same CLI > env > .env > default
+  precedence as the path keys) and calls the pass after `copy_web_assets`. `web/index.html`
+  gained the six static `.tabdesc` description blocks (one per results column, copied
+  verbatim into every shell); `web/style.css` styles `.tabdesc` + `.seo-teaser`. Tests:
+  new `tests/test_route_pages.py` (route counts ↔ dataset keys both directions — no orphan
+  route dirs, asset-prefix depth, title/description/canonical, `.seo-teaser`, smoke-stub
+  friendliness) + unit tests for the `route_pages` helpers. Full rebuild + golden `dist/`
+  with the new route tree.
 
 
 ---

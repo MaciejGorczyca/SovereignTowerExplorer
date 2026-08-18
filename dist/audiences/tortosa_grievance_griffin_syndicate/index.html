@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>tortosa_grievance_griffin_syndicate — Sovereign Tower Explorer</title>
+  <meta name="description" content="Narrated scene in Sovereign Tower: tortosa_grievance_griffin_syndicate featuring Cinderbeard. Ahoy!">
+  <link rel="canonical" href="/audiences/tortosa_grievance_griffin_syndicate/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="tortosa_grievance_griffin_syndicate — Sovereign Tower Explorer">
+  <meta property="og:description" content="Narrated scene in Sovereign Tower: tortosa_grievance_griffin_syndicate featuring Cinderbeard. Ahoy!">
+  <meta property="og:url" content="/audiences/tortosa_grievance_griffin_syndicate/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="tortosa_grievance_griffin_syndicate — Sovereign Tower Explorer">
+  <meta name="twitter:description" content="Narrated scene in Sovereign Tower: tortosa_grievance_griffin_syndicate featuring Cinderbeard. Ahoy!">
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Sovereign Tower Explorer","item":"/"},{"@type":"ListItem","position":2,"name":"Audiences","item":"audiences/"},{"@type":"ListItem","position":3,"name":"tortosa_grievance_griffin_syndicate","item":"/audiences/tortosa_grievance_griffin_syndicate/"}]}]}</script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>◆</text></svg>">
+<link rel="stylesheet" href="../../style.css">
+<script data-goatcounter="https://sovereigntowerexplorer.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">
+    <span class="logo">◆</span>
+    <h1>Sovereign Tower</h1>
+    <span class="sub">Explorer</span>
+  </div>
+  <nav id="tabs">
+    <button id="tab-ink" class="tab active" type="button">Dialogues</button>
+    <button id="tab-quest" class="tab" type="button">Quests</button>
+    <button id="tab-inv" class="tab" type="button">Inventory</button>
+    <button id="tab-knight" class="tab" type="button">Knights</button>
+    <button id="tab-special" class="tab" type="button">Special</button>
+    <button id="tab-aud" class="tab" type="button">Audiences</button>
+  </nav>
+  <button id="donatebtn" type="button" title="Support the project">♥ Support</button>
+  <div class="topstat" id="stats"></div>
+  <label class="loclabel" for="locale">Locale
+    <select id="locale">
+      <option value="en">English (en)</option>
+      <option value="fr">Français (fr)</option>
+      <option value="de">Deutsch (de)</option>
+      <option value="cmn">中文 (cmn)</option>
+      <option value="ja">日本語 (ja)</option>
+      <option value="ko">한국어 (ko)</option>
+    </select>
+  </label>
+</header>
+
+<div id="layout">
+  <aside id="filters">
+    <h2>Filters</h2>
+    <label>Search
+      <input id="q" type="search" placeholder="text / choice / variable / knot name" autocomplete="off">
+    </label>
+
+    <label>Speaker
+      <select id="spk"></select>
+    </label>
+
+    <label>Category
+      <select id="cat"></select>
+    </label>
+
+    <fieldset>
+      <legend>Variable (read / write)</legend>
+      <input id="var" list="varlist" placeholder="e.g. gideon_romanced" autocomplete="off">
+      <datalist id="varlist"></datalist>
+      <div class="radiogroup" id="varusemode">
+        <label><input type="radio" name="varuse" value="either" checked> either</label>
+        <label><input type="radio" name="varuse" value="reads"> reads</label>
+        <label><input type="radio" name="varuse" value="writes"> writes</label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Function / requirement</legend>
+      <input id="fn" list="fnlist" placeholder="e.g. RequiresTag, HintSat" autocomplete="off">
+      <datalist id="fnlist"></datalist>
+      <div class="fnrow">
+        <input id="fnarg" list="fnarglist" placeholder="which arg (e.g. Kind)" autocomplete="off">
+        <datalist id="fnarglist"></datalist>
+      </div>
+      <div class="fnrow">
+        <select id="fnop">
+          <option value="=">= equals</option>
+          <option value="&lt;">&lt; below</option>
+          <option value="&lt;=">&le; at most</option>
+          <option value="&gt;">&gt; above</option>
+          <option value="&gt;=">&ge; at least</option>
+        </select>
+        <input id="fnval" list="fnvallist" placeholder="value" inputmode="numeric" autocomplete="off">
+        <datalist id="fnvallist"></datalist>
+      </div>
+      <p class="hint">Require a call like <code>RequiresTag(Kind, …)</code> — pick the function, its first argument (the tag), then an operator + value to compare against the numeric argument. Leave fields blank for any/match-only.</p>
+    </fieldset>
+
+    <label>Where it comes from
+      <select id="src">
+        <option value="">Any</option>
+        <option value="aud">played as an audience</option>
+        <option value="fu">fires after a quest</option>
+        <option value="in">reached from other knots</option>
+        <option value="uq">unlocks a quest</option>
+        <option value="sp">emits a special instruction</option>
+        <option value="it">grants / removes items</option>
+        <option value="kn">appears in knight dialogue</option>
+        <option value="dl">has a free-time dialogue source</option>
+      </select>
+    </label>
+
+    <label>Audience type
+      <select id="kf"></select>
+    </label>
+
+    <label>Audience NPC
+      <select id="kc"></select>
+    </label>
+
+    <label>Fired after quest
+      <select id="kq"></select>
+    </label>
+
+    <label>Emits special instruction
+      <select id="ksp"></select>
+    </label>
+
+    <label class="chk"><input type="checkbox" id="hasch"> only knots with choices</label>
+    <label class="chk"><input type="checkbox" id="hidefn"> hide game-API (function) knots</label>
+
+    <button id="reset" type="button">Reset filters</button>
+
+    <p class="hint">Click a knot for full dialogue. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <aside id="qfilters" hidden>
+    <h2>Quest filters</h2>
+    <label>Search
+      <input id="qq" type="search" placeholder="quest name / id / requirement / reward" autocomplete="off">
+    </label>
+
+    <label>Type
+      <select id="qtype"></select>
+    </label>
+
+    <label>Category
+      <select id="qcat"></select>
+    </label>
+
+    <label>Location
+      <select id="qloc"></select>
+    </label>
+
+    <label>Condition
+      <select id="qcond"></select>
+    </label>
+
+    <label>Stat requirement
+      <select id="qstat"></select>
+    </label>
+
+    <label>Reward type
+      <select id="qreward"></select>
+    </label>
+
+    <label>Knight (unexpected outcome)
+      <select id="qknight"></select>
+    </label>
+
+    <label>Unexpected outcome
+      <select id="qunexp">
+        <option value="">Any</option>
+        <option value="1">Has unexpected outcome(s)</option>
+        <option value="0">None</option>
+      </select>
+    </label>
+
+    <label class="chk"><input type="checkbox" id="qdeadline"> has deadline</label>
+    <label class="chk"><input type="checkbox" id="qlethal"> can be lethal</label>
+    <label class="chk"><input type="checkbox" id="qkill"> involves killing</label>
+    <label class="chk"><input type="checkbox" id="qlinked"> only linked in ink</label>
+    <label class="chk"><input type="checkbox" id="qaud"> has follow-up audience</label>
+    <label class="chk"><input type="checkbox" id="qmo"> has modifier variants</label>
+
+    <button id="qreset" type="button">Reset filters</button>
+
+    <p class="hint">Click a quest for full detail. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <aside id="ifilters" hidden>
+    <h2>Inventory filters</h2>
+    <label>Search
+      <input id="iqq" type="search" placeholder="item / stat / tag / source / quest" autocomplete="off">
+    </label>
+
+    <label>Type
+      <select id="itype"></select>
+    </label>
+
+    <label>Stat bonus
+      <select id="istat"></select>
+    </label>
+    <label class="chk"><input type="checkbox" id="ipos"> only positive bonuses</label>
+
+    <label>Character tag
+      <select id="itag"></select>
+    </label>
+
+    <label>Acquired via
+      <select id="isrc">
+        <option value="">Any</option>
+        <option value="forge">Forge</option>
+        <option value="stables">Stables</option>
+        <option value="witch">Witch tower</option>
+        <option value="meals">Tavern meals</option>
+        <option value="quests">Quest reward</option>
+        <option value="ink">Story unlock</option>
+        <option value="none">No source found</option>
+      </select>
+    </label>
+
+    <label class="chk"><input type="checkbox" id="iink"> unlocked by a story knot</label>
+    <label class="chk"><input type="checkbox" id="iex"> exclusive only</label>
+    <label class="chk"><input type="checkbox" id="ihs"> hidden stats</label>
+    <label class="chk"><input type="checkbox" id="icp"> complex passive</label>
+    <label class="chk"><input type="checkbox" id="imat"> consumed by other items</label>
+
+    <button id="ireset" type="button">Reset filters</button>
+
+    <p class="hint">Click an item for full stats, flags and sources. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <aside id="kfilters" hidden>
+    <h2>Knight filters</h2>
+    <label>Search
+      <input id="kqq" type="search" placeholder="name / stat / feature / tag / quest / knot" autocomplete="off">
+    </label>
+
+    <label>Origin
+      <select id="kloc"></select>
+    </label>
+
+    <label>Stat at least
+      <select id="kstat"></select>
+    </label>
+    <label>min value
+      <input id="kmin" type="number" placeholder="0" min="0" max="15">
+    </label>
+
+    <label>Acquired feature (character tag)
+      <select id="ktag"></select>
+    </label>
+
+    <label>Likes meal
+      <select id="kmeal"></select>
+    </label>
+
+    <label>Likes sovereign tag
+      <select id="klike"></select>
+    </label>
+    <label>Dislikes sovereign tag
+      <select id="kdislike"></select>
+    </label>
+
+    <label class="chk"><input type="checkbox" id="kequip"> has preferred equipment</label>
+    <label class="chk"><input type="checkbox" id="khidden"> has hidden/mystery features</label>
+    <label class="chk"><input type="checkbox" id="kalias"> has unrevealed alias</label>
+    <label class="chk"><input type="checkbox" id="krom"> romance-capable</label>
+    <label class="chk"><input type="checkbox" id="kconv"> has knight conversations</label>
+    <label class="chk"><input type="checkbox" id="kstory"> appears in ink dialogues</label>
+    <label class="chk"><input type="checkbox" id="kquest"> involved in quests</label>
+    <label class="chk"><input type="checkbox" id="kevo"> has evolution path</label>
+    <label class="chk"><input type="checkbox" id="kcback"> has call-back request</label>
+
+    <button id="kreset" type="button">Reset filters</button>
+
+    <p class="hint">Click a knight for stats, features, preferences, equipment and all story links. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <aside id="sfilters" hidden>
+    <h2>Special filters</h2>
+    <label>Search
+      <input id="sqq" type="search" placeholder="instruction / signal / knight / effect" autocomplete="off">
+    </label>
+
+    <label>Owner knight
+      <select id="sknight"></select>
+    </label>
+
+    <label class="chk"><input type="checkbox" id="sink"> emitted by a story knot</label>
+    <label class="chk"><input type="checkbox" id="squest"> granted as a quest reward</label>
+    <label class="chk"><input type="checkbox" id="sevo"> knight evolution switch</label>
+
+    <button id="sreset" type="button">Reset filters</button>
+
+    <p class="hint">A SpecialInstruction is a game director switch a dialogue knot emits (or a quest grants). Click one for every knot/quest that triggers it. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <aside id="afilters" hidden>
+    <h2>Audience filters</h2>
+    <label>Search
+      <input id="aqq" type="search" placeholder="audience / request / knot / character" autocomplete="off">
+    </label>
+
+    <label>Show
+      <select id="aview">
+        <option value="aud">Audiences</option>
+        <option value="req">Audience requests</option>
+      </select>
+    </label>
+
+    <div id="aaudonly">
+      <label>Folder
+        <select id="afolder"></select>
+      </label>
+
+      <label>Character
+        <select id="achar"></select>
+      </label>
+
+      <label class="chk"><input type="checkbox" id="acond"> has gating conditions</label>
+      <label class="chk"><input type="checkbox" id="aquest"> fires after a quest</label>
+      <label class="chk"><input type="checkbox" id="aaudreq"> triggered by a request</label>
+    </div>
+
+    <div id="areqonly" hidden>
+      <label class="chk"><input type="checkbox" id="areqgrant"> granted by a quest</label>
+    </div>
+
+    <button id="areset" type="button">Reset filters</button>
+
+    <p class="hint">An audience is a narrated scene that plays after a quest (or when a request unlocks it). Click one for its ink knot, characters and every gating condition it fires under — story gates, cycle scheduling, quest follow-ups, doleance/special/director schedulers, requests and filler/scene sources. Use <code>&amp;</code> to OR several queries.</p>
+  </aside>
+
+  <main id="results">
+    <div id="resultbar">
+      <span id="countline"></span>
+    </div>
+    <div id="cards"></div>
+    <div id="inkdesc" class="tabdesc">
+      <h2>Dialogues</h2>
+      <p>The complete in-game dialogue and script corpus: 922 knots, 91 speakers, 3,477 choices and 1,368 variables across 17 auto-classified categories — county quests, scripted quests, grievances, candidacies, endings, reactions, free-time dialogues and more. Browse the narrated scenes, the free-time dialogue of the 24 knights, quest outcomes and the ending cutscenes; filter by speaker, category, variable, function call and cross-dataset source, and jump into Quests, Knights, Special and Audiences from any knot.</p>
+    </div>
+  </main>
+
+  <main id="qresults" hidden>
+    <div id="resultbar">
+      <span id="qcountline"></span>
+    </div>
+    <div id="qcards"></div>
+    <div id="qdesc" class="tabdesc">
+      <h2>Quests</h2>
+      <p>All 312 quest contracts of Sovereign Tower with their stat requirements, conditions, locations, deadlines and rewards — 91 carry an unexpected outcome and 69 have modifier variants. Every quest links to the ink knot that unlocks it, the audience that follows it and the knights who prefer it, so you can trace any contract end to end.</p>
+    </div>
+  </main>
+
+  <main id="iresults" hidden>
+    <div id="resultbar">
+      <span id="icountline"></span>
+    </div>
+    <div id="icards"></div>
+    <div id="idesc" class="tabdesc">
+      <h2>Inventory</h2>
+      <p>All 149 equipment resources of Sovereign Tower — 65 relics, 29 mounts, 44 consumables, 6 meals and 5 quest items — with their stat bonuses, character tags, exclusive and hidden flags, complex passives and the quests, shops or story knots that grant them.</p>
+    </div>
+  </main>
+
+  <main id="kresults" hidden>
+    <div id="resultbar">
+      <span id="kcountline"></span>
+    </div>
+    <div id="kcards"></div>
+    <div id="kdesc" class="tabdesc">
+      <h2>Knights</h2>
+      <p>The 24 playable knights of Sovereign Tower with their mastered stats, affinity and demission profiles, known and rumored features, preferred equipment, liked meals and sovereign tags, pair conversations, evolution paths and every quest and story knot they appear in.</p>
+    </div>
+  </main>
+
+  <main id="sresults" hidden>
+    <div id="resultbar">
+      <span id="scountline"></span>
+    </div>
+    <div id="scards"></div>
+    <div id="sdesc" class="tabdesc">
+      <h2>Special</h2>
+      <p>The 71 SpecialInstruction game-director switches of Sovereign Tower — knight evolution states, background and animation toggles, raise flags and more — with the firing conditions each case runs under, the ink knots that emit them and the quests that grant them.</p>
+    </div>
+  </main>
+
+  <main id="aresults" hidden>
+    <div id="resultbar">
+      <span id="acountline"></span>
+    </div>
+    <div class="seo-teaser" role="main">
+<h1>tortosa_grievance_griffin_syndicate</h1><p class="tcat">folder: filler</p><p class="tcat">characters: Cinderbeard</p><p>Ahoy!</p>
+</div>
+<div id="acards"></div>
+    <div id="adesc" class="tabdesc">
+      <h2>Audiences</h2>
+      <p>The 511 narrated Audience scenes of Sovereign Tower and the 34 AudienceRequest resources that unlock them, with every gating condition that makes a scene play: story and knight requirements, hardcoded cycles, quest follow-ups, doleance and special-instruction schedulers, filler packs, county introductions and ultimatum follow-ups.</p>
+    </div>
+  </main>
+</div>
+
+<div id="drawer" hidden>
+  <div id="drawerbackdrop" class="backdrop"></div>
+  <section id="drawerpanel"></section>
+</div>
+
+<div id="donate" hidden>
+  <div id="donatebackdrop" class="backdrop"></div>
+  <section id="donatepanel" role="dialog" aria-modal="true" aria-labelledby="donatetitle">
+    <button id="donateclose" type="button" aria-label="Close">✕</button>
+    <h2 id="donatetitle">Support Sovereign Tower Explorer</h2>
+    <p>Sovereign Tower Explorer is free and fan-made — it took a lot of time to dig all this data. If it saved you time or you find it helpful, consider donating; any amount helps a lot! &lt;3</p>
+    <div class="donate-actions">
+      <a id="donatestripe" class="donate-link primary" href="https://donate.stripe.com/7sYfZj6029cLfqM0Ed6c000" target="_blank" rel="noopener noreferrer">Donate with Stripe (card)</a>
+      <a class="donate-link secondary" href="https://www.paypal.com/donate/?hosted_button_id=N32Z3HX74QQAS" target="_blank" rel="noopener noreferrer">Donate with PayPal</a>
+    </div>
+    <p class="donate-note">Free fan-made project; any amount helps.</p>
+    <div class="donate-foot">
+      <button id="donatenotnow" type="button">Not now</button>
+    </div>
+  </section>
+</div>
+
+<script src="../../app.js"></script>
+</body>
+</html>

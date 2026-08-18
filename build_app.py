@@ -78,6 +78,7 @@ from pathlib import Path
 
 from quest_data import (set_game, collect_loc_keys, load_loc, load_quests)
 from inventory_data import load_inventory, stats_text
+from route_pages import build_route_pages
 
 LOCALES = ("en", "fr", "de", "cmn", "ja", "ko")
 MARKER_RE = re.compile(r"\((BREAK_[A-Z0-9]+|NO_CLICK)\)")
@@ -277,6 +278,20 @@ def resolve_paths(argv: list) -> tuple:
     return ink_root, out_dir, game_root
 
 
+def resolve_site_base(flags: dict, cfg: dict = None) -> str:
+    """Resolve the SITE_BASE url from CLI flag, env, viewer.env or the default.
+
+    Same priority as the path keys (CLI > env > viewer.env > default). The live
+    origin of the deployment is not recorded anywhere in the repo; SITE_BASE
+    feeds the route shells' canonical/OG/JSON-LD/sitemap URLs and is only
+    meaningful when set. Default is "" (relative canonical URLs)."""
+    flag = flags.get("site_base") or ""
+    if flag:
+        return flag
+    cfg = cfg if cfg is not None else load_config()
+    return os.environ.get("SITE_BASE") or cfg.get("SITE_BASE") or ""
+
+
 class Profile:
     """Lightweight wall/CPU phase instrumentation for the build (--profile).
 
@@ -327,11 +342,13 @@ def parse_flags(argv: list) -> tuple:
       flags["save_ink"]     dir or None   (--save-ink [dir])
       flags["from_disk"]    bool          (--from-disk)
       flags["profile"]      bool          (--profile, per-phase build timings)
+      flags["site_base"]    str           (--site-base <url>, canonical/OG base
+                                          for the route-page shells; "" = unset)
       flags["help"]         bool          (--help / -h)
     The optional flag values are consumed only when the next token does not
     start with "--"."""
     flags = {"extract_ink": None, "save_ink": None, "from_disk": False,
-             "profile": False, "help": False}
+             "profile": False, "help": False, "site_base": ""}
     positionals = []
     i = 0
     while i < len(argv):
@@ -342,6 +359,10 @@ def parse_flags(argv: list) -> tuple:
             flags["from_disk"] = True
         elif a == "--profile":
             flags["profile"] = True
+        elif a == "--site-base":
+            if i + 1 < len(argv) and not argv[i + 1].startswith("--"):
+                flags["site_base"] = argv[i + 1]
+                i += 1
         elif a in ("--extract-ink", "--save-ink"):
             key = "extract_ink" if a == "--extract-ink" else "save_ink"
             if i + 1 < len(argv) and not argv[i + 1].startswith("--"):
@@ -1138,8 +1159,9 @@ USAGE
     • the Godot project tree  (game_root) — quests, audiences, inventory,
       knights, special instructions, localisations.
   Outputs: index.json, quests.json, inventory.json, knights.json,
-  special.json, audiences.json, dialogues.json, locales/<locale>.json, plus
-  the web assets (app.js, style.css, index.html) copied from explorer/web.
+  special.json, audiences.json, dialogues.json, endings.json, locales/<locale>.json,
+  the web assets (app.js, style.css, index.html) copied from explorer/web, plus
+  the per-route static pages (see route_pages.py) emitted from those JSONs.
 
 POSITIONAL ARGUMENTS
   ink_root    dir  Root that contains <locale>/master.ink.json files
@@ -1165,6 +1187,11 @@ FLAGS
                       to <dir>/<locale>/master.ink.json (default ../game/
                       InkExtracted).
   --profile           Print per-phase wall/CPU timings of the build.
+  --site-base <url>   Absolute URL of the deployed site root (trailing slash
+                      optional). Feeds the route-page shells' canonical / OG /
+                      JSON-LD urls (and sitemap/robots if ever emitted); when
+                      unset the shells use root-relative URLs. Env SITE_BASE /
+                      viewer.env SITE_BASE work too.
 
 MODES
   default           Extract ink in-memory from the game's .res chain (all 6
@@ -1186,6 +1213,7 @@ ENVIRONMENT / CONFIG KEYS
   INK_ROOT   Same as positional ink_root.
   INK_OUT    Same as positional out_dir.
   GAME_ROOT  Same as positional game_root.
+  SITE_BASE  Same as the --site-base flag (deployed site root URL).
 
   viewer.env (optional, next to this script) uses the same keys, one per line,
   e.g.:
@@ -1214,8 +1242,7 @@ def print_help(argv: list = None) -> None:
     actually be used, following the same resolution priority as the build."""
     argv = list(argv or [])
     print(HELP_TEXT)
-    positionals = [a for a in argv if a not in ("--from-disk", "--profile", "--extract-ink",
-                                                "--save-ink", "--help", "-h")]
+    _flags, positionals = parse_flags(argv)
     ink_root, out_dir, game_root = resolve_paths(positionals)
     cfg = load_config()
     cfg_keys = [k for k in ("INK_ROOT", "INK_OUT", "GAME_ROOT") if k in cfg]
@@ -1223,11 +1250,12 @@ def print_help(argv: list = None) -> None:
     print("  ink_root  = %s" % ink_root)
     print("  out_dir   = %s" % out_dir)
     print("  game_root = %s" % game_root)
+    print("  site_base = %s" % (resolve_site_base(_flags, cfg) or "(unset — relative canonical URLs)"))
     if cfg_keys:
         print("  (from viewer.env: %s)" % ", ".join(cfg_keys))
     else:
         print("  (no viewer.env overrides active)")
-    for k in ("INK_ROOT", "INK_OUT", "GAME_ROOT"):
+    for k in ("INK_ROOT", "INK_OUT", "GAME_ROOT", "SITE_BASE"):
         v = os.environ.get(k)
         if v:
             print("  env %-9s = %s" % (k, v))
@@ -1426,6 +1454,8 @@ def main():
 
     copy_web_assets(out_dir)
     prof.tick("web assets copy")
+    build_route_pages(out_dir, resolve_site_base(flags))
+    prof.tick("route pages")
     print("Wrote %s" % out_dir)
     print(json.dumps(index["stats"], indent=1))
     prof.report()
