@@ -59,6 +59,10 @@ select { background: var(--panel2); color: var(--txt); border: 1px solid var(--l
 }
 #tabs .tab:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
+/* tab + support buttons share one wrapping flow so the support pill sits right
+   beside the last tab instead of trailing alone on its own line */
+.bar-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 8px; }
+
 /* ---- donate pill ---- */
 #donatebtn {
   display: flex; align-items: center; gap: 6px;
