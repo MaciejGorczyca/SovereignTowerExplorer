@@ -78,7 +78,7 @@ from pathlib import Path
 
 from quest_data import (set_game, collect_loc_keys, load_loc, load_quests)
 from inventory_data import load_inventory, stats_text
-from route_pages import build_route_pages
+from route_pages import DEFAULT_SITE_BASE, build_route_pages
 
 LOCALES = ("en", "fr", "de", "cmn", "ja", "ko")
 MARKER_RE = re.compile(r"\((BREAK_[A-Z0-9]+|NO_CLICK)\)")
@@ -281,15 +281,16 @@ def resolve_paths(argv: list) -> tuple:
 def resolve_site_base(flags: dict, cfg: dict = None) -> str:
     """Resolve the SITE_BASE url from CLI flag, env, viewer.env or the default.
 
-    Same priority as the path keys (CLI > env > viewer.env > default). The live
-    origin of the deployment is not recorded anywhere in the repo; SITE_BASE
-    feeds the route shells' canonical/OG/JSON-LD/sitemap URLs and is only
-    meaningful when set. Default is "" (relative canonical URLs)."""
+    Same priority as the path keys (CLI > env > viewer.env > default). SITE_BASE
+    feeds the route shells' canonical/OG/JSON-LD/sitemap URLs and robots.txt.
+    The default is the live deployment origin (route_pages.DEFAULT_SITE_BASE) so
+    a bare build already emits the production-absolute URLs; override it only if
+    hosting changes."""
     flag = flags.get("site_base") or ""
     if flag:
         return flag
     cfg = cfg if cfg is not None else load_config()
-    return os.environ.get("SITE_BASE") or cfg.get("SITE_BASE") or ""
+    return os.environ.get("SITE_BASE") or cfg.get("SITE_BASE") or DEFAULT_SITE_BASE
 
 
 class Profile:
@@ -1189,9 +1190,10 @@ FLAGS
   --profile           Print per-phase wall/CPU timings of the build.
   --site-base <url>   Absolute URL of the deployed site root (trailing slash
                       optional). Feeds the route-page shells' canonical / OG /
-                      JSON-LD urls (and sitemap/robots if ever emitted); when
-                      unset the shells use root-relative URLs. Env SITE_BASE /
-                      viewer.env SITE_BASE work too.
+                      JSON-LD urls (and sitemap/robots if ever emitted); defaults
+                      to the live deployment origin, so a bare build is already
+                      production-absolute. Env SITE_BASE / viewer.env SITE_BASE
+                      work too.
 
 MODES
   default           Extract ink in-memory from the game's .res chain (all 6
@@ -1250,7 +1252,7 @@ def print_help(argv: list = None) -> None:
     print("  ink_root  = %s" % ink_root)
     print("  out_dir   = %s" % out_dir)
     print("  game_root = %s" % game_root)
-    print("  site_base = %s" % (resolve_site_base(_flags, cfg) or "(unset — relative canonical URLs)"))
+    print("  site_base = %s" % resolve_site_base(_flags, cfg))
     if cfg_keys:
         print("  (from viewer.env: %s)" % ", ".join(cfg_keys))
     else:

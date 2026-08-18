@@ -145,17 +145,19 @@ client-side; the shells exist so every deep link answers 200 with crawlable text
   `special.json` / `audiences.json` in `out_dir`, so it can never drift from the data, and
   it is deterministic (sorted keys, no timestamps → byte-identical rebuilds).
 - **`SITE_BASE`** (CLI `--site-base <url>`, env or `viewer.env`) is the absolute URL of the
-  deployment root; it feeds canonical / OG / JSON-LD URLs and must end in `/`. **Set it
-  before the final build** (GitHub Pages tolerates relative canonicals poorly); when unset
-  the shells use root-relative URLs, which is fine for local serving and `file://`.
+  deployment root; it feeds canonical / OG / JSON-LD URLs and must end in `/`. **It defaults
+  to the live deployment origin** (`https://maciejgorczyca.github.io/SovereignTowerExplorer/`),
+  so a bare `build_app.py` already emits production-absolute URLs with no per-environment
+  config; override it via CLI/env/`viewer.env` only if hosting changes (include any subpath,
+  e.g. `https://<user>.github.io/<repo>/`).
 - **Trailing slash.** GitHub Pages 301-redirects `/quests/x` → `/quests/x/` automatically,
   so both forms work for humans; the emitted (and canonical) form is the trailing-slash one.
 - **`sitemap.xml` + `robots.txt`** are emitted in the same pass. The sitemap lists `/` + the
   five non-alias tab pages + every detail/request route (`/dialogues/` is excluded — it
-  canonicalises to `/`), root-relative when `SITE_BASE` is unset or absolute URLs otherwise,
-  in stable sorted order with no `lastmod`/`priority`/`changefreq` → byte-identical across
-  builds. `robots.txt` is `User-agent: *` / `Allow: /` plus a `Sitemap:` line only when
-  `SITE_BASE` is set (the default local build carries no `Sitemap:` line).
+  canonicalises to `/`), absolute URLs pointing at `SITE_BASE` (which defaults to the live
+  origin) or root-relative if the value is empty, in stable sorted order with no
+  `lastmod`/`priority`/`changefreq` → byte-identical across builds. `robots.txt` is
+  `User-agent: *` / `Allow: /` plus a `Sitemap:` line for the same origin.
 - The six tabs' static description blocks (`.tabdesc`, bottom of each results column) live
   in `web/index.html` and therefore land in **every** shell verbatim — bots see the active
   tab's description in each prerendered page.
@@ -295,7 +297,7 @@ INK_ROOT = /app/game/InkExtracted
 INK_OUT  = /app/explorer/dist
 GAME_ROOT = /app/game/SovereignTowerCode
 QUEST_OUT = /app/explorer/dist/quests.json
-SITE_BASE = https://user.github.io/repo/   # only needed for the final build
+SITE_BASE = https://user.github.io/repo/   # override the live-origin default only if hosting changes
 ```
 
 ---

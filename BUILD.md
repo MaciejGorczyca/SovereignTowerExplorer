@@ -70,7 +70,7 @@ CWD-independent.
 | `--extract-ink [dir]` | ink extraction only: decode the stories to `<dir>/<locale>/master.ink.json` (default `../game/InkExtracted`), then exit. No build. |
 | `--save-ink [dir]` | build as normal, then **also** write the decoded ink to `<dir>/<locale>/master.ink.json` (default `../game/InkExtracted`). |
 | `--profile` | print per-phase wall/CPU timings of the build. |
-| `--site-base <url>` | absolute URL of the deployed site root (trailing slash optional). Feeds the route shells' canonical / OG / JSON-LD URLs; unset → root-relative URLs. Same key as env/`viewer.env` `SITE_BASE`. |
+| `--site-base <url>` | absolute URL of the deployed site root (trailing slash optional). Feeds the route shells' canonical / OG / JSON-LD URLs and robots/sitemap; **defaults to the live deployment origin** (`https://maciejgorczyca.github.io/SovereignTowerExplorer/`), so a bare build is already production-absolute — override only if hosting changes. Same key as env/`viewer.env` `SITE_BASE`. |
 
 ---
 
@@ -84,8 +84,9 @@ on any static host with **no server config**:
   share any deep link and it 200s.
 - Rich SEO shells per route (title, meta description, canonical, Open Graph, JSON-LD,
   visible teaser for details) are emitted at build time — see `README.md` "Routes / SEO".
-- Set `SITE_BASE` to the real deployment origin **before the build you ship** so canonicals
-  are absolute (GitHub Pages tolerates relative canonicals poorly). Unset is fine locally.
+- Canonicals are absolute by default: `SITE_BASE` already points at the live deployment
+  origin, so the shipped build carries production absolute URLs with no per-environment
+  config. Override it (`--site-base`, `SITE_BASE`, `viewer.env`) only if hosting changes.
 - If the GitHub Actions Pages workflow ever needs the SITE_BASE for the committed dist, the
   value is decided when `dist/` was built (the workflow itself only deploys).
 

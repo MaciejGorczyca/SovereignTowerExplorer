@@ -1,2 +1,3 @@
 User-agent: *
 Allow: /
+Sitemap: https://maciejgorczyca.github.io/SovereignTowerExplorer/sitemap.xml

@@ -481,7 +481,10 @@ class SitemapRobotsTest(unittest.TestCase):
 
     The sitemap lists exactly the route pages the build emits (root + the five
     non-alias tab pages + every detail/request route) in stable, sorted order
-    with no timestamps, and robots.txt is host-agnostic in the default build.
+    with no timestamps, and robots.txt carries the deployment Sitemap line.
+    Works for both URL modes: absolute locs under the deployment subpath
+    (route_pages.DEFAULT_SITE_BASE is the default, e.g.
+    https://<user>.github.io/SovereignTowerExplorer/) and root-relative locs.
     """
 
     SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -500,11 +503,22 @@ class SitemapRobotsTest(unittest.TestCase):
         cls.locs = [loc.text for url in root for loc in url
                     if loc.tag == "{%s}loc" % cls.SITEMAP_NS]
         cls.robots_text = (DIST / "robots.txt").read_text(encoding="utf-8")
+        # the deployment subpath (first loc is the root = SITE_BASE): "/" when
+        # relative or origin-root absolute; "/<repo>" on GitHub Pages project
+        # pages. Absolute locs sit under it and must be stripped to compare
+        # against the on-disk route dirs.
+        root_loc = cls.locs[0]
+        cls.sub = (urlsplit(root_loc).path if root_loc.startswith("http")
+                   else root_loc).rstrip("/")
 
-    @staticmethod
-    def _loc_path(loc):
-        """The path part of a loc (absolute or root-relative)."""
-        return urlsplit(loc).path if loc.startswith("http") else loc
+    @classmethod
+    def _loc_path(cls, loc):
+        """The app-relative trailing-slash path of a loc (origin + deployment
+        subpath stripped from absolute locs)."""
+        path = urlsplit(loc).path if loc.startswith("http") else loc
+        if cls.sub and path.startswith(cls.sub):
+            path = path[len(cls.sub):] or "/"
+        return path
 
     @classmethod
     def _route_pages(cls):
@@ -549,11 +563,15 @@ class SitemapRobotsTest(unittest.TestCase):
         self.assertTrue(loc_paths <= route_pages,
                         "orphan locs not backed by a route page")
 
-    def test_robots_txt_default_build(self):
+    def test_robots_txt(self):
         self.assertTrue(self.robots_text.startswith("User-agent: *\nAllow: /\n"))
-        # the checked-in golden dist is built with SITE_BASE unset, so no
-        # Sitemap: line (a relative one would be meaningless)
-        self.assertNotIn("Sitemap:", self.robots_text)
+        root = self.locs[0]
+        if root.startswith("http"):
+            # deployment build: the Sitemap: line points at the same origin
+            self.assertIn("Sitemap: %ssitemap.xml" % root, self.robots_text)
+        else:
+            # root-relative build: no meaningful Sitemap line
+            self.assertNotIn("Sitemap:", self.robots_text)
 
 
 if __name__ == "__main__":

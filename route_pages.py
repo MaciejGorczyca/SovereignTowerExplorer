@@ -26,9 +26,10 @@ URL and bots can read a text description per page.
 
 The same pass also emits `sitemap.xml` (every crawlable URL in the scheme
 above — root, the five non-alias tab pages, all detail/request routes — in
-stable sorted order, root-relative or absolute per SITE_BASE, with no
-lastmod/priority/changefreq) and `robots.txt` (with a `Sitemap:` line only
-when SITE_BASE is set).
+stable sorted order, absolute URLs pointing at DEFAULT_SITE_BASE unless an
+explicit SITE_BASE overrides it, with no lastmod/priority/changefreq) and
+`robots.txt` (with a `Sitemap:` line pointing at the same origin).
+
 
 Deterministic: routes are derived from the six `dist/*.json` key maps, written
 in sorted key order, and carry no timestamps — two builds are byte-identical.
@@ -49,6 +50,14 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 
 SITE_NAME = "Sovereign Tower Explorer"
+
+# Live deployment origin — the default SITE_BASE so a bare `build_app.py` (or
+# the standalone `route_pages.py` CLI) already emits absolute canonical / OG /
+# JSON-LD / sitemap / robots URLs for the deployed site with no per-environment
+# config. Override per build via --site-base / $SITE_BASE / viewer.env SITE_BASE
+# if hosting changes (the value must include any subpath the site is served
+# under, e.g. .../SovereignTowerExplorer/).
+DEFAULT_SITE_BASE = "https://maciejgorczyca.github.io/SovereignTowerExplorer/"
 
 # (tab internal name, route dir, tab label) — the six shipped tabs
 TABS = [
@@ -410,10 +419,9 @@ def write_sitemap(out_dir, urls):
 
 
 def write_robots(out_dir, site_base):
-    """robots.txt; the Sitemap: line appears only when SITE_BASE is set (a
-    relative URL would be meaningless there, and the default host-agnostic
-    build must stay deterministic)."""
-    site_base = normalize_site_base(site_base)
+    """robots.txt; the Sitemap: line points at the deployment origin
+    (DEFAULT_SITE_BASE unless overridden per build)."""
+    site_base = normalize_site_base(site_base or DEFAULT_SITE_BASE)
     lines = ["User-agent: *", "Allow: /"]
     if site_base:
         lines.append("Sitemap: %ssitemap.xml" % site_base)
@@ -435,7 +443,7 @@ def _template_text(out_dir):
 def write_routes(out_dir, datasets, site_base=""):
     """Emit every route shell under out_dir; returns the number of pages written."""
     out = Path(out_dir)
-    site_base = normalize_site_base(site_base)
+    site_base = normalize_site_base(site_base or DEFAULT_SITE_BASE)
     template = _template_text(out)
     if 'href="style.css"' not in template or '<script src="app.js"></script>' not in template:
         raise SystemExit("ERROR: %s is not the explorer shell template (missing "

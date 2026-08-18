@@ -1035,6 +1035,23 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   `/SovereignTowerExplorer/`, `urlFromLoc` writes prefixed paths (home, knot,
   request) and the functions stay exact inverses under the prefix; rebuilt
   golden `dist/app.js`; full suite green.
+- Default SITE_BASE = the live deployment origin (2026-08-18): a bare
+  `build_app.py` (and the standalone `route_pages.py` CLI) previously emitted
+  root-relative canonical/OG/JSON-LD/sitemap/robots URLs unless SITE_BASE was
+  configured per environment — easy to get wrong, and the deployed site needed
+  absolute canonicals. `route_pages.py` now defines `DEFAULT_SITE_BASE =
+  https://maciejgorczyca.github.io/SovereignTowerExplorer/` (with any subpath),
+  applied as the fallback in `write_routes`/`write_robots`, and
+  `build_app.resolve_site_base()` returns it last (CLI > env > viewer.env >
+  default unchanged), so every default build already carries the
+  production-absolute URLs and no per-env config is needed; hosting changes
+  override it in one place. Tests: `test_dist_conformance.py` sitemap/robots
+  checks are now URL-mode-agnostic — absolute locs have the deployment subpath
+  stripped (`_loc_path` derived from the root loc) and the robots test asserts
+  the `Sitemap:` line for absolute builds, its absence only for root-relative
+  ones. Docs updated (README "Routes / SEO", BUILD.md, viewer.env.example,
+  build help). Golden `dist/` rebuilt with absolute shells / sitemap / robots;
+  full suite green.
 
 
 ---
