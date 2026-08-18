@@ -64,7 +64,6 @@ select { background: var(--panel2); color: var(--txt); border: 1px solid var(--l
    beside the last tab instead of trailing alone on its own line when tabs wrap */
 #donatebtn {
   display: flex; align-items: center; gap: 6px;
-  margin-left: 10px;
   background: var(--acc); color: var(--acctxt);
   border: 1px solid var(--acc); border-radius: 7px;
   padding: 6px 12px;
