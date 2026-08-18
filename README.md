@@ -144,6 +144,12 @@ client-side; the shells exist so every deep link answers 200 with crawlable text
   the shells use root-relative URLs, which is fine for local serving and `file://`.
 - **Trailing slash.** GitHub Pages 301-redirects `/quests/x` → `/quests/x/` automatically,
   so both forms work for humans; the emitted (and canonical) form is the trailing-slash one.
+- **`sitemap.xml` + `robots.txt`** are emitted in the same pass. The sitemap lists `/` + the
+  five non-alias tab pages + every detail/request route (`/dialogues/` is excluded — it
+  canonicalises to `/`), root-relative when `SITE_BASE` is unset or absolute URLs otherwise,
+  in stable sorted order with no `lastmod`/`priority`/`changefreq` → byte-identical across
+  builds. `robots.txt` is `User-agent: *` / `Allow: /` plus a `Sitemap:` line only when
+  `SITE_BASE` is set (the default local build carries no `Sitemap:` line).
 - The six tabs' static description blocks (`.tabdesc`, bottom of each results column) live
   in `web/index.html` and therefore land in **every** shell verbatim — bots see the active
   tab's description in each prerendered page.

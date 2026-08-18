@@ -7,6 +7,8 @@ the layer that still works without the game project present.
 """
 import os
 import unittest
+import xml.etree.ElementTree as ET
+from urllib.parse import urlsplit
 
 from helpers import DIST, load_dist
 
@@ -472,6 +474,86 @@ class DatasetsTest(unittest.TestCase):
         self.assertEqual(ending_knots - covered,
                          {"carina_ending_act_1_reaction",
                           "carina_ending_act_2_reaction"})
+
+
+class SitemapRobotsTest(unittest.TestCase):
+    """dist/sitemap.xml + dist/robots.txt (route pages' crawl contract).
+
+    The sitemap lists exactly the route pages the build emits (root + the five
+    non-alias tab pages + every detail/request route) in stable, sorted order
+    with no timestamps, and robots.txt is host-agnostic in the default build.
+    """
+
+    SITEMAP_NS = "http://www.sitemaps.org/schemas/sitemap/0.9"
+
+    @classmethod
+    def setUpClass(cls):
+        cls.index = load_dist("index.json")
+        cls.quests = load_dist("quests.json")
+        cls.inventory = load_dist("inventory.json")
+        cls.knights = load_dist("knights.json")
+        cls.special = load_dist("special.json")
+        cls.audiences = load_dist("audiences.json")
+        sitemap = DIST / "sitemap.xml"
+        cls.sitemap_text = sitemap.read_text(encoding="utf-8")
+        root = ET.fromstring(cls.sitemap_text)
+        cls.locs = [loc.text for url in root for loc in url
+                    if loc.tag == "{%s}loc" % cls.SITEMAP_NS]
+        cls.robots_text = (DIST / "robots.txt").read_text(encoding="utf-8")
+
+    @staticmethod
+    def _loc_path(loc):
+        """The path part of a loc (absolute or root-relative)."""
+        return urlsplit(loc).path if loc.startswith("http") else loc
+
+    @classmethod
+    def _route_pages(cls):
+        """Every route page on disk, as its trailing-slash path."""
+        pages = set()
+        for p in DIST.rglob("index.html"):
+            rel = p.relative_to(DIST).as_posix()
+            pages.add("/" if rel == "index.html"
+                      else "/" + rel[: -len("index.html")])
+        return pages
+
+    def test_sitemap_parses_and_counts_datasets_plus_tabs(self):
+        expected = (1  # root /
+                    + 5  # the non-alias tab pages (/dialogues/ canonical -> /)
+                    + len(self.index["knots"]) + len(self.quests["quests"])
+                    + len(self.inventory["items"]) + len(self.knights["knights"])
+                    + len(self.special["instructions"])
+                    + len(self.audiences["audiences"])
+                    + len(self.audiences["requests"]))
+        self.assertEqual(len(self.locs), expected)
+        self.assertEqual(len(self.locs), len(set(self.locs)),
+                         "duplicate locs in sitemap")
+
+    def test_sitemap_has_no_timestamps(self):
+        for field in ("lastmod", "priority", "changefreq"):
+            self.assertNotIn(field, self.sitemap_text)
+
+    def test_every_loc_is_a_route_page(self):
+        for loc in self.locs:
+            path = self._loc_path(loc)
+            with self.subTest(loc=loc):
+                self.assertTrue(path.endswith("/"), "no trailing slash: %s" % loc)
+                self.assertTrue(
+                    (DIST / path.lstrip("/") / "index.html").is_file(),
+                    "loc maps to no route page: %s" % loc)
+
+    def test_every_route_page_has_a_loc(self):
+        loc_paths = {self._loc_path(loc) for loc in self.locs}
+        route_pages = self._route_pages()
+        # the /dialogues/ alias canonicalises to / and is intentionally absent
+        self.assertEqual(route_pages - loc_paths, {"/dialogues/"})
+        self.assertTrue(loc_paths <= route_pages,
+                        "orphan locs not backed by a route page")
+
+    def test_robots_txt_default_build(self):
+        self.assertTrue(self.robots_text.startswith("User-agent: *\nAllow: /\n"))
+        # the checked-in golden dist is built with SITE_BASE unset, so no
+        # Sitemap: line (a relative one would be meaningless)
+        self.assertNotIn("Sitemap:", self.robots_text)
 
 
 if __name__ == "__main__":

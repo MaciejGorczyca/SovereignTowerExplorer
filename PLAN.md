@@ -922,6 +922,18 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   route dirs, asset-prefix depth, title/description/canonical, `.seo-teaser`, smoke-stub
   friendliness) + unit tests for the `route_pages` helpers. Full rebuild + golden `dist/`
   with the new route tree.
+- Sitemap + robots (2026-08-18): `route_pages.py` now also emits `dist/sitemap.xml` and
+  `dist/robots.txt` in the same pass. The sitemap lists every crawlable URL — `/` + the five
+  non-alias tab pages (the `/dialogues/` alias canonicalises to `/` and is excluded) + all
+  922 knot / 312 quest / 149 item / 24 knight / 71 special / 511 audience / 34 request
+  detail routes (2,029 locs at the current volumes) — in stable sorted order with no
+  `lastmod`/`priority`/`changefreq`, root-relative or absolute URLs per `SITE_BASE` →
+  byte-identical rebuilds. `robots.txt` is `User-agent: *` / `Allow: /` plus a `Sitemap:`
+  line only when `SITE_BASE` is set. Tests: new `SitemapRobotsTest` in
+  `test_dist_conformance.py` (sitemap parses via `xml.etree`; loc count == Σ datasets +
+  tabs; every loc maps to a route page and every route page — except `/dialogues/` — has a
+  loc; trailing slashes; no timestamps; robots exists without a `Sitemap:` line in the
+  default build). Full rebuild + golden `dist/` with the new files.
 
 
 ---

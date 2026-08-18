@@ -24,6 +24,12 @@ visible `.seo-teaser` block for detail pages. The SPA still renders everything
 client-side from `app.js` — the shells exist only so the server can answer the
 URL and bots can read a text description per page.
 
+The same pass also emits `sitemap.xml` (every crawlable URL in the scheme
+above — root, the five non-alias tab pages, all detail/request routes — in
+stable sorted order, root-relative or absolute per SITE_BASE, with no
+lastmod/priority/changefreq) and `robots.txt` (with a `Sitemap:` line only
+when SITE_BASE is set).
+
 Deterministic: routes are derived from the six `dist/*.json` key maps, written
 in sorted key order, and carry no timestamps — two builds are byte-identical.
 
@@ -357,6 +363,47 @@ TAB_DESCS = {
 }
 
 
+def _route_urls(datasets, site_base):
+    """Every sitemap URL in stable order: the root, the five non-alias tab
+    pages (the /dialogues/ alias canonicalises to / and is excluded), then each
+    detail kind sorted by key, then the request pages."""
+    urls = [abs_url(site_base, "")]
+    for _, tdir, _label in TABS:
+        if tdir != "dialogues":
+            urls.append(abs_url(site_base, tdir + "/"))
+    for kind, tdir, dname, kmap in DETAILS:
+        keymap = (datasets.get(dname) or {}).get(kmap) or {}
+        urls.extend(abs_url(site_base, "%s/%s/" % (tdir, k))
+                    for k in sorted(keymap))
+    reqs = (datasets.get("audiences") or {}).get("requests") or {}
+    urls.extend(abs_url(site_base, "audiences/requests/%s/" % k)
+                for k in sorted(reqs))
+    return urls
+
+
+def write_sitemap(out_dir, urls):
+    """sitemap.xml from a stable URL list — locs only, no lastmod/priority/
+    changefreq, so two builds are byte-identical (Google ignores those fields
+    anyway)."""
+    body = "".join("  <url>\n    <loc>%s</loc>\n  </url>\n" % esc(u) for u in urls)
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+           + body + "</urlset>\n")
+    (Path(out_dir) / "sitemap.xml").write_text(xml, encoding="utf-8")
+
+
+def write_robots(out_dir, site_base):
+    """robots.txt; the Sitemap: line appears only when SITE_BASE is set (a
+    relative URL would be meaningless there, and the default host-agnostic
+    build must stay deterministic)."""
+    site_base = normalize_site_base(site_base)
+    lines = ["User-agent: *", "Allow: /"]
+    if site_base:
+        lines.append("Sitemap: %ssitemap.xml" % site_base)
+    (Path(out_dir) / "robots.txt").write_text("\n".join(lines) + "\n",
+                                              encoding="utf-8")
+
+
 def _template_text(out_dir):
     """The shared shell markup: the copied out_dir/index.html (build output) or,
     standalone, the hand-edited web/index.html next to this script."""
@@ -436,6 +483,11 @@ def write_routes(out_dir, datasets, site_base=""):
     total = sum(counts.values())
     print("Route pages: %d shells (%s)" % (
         total, " · ".join("%s %d" % (k, v) for k, v in counts.items())))
+    urls = _route_urls(datasets, site_base)
+    write_sitemap(out, urls)
+    write_robots(out, site_base)
+    print("sitemap.xml: %d urls · robots.txt%s" % (
+        len(urls), " (Sitemap line set)" if site_base else " (no Sitemap line)"))
     return total
 
 
