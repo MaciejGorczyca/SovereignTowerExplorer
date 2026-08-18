@@ -990,6 +990,23 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   optional T6 tweak) — no change needed there. Frontend-only (`web/app.js`) +
   smoke assertions (knight origin/mastered/quest-count/alias, audience knot
   first line + no-dialogue fallback); rebuild `dist/`; full suite green.
+- Per-tab description blocks (2026-08-18): task T7 — one static `.tabdesc`
+  block at the bottom of each results column (ids `inkdesc`/`qdesc`/`idesc`/
+  `kdesc`/`sdesc`/`adesc`), 2–4 keyword-bearing sentences with the shipped
+  data volumes (922 knots · 91 speakers · 3,477 choices · 1,368 variables · 312
+  quests · 149 items · 24 knights · 71 specials · 511 audiences · 34 requests),
+  each placed AFTER the column's `#cards` div so every re-render (which only
+  replaces the cards grid + the countline) and `switchTab` (which only toggles
+  the column's `hidden` flag) leaves them in place; `web/style.css` styles
+  `.tabdesc` (muted, top border, small header) and the blocks ride into every
+  prerendered route shell verbatim, so bots see the active tab's description on
+  each page. The markup + CSS landed with T1's golden `dist/`; this commit adds
+  the guard tests: the conformance suite scans ALL route shells for exactly six
+  `.tabdesc` blocks (ids in page order, per-block `<h2>` + non-empty body, and
+  the after-`#cards` placement), and the smoke test plants sentinels on the six
+  blocks before boot and asserts they survive every init-time render plus a full
+  `switchTab()` cycle. Frontend + tests + docs; no build-output change; full
+  suite green.
 
 
 ---

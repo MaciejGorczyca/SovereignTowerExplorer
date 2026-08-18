@@ -23,6 +23,14 @@ STYLE_RE = re.compile(r'href="([^"]*)style\.css"')
 
 TAB_DIRS = ["dialogues", "quests", "inventory", "knights", "special", "audiences"]
 
+# the six static per-tab description blocks (`web/index.html`), in page order.
+# Placed AFTER their column's #cards container so every re-render (which only
+# replaces the cards grid + countline) leaves them in place.
+TABDESC_IDS = ["inkdesc", "qdesc", "idesc", "kdesc", "sdesc", "adesc"]
+TABDESC_RE = re.compile(r'<div id="([^"]+)" class="tabdesc">(.*?)</div>', re.S)
+CARDS_FOR = {"inkdesc": "cards", "qdesc": "qcards", "idesc": "icards",
+             "kdesc": "kcards", "sdesc": "scards", "adesc": "acards"}
+
 
 def _route_dirs(dist, top):
     """Route directories directly under dist/<top> (excludes files)."""
@@ -168,14 +176,30 @@ class RouteTreeTest(unittest.TestCase):
                 self.assertNotIn("window.location", text)
 
     def test_shells_share_the_six_tabdesc_blocks(self):
-        """Every page shell (root + routes) carries all six tabdesc blocks, so
-        bots see the active tab's description in each prerendered page."""
-        for rel in ("index.html", "quests/index.html",
-                    "quests/contract_cleankeeper_goose_part_two/index.html"):
-            text = self.pages[rel]
+        """Every page shell (root + routes) carries exactly six .tabdesc blocks —
+        one per results column, placed AFTER the column's #cards div, each with a
+        header and a non-empty paragraph — so tab re-renders (which only replace
+        the cards container) never wipe the static descriptions and bots see the
+        active tab's block in every prerendered page."""
+        for rel, text in self.pages.items():
             with self.subTest(page=rel):
-                for tid in ("inkdesc", "qdesc", "idesc", "kdesc", "sdesc", "adesc"):
-                    self.assertIn('id="%s"' % tid, text, tid)
+                blocks = TABDESC_RE.findall(text)
+                self.assertEqual(
+                    len(blocks), len(TABDESC_IDS),
+                    "expected exactly six .tabdesc blocks in %s" % rel)
+                self.assertEqual(
+                    [bid for bid, _ in blocks], TABDESC_IDS,
+                    "tabdesc ids != the six results columns in %s" % rel)
+                for bid, inner in blocks:
+                    self.assertRegex(inner, r"<h2>.+</h2>",
+                                     "%s header missing" % bid)
+                    pm = re.search(r"<p>(.*)</p>", inner, re.S)
+                    self.assertTrue(pm and pm.group(1).strip(),
+                                    "%s description body empty" % bid)
+                    self.assertLess(
+                        text.index('<div id="%s"></div>' % CARDS_FOR[bid]),
+                        text.index('<div id="%s"' % bid),
+                        "%s must sit after its #%s container" % (bid, CARDS_FOR[bid]))
 
 
 class RouteHelpersTest(unittest.TestCase):

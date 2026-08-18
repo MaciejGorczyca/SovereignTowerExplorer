@@ -138,6 +138,17 @@ const sandbox = {
 sandbox.window = sandbox;
 vm.createContext(sandbox);
 
+// Task T7: per-tab description blocks. Each results column ends with a static
+// .tabdesc block (after its #cards div) that re-renders must never touch.
+// Plant sentinels before the app boots so init()'s per-tab renders are covered
+// too — any render clearing `#inkdesc`/`#qdesc`/… directly or wiping the whole
+// column would wipe the marker and fail the post-boot assertion below.
+for (const tid of ["inkdesc", "qdesc", "idesc", "kdesc", "sdesc", "adesc"]) {
+  // getElementById auto-creates + caches the element (the same path the app's
+  // $() helper uses), so the sentinel lands on the very object renders see.
+  documentStub.getElementById(tid).textContent = "T7-SENTINEL-" + tid;
+}
+
 const appSrc = fs.readFileSync(path.join(DIST, "app.js"), "utf-8");
 vm.runInContext(appSrc, sandbox, { filename: "dist/app.js" });
 
@@ -877,6 +888,20 @@ waitReady().then(() => {
   const noDlgCard = vm.runInContext("audCard('scriptedquest_traitors_plot_3_angelica', AUDIENCE.audiences['scriptedquest_traitors_plot_3_angelica'])", sandbox);
   if (noDlgCard.innerHTML.indexOf("(no dialogue)") < 0) {
     throw new Error("audience card missing no-dialogue fallback: " + noDlgCard.innerHTML);
+  }
+
+  // Task T7: tab description blocks survive every render + tab switch. The six
+  // .tabdesc sentinels planted before boot must still hold after init()'s
+  // per-tab renders AND this full switchTab() cycle — rerenders only replace
+  // each column's #cards and countline; switchTab only toggles the column's
+  // hidden flag; neither may clear the description blocks themselves.
+  vm.runInContext(
+    "goTab('ink'); goTab('quest'); goTab('inv'); goTab('knight'); goTab('special'); goTab('aud'); goTab('ink')",
+    sandbox);
+  for (const tid of ["inkdesc", "qdesc", "idesc", "kdesc", "sdesc", "adesc"]) {
+    if (elById.get(tid).textContent !== "T7-SENTINEL-" + tid) {
+      throw new Error("tabdesc block cleared by a render/switchTab: " + tid);
+    }
   }
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
