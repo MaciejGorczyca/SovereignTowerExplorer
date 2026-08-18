@@ -225,7 +225,7 @@ function stripBbc(s) {
 }
 function haystack(k) {
   const t = tokensOf(k);
-  let text = k.prev;
+  let text = knotPrev(k);
   for (const tok of t) {
     if (tok[0] === "0") text += (text ? " " : "") + tok[1];
     else if (tok[0] === "2") text += " " + tok[1];
@@ -286,6 +286,25 @@ function tokensOf(k) {
   const loc = LOC[k.name];
   k._tokens = loc || (INDEX.knots[k.name] ? INDEX.knots[k.name].lines : []);
   return k._tokens;
+}
+
+// First dialogue line of a knot, from the active token stream (localized like
+// the drawer, falling back to the build-time EN preview): mirrors the build's
+// `prev` extraction (first non-empty "0" text token, descending into choice
+// flows, truncated to 140 chars).
+function knotPrev(k) {
+  const scan = (list) => {
+    for (const t of list) {
+      if (!Array.isArray(t) || !t.length) continue;
+      if (t[0] === "0" && String(t[1]).trim()) return String(t[1]).trim();
+      if (t[0] === "2" && t.length > 7 && Array.isArray(t[7])) {
+        const sub = scan(t[7]);
+        if (sub) return sub;
+      }
+    }
+    return "";
+  };
+  return scan(tokensOf(k)).slice(0, 140);
 }
 
 // drive a search <input> with a datalist bound to fake options
@@ -571,7 +590,8 @@ function card(k) {
     badges.push(`<span class="badge req" title="appears in dialogue for ${esc(kn.join(", "))}">knight ×${kn.length}</span>`);
   }
 
-  let prev = esc(state.show.fBbc ? k.prev : stripBbc(k.prev)).replace(/\n/g, " ");
+  const prevText = knotPrev(k);
+  let prev = esc(state.show.fBbc ? prevText : stripBbc(prevText)).replace(/\n/g, " ");
   if (state.q) {
     const low = prev.toLowerCase();
     const q = state.q.toLowerCase();
@@ -2312,7 +2332,7 @@ $("drawerpanel").addEventListener("click", (e) => {
 
 async function switchLocale(loc) {
   state.locale = loc;
-  if (loc === "en") { LOC = {}; renderResults(); if (QUEST) renderQuestResults(); if (INV) renderInvResults(); if (KNIGHTS) renderKnightResults(); if (SPECIAL) { _shair.clear(); buildSpecialFilterUI(); renderSpecialResults(); } if (AUDIENCE) { _ahair.clear(); buildAudienceFilterUI(); renderAudienceResults(); } return; }
+  if (loc === "en") { LOC = {}; _hcache.clear(); for (const k of Object.values(INDEX.knots)) k._tokens = undefined; renderResults(); if (QUEST) renderQuestResults(); if (INV) renderInvResults(); if (KNIGHTS) renderKnightResults(); if (SPECIAL) { _shair.clear(); buildSpecialFilterUI(); renderSpecialResults(); } if (AUDIENCE) { _ahair.clear(); buildAudienceFilterUI(); renderAudienceResults(); } return; }
   try {
     const resp = await fetch(`${BASE}locales/${loc}.json`);
     if (!resp.ok) throw new Error(resp.status);
