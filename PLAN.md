@@ -980,6 +980,16 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   assertion (BASE is "" in the VM sandbox, keeping fetches relative against
   `dist/`; the conformance route-page asset-prefix test already locks the
   matching `../`-depth tags); rebuild `dist/`; full suite green.
+- Per-card description lines (2026-08-18): the Knights and Audiences grids now
+  carry a `.prev` teaser line like the dialogue cards — the knight card one-liner
+  (origin `k.loc` · alias `tkey(k.nu)` when present · `mastered: k.mast` · `N
+  quests` from qa/qu/qr) and the audience card its localized characters plus the
+  first line of the knot it plays (`INDEX.knots[a.k].prev`, BBCode-stripped,
+  `(no dialogue)` fallback when the knot has none). The quest card already
+  preferred `tkey(q.d)` over a bare `Req:` line when there are no stat reqs (the
+  optional T6 tweak) — no change needed there. Frontend-only (`web/app.js`) +
+  smoke assertions (knight origin/mastered/quest-count/alias, audience knot
+  first line + no-dialogue fallback); rebuild `dist/`; full suite green.
 
 
 ---

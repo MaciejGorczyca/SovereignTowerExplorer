@@ -3824,10 +3824,16 @@ function knightCard(stem, k) {
   if (k.story.length) badges.push(`<span class="badge sp-ink">story ${k.story.length}</span>`);
   const questN = k.qa.length + k.qu.length + k.qr.length;
   if (questN) badges.push(`<span class="badge sp-quest">quests ${questN}</span>`);
+  const prevBits = [];
+  if (k.loc) prevBits.push(`origin ${k.loc}`);
+  if (k.nu) { const ali = tkey(k.nu); if (ali) prevBits.push(`alias ${ali}`); }
+  if (k.mast.length) prevBits.push(`mastered: ${k.mast.join(", ")}`);
+  if (questN) prevBits.push(`${questN} quest${questN > 1 ? "s" : ""}`);
   const open = () => go("knight", stem);
   el.innerHTML = `
     <div class="top"><span class="name">${esc(kName(stem))}</span>${k.nu ? `<span class="alias-name">${esc(tkey(k.nu))}</span>` : ""}
       <span class="qid">${esc(stem)}</span></div>
+    ${prevBits.length ? `<div class="prev">${esc(prevBits.join(" · "))}</div>` : ""}
     <div class="meta">${badges.join("")}${mastered}</div>`;
   el.addEventListener("click", open);
   el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
@@ -4597,10 +4603,14 @@ function audCard(stem, a) {
   if (a.unused) badges.push(`<span class="badge unused" title="${esc(a.unote || "")}">legacy · unused</span>`);
   if (a.k && !INDEX.knots[a.k]) badges.push(`<span class="badge knotless">no knot</span>`);
   const chars = (a.c || []).map(tkey).filter(Boolean);
+  const knotPrev = (a.k && INDEX.knots[a.k]) ? stripBbc(INDEX.knots[a.k].prev || "").replace(/\n/g, " ").trim() : "";
+  const prevBits = chars.slice();
+  if (knotPrev) prevBits.push(knotPrev);
+  else if (a.k) prevBits.push("(no dialogue)");
   const open = () => go("aud", stem);
   el.innerHTML = `
     <div class="top"><span class="name">${esc(stem)}</span></div>
-    ${chars.length ? `<div class="prev">${esc(chars.join(", "))}</div>` : ""}
+    ${prevBits.length ? `<div class="prev">${esc(prevBits.join(" — "))}</div>` : ""}
     <div class="meta">${badges.join("")}</div>`;
   el.addEventListener("click", open);
   el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });

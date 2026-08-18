@@ -853,6 +853,31 @@ waitReady().then(() => {
   if (!assCond.length || !/Ursule/.test(assCond[0])) {
     throw new Error("multiline special firing condition missing: " + JSON.stringify(assCond));
   }
+  // Task T6: per-card description lines. knights get an origin/alias/mastered/
+  // quests one-liner, audiences their localized characters plus the first line
+  // of the knot they play (or "(no dialogue)" when the knot has none).
+  const arronCard = vm.runInContext("knightCard('arron', KNIGHTS.knights.arron)", sandbox);
+  if (!/origin DRAKOVIC_CASTLE/.test(arronCard.innerHTML) ||
+      !/mastered: WITS, AGILITY, LUCK/.test(arronCard.innerHTML)) {
+    throw new Error("knight card missing description line: " + arronCard.innerHTML);
+  }
+  const arronQuests = vm.runInContext(
+    "KNIGHTS.knights.arron.qa.length + KNIGHTS.knights.arron.qu.length + KNIGHTS.knights.arron.qr.length", sandbox);
+  if (arronCard.innerHTML.indexOf(arronQuests + " quests") < 0) {
+    throw new Error("knight card missing quest count: " + arronCard.innerHTML);
+  }
+  const serpentCard = vm.runInContext("knightCard('epicrate', KNIGHTS.knights.epicrate)", sandbox);
+  if (!/alias Serpent Knight/.test(serpentCard.innerHTML)) {
+    throw new Error("knight card missing alias: " + serpentCard.innerHTML);
+  }
+  const enbergCard = vm.runInContext("audCard('county_quest_enberg_1', AUDIENCE.audiences['county_quest_enberg_1'])", sandbox);
+  if (!/Yohav/.test(enbergCard.innerHTML) || !/Greetings\./.test(enbergCard.innerHTML)) {
+    throw new Error("audience card missing description line: " + enbergCard.innerHTML);
+  }
+  const noDlgCard = vm.runInContext("audCard('scriptedquest_traitors_plot_3_angelica', AUDIENCE.audiences['scriptedquest_traitors_plot_3_angelica'])", sandbox);
+  if (noDlgCard.innerHTML.indexOf("(no dialogue)") < 0) {
+    throw new Error("audience card missing no-dialogue fallback: " + noDlgCard.innerHTML);
+  }
   console.log(`frontend smoke OK (quests=${q} inv=${inv} knights=${kn} special=${sp} audiences=${aud.audiences} requests=${aud.requests} srcAud=${srcAud} srcFu=${srcFu} kf=${byAudF} kc=${byAudC})`);
 }).catch((err) => {
   console.error(err.stack || String(err));
