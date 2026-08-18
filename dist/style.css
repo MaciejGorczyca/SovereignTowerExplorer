@@ -414,9 +414,9 @@ a.knightlink { color: var(--acc); text-decoration: underline; cursor: pointer; }
 
 /* static per-tab description blocks at the bottom of each results column */
 .tabdesc {
-  margin: 18px 0 10px; padding: 12px 2px 2px;
+  margin: 18px 0 10px; padding: 12px 14px 14px;
   border-top: 1px solid var(--line);
-  color: var(--mut); font-size: 12.5px; line-height: 1.55;
+  color: var(--mut); font-size: 12.5px; line-height: 1.55; text-align: justify;
 }
 .tabdesc h2 {
   margin: 0 0 6px; font-size: 13px; color: var(--txt); letter-spacing: .3px;
