@@ -934,6 +934,17 @@ code). Data-layer (`quest_data.py`) + frontend (`web/app.js` + `web/style.css`)
   tabs; every loc maps to a route page and every route page — except `/dialogues/` — has a
   loc; trailing slashes; no timestamps; robots exists without a `Sitemap:` line in the
   default build). Full rebuild + golden `dist/` with the new files.
+- Per-entity SEO text helpers (2026-08-18): `route_pages.py`'s `tkey`/`clean`/`esc` and the
+  per-kind `*_bits` teaser builders (quest/knot/knight/item/special/audience/request) now
+  have dedicated unit tests — new `TeaserHelpersTest` in `test_route_pages.py` covers one
+  known shipped-dist entry per kind (e.g. `contract_cleankeeper_goose_part_two` resolves a
+  non-empty en description; `ARRON_KIND` humanises its note prefix to "Arron → Kind") plus a
+  whole-corpus invariant (every entity's description/teaser is BBCode- and fragment-free).
+  Fix in the same change: `BBC_RE` no longer requires the closing `]`, so a BBCode tag cut
+  in half by the 60-char `prev` truncation can no longer leak a `[/font_s` or bare `[/` into
+  meta descriptions — `gothild_accept_recruit_reaction` and
+  `scriptedquest_follow_up_assassination_attempt_free_prisoner` (and its audience page) were
+  affected. Full rebuild + golden `dist/` with the cleaned shells.
 
 
 ---

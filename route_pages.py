@@ -79,9 +79,14 @@ CARDS_IDS = {
 ITEM_TYPE_LABELS = {"RELIC": "relic", "MOUNT": "mount", "CONSUMABLE": "consumable",
                     "MEAL": "meal", "QUEST_ITEM": "quest item"}
 
-# the same BBCode-ish tags the frontend stripBbc() removes
+# the same BBCode-ish tags the frontend stripBbc() removes. The closing ] is
+# optional because knot `prev` text is truncated to 60 chars in index.json and a
+# tag cut in half there would otherwise leak a `[/font_s` or bare `[/` fragment
+# into the SEO text (gothild_accept_recruit_reaction, …).
 BBC_RE = re.compile(
-    r"\[/?(?:b|i|center|color|fade|font|font_size|pulse|rainbow|shake|wave|Wave)[^\]]*\]")
+    r"\[/?(?:b|i|center|color|fade|font|font_size|pulse|rainbow|shake|wave|Wave)"
+    r"[^\]]*\]?"
+    r"|\[/")
 
 
 def esc(s):
