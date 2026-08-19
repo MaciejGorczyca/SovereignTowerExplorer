@@ -1048,9 +1048,28 @@ def finalize_tokens(tok):
     return tok, params
 
 
-def build_quests(out_dir: Path, unlock_map: dict) -> None:
+def hint_quest_arg(args):
+    """The quest id a HintModification(QUEST, <id>, …) call references, or None.
+
+    HintModification is the ink hint-annotation used on choice text (it wraps a
+    `[HINT_QUEST: …]` marker the game renders as a badge, e.g. "hint QUEST
+    Brunhilda testimony"). Its first arg is always the hint kind ("QUEST") and
+    the second the referenced quest id. Unlike UnlockQuest a hint never grants
+    the quest, so this feeds a separate reverse map (hint_knots) and the two
+    stay distinct in the quest drawer.
+    """
+    if not args or len(args) < 2 or args[0] != "QUEST":
+        return None
+    q = args[1]
+    if isinstance(q, str) and q and q != "false" and q != "true":
+        return q
+    return None
+
+
+def build_quests(out_dir: Path, unlock_map: dict, hint_map: dict = None) -> None:
     """Merge the quest resource data (quests.json) into dist/ and attach the
-    ink-side "which knots unlock this quest" reverse map."""
+    ink-side reverse maps: "which knots unlock this quest" (UnlockQuest) and
+    "which knots hint it" (HintModification) as separate fields."""
     quests_data = load_quests()
     keys = collect_loc_keys(quests_data["quests"])
     quests_data["locales"] = ["en", "fr", "cmn", "de", "ja", "ko"]
@@ -1058,7 +1077,11 @@ def build_quests(out_dir: Path, unlock_map: dict) -> None:
     quests_data["unlock_knots"] = {qid: sorted(set(knots))
                                    for qid, knots in unlock_map.items()
                                    if qid in quests_data["quests"]}
+    quests_data["hint_knots"] = {qid: sorted(set(knots))
+                                 for qid, knots in (hint_map or {}).items()
+                                 if qid in quests_data["quests"]}
     quests_data["stats"]["unlock_knots"] = len(quests_data["unlock_knots"])
+    quests_data["stats"]["hint_knots"] = len(quests_data["hint_knots"])
     with open(out_dir / "quests.json", "w", encoding="utf-8") as f:
         json.dump(quests_data, f, ensure_ascii=False)
     return quests_data
@@ -1320,6 +1343,7 @@ def main():
 
     speaker_counts = collections.Counter()
     unlock_map = collections.defaultdict(list)  # quest id -> [knots that call UnlockQuest]
+    hint_map = collections.defaultdict(list)  # quest id -> [knots that hint it via HintModification(QUEST, …)]
     equip_unlock = collections.defaultdict(list)  # canonical ID -> [knots that UnlockEquipment]
     equip_remove = collections.defaultdict(list)  # canonical ID -> [knots that RemoveEquipment]
     for name, knot in sorted(knots.items()):
@@ -1331,6 +1355,10 @@ def main():
                 for a in (t[2] or []):
                     if isinstance(a, str) and a and a != "false" and a != "true":
                         unlock_map[a].append(name)
+            elif t[0] == "3" and t[1] == "HintModification":
+                q = hint_quest_arg(t[2])
+                if q:
+                    hint_map[q].append(name)
             elif t[0] == "2" and len(t) > 5 and t[5]:
                 for e in t[5]:
                     if not e:
@@ -1339,6 +1367,10 @@ def main():
                         for a in (e[1] or []):
                             if isinstance(a, str) and a and a != "false" and a != "true":
                                 unlock_map[a].append(name)
+                    elif e[0] == "HintModification":
+                        q = hint_quest_arg(e[1])
+                        if q:
+                            hint_map[q].append(name)
                     elif e[0] in ("UnlockEquipment", "RemoveEquipment"):
                         args = e[1] or []
                         if len(args) >= 2 and isinstance(args[1], str):
@@ -1418,7 +1450,7 @@ def main():
         json.dump(index, f, ensure_ascii=False, separators=(",", ":"))
     prof.tick("index.json write")
 
-    quests_data = build_quests(out_dir, unlock_map)
+    quests_data = build_quests(out_dir, unlock_map, hint_map)
     prof.tick("quests pass")
     build_inventory(out_dir, quests_data, dict(equip_unlock), dict(equip_remove), game_root)
     prof.tick("inventory pass")

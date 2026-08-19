@@ -1086,7 +1086,29 @@ absolute canonicals. `route_pages.py` now defines `DEFAULT_SITE_BASE =
   `dist/` (all 6 locales) rebuilt. Tests: new `WalkerStubBlankTextTest` on a
   byte-faithful `STUB_BLANK_TEXT` fixture (the real c-4 stub) + a
   `test_dist_conformance` guard that no choice-flow text token is a
-  whitespace-only `"0"` with no speaker; full suite green (149 tests).
+   whitespace-only `"0"` with no speaker; full suite green (149 tests).
+- Quest hint sources (2026-08-18): the quest drawer previously treated every
+  quest without an `UnlockQuest` call as "Never unlocked by any ink knot
+  (variant or dead content)" — but some of those quest ids are genuinely
+  wired into the story as `HintModification(QUEST, <id>)` choice annotations
+  (e.g. `quest_brimwood_brunhilda_testimony_preparation` is hinted by the
+  brimwood witness choices of `county_quest_brimwood_audience_2`, and
+  `quest_pinemaze_emergency` by its grievance knot). Investigation showed this
+  is a real authoring gap, not a parsing miss: `HintModification` is an ink
+  hint-annotation (`[HINT_QUEST: …]` the game renders as a badge) and never
+  grants a quest, so those quests are truly never obtained in-game (the
+  Chester/Tarcus testimony-prep siblings aren't even hinted). The build now
+  emits a second reverse map, `quests.json` `hint_knots` (252 quests — 
+  `build_app.py` collects `HintModification(QUEST, …)` call sites, mirroring
+  the `UnlockQuest` → `unlock_knots` collection), and the quest drawer renders
+  a separate "Hinted in ink" section with an honest note that a hint alone
+  never grants the quest; the empty unlock note now distinguishes "only
+  hinted" from plain dead content. Frontend-only + `quests.json` field; `dist/`
+  rebuilt (all 6 locales). Tests: `test_dist_conformance` locks the hint-vs-
+  unlock split (Brunhilda hinted not unlocked, siblings never referenced,
+  tortosa emergency properly unlocked) and a `frontend_smoke.js` N2J drawer
+  check opens the Brunhilda quest and asserts the hint rows render; full suite
+  green (150 tests).
 
 
 ---

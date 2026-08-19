@@ -166,6 +166,41 @@ class DatasetsTest(unittest.TestCase):
                     self.assertIn(key, record)
         for qid in q.get("unlock_knots", {}):
             self.assertIn(qid, q["quests"])
+        for qid in q.get("hint_knots", {}):
+            self.assertIn(qid, q["quests"])
+            for knot in q["hint_knots"][qid]:
+                self.assertIn(knot, self.index["knots"], (qid, knot))
+
+    def test_quest_hint_knots_distinct_from_unlock(self):
+        # HintModification(QUEST, <id>) is the ink hint-annotation on a choice:
+        # it cross-references the quest id in the story but, unlike UnlockQuest,
+        # never grants it. The two reverse maps must stay separate, and a quest
+        # that is only hinted (never unlocked) is incomplete/legacy content, not
+        # a parsing miss. Lock the investigated cases so a future change is
+        # deliberate:
+        #   - Brunhilda's testimony prep is hinted by the brimwood county-quest
+        #     witness choices but never unlocked (the Chester/Tarcus siblings are
+        #     not even hinted).
+        #   - the pinemaze emergency is hinted by its grievance knot but never
+        #     unlocked (its sibling tortosa emergency is properly unlocked, so
+        #     this is the outlier, not a general grievance pattern).
+        q = self.quests
+        self.assertNotIn("quest_brimwood_brunhilda_testimony_preparation",
+                         q["unlock_knots"])
+        self.assertEqual(
+            q["hint_knots"].get("quest_brimwood_brunhilda_testimony_preparation"),
+            ["county_quest_brimwood_audience_2"])
+        for sibling in ("quest_brimwood_chester_testimony_preparation",
+                        "quest_brimwood_tarcus_testimony_preparation"):
+            self.assertNotIn(sibling, q["unlock_knots"])
+            self.assertNotIn(sibling, q["hint_knots"])
+        self.assertNotIn("quest_pinemaze_emergency", q["unlock_knots"])
+        self.assertEqual(
+            q["hint_knots"].get("quest_pinemaze_emergency"),
+            ["pinemaze_grievance_emergency"])
+        self.assertEqual(
+            q["unlock_knots"].get("quest_tortosa_emergency"),
+            ["tortosa_grievance_emergency"])
 
     def test_un_schema(self):
         # every unexpected outcome carries an id, and every follow-up audience

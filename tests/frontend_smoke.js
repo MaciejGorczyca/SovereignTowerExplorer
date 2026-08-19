@@ -370,6 +370,24 @@ waitReady().then(() => {
   if (elById.get("drawer").hidden !== true || historyStub._url !== "/audiences/") {
     throw new Error("goClose did not close the drawer onto /audiences/: " + historyStub._url);
   }
+  // Task N2J: quest hint sources. A quest that is only referenced by
+  // HintModification(QUEST, <id>) — never UnlockQuest — must show a separate
+  // "Hinted in ink" drawer section instead of a bare "dead content" note, so
+  // Brunhilda's testimony-prep quest still explains where it appears in the
+  // story (the brimwood witness choices) while staying honest that it is never
+  // actually granted in-game.
+  clearPanel();
+  vm.runInContext("openQuestDetail('quest_brimwood_brunhilda_testimony_preparation')", sandbox);
+  const hBrush = drawerText();
+  if (hBrush.indexOf("hinted in ink") < 0 ||
+      hBrush.indexOf("county_quest_brimwood_audience_2") < 0 ||
+      hBrush.indexOf("never unlocked by any ink knot") < 0) {
+    throw new Error("hinted quest drawer missing its hint sources: " + hBrush);
+  }
+  vm.runInContext("closeDetail()", sandbox);
+  if (elById.get("drawer").hidden !== true) {
+    throw new Error("closeDetail did not hide the drawer after the hint check");
+  }
   vm.runInContext("goTab('ink')", sandbox);
   if (historyStub._url !== "/") throw new Error("goTab('ink') url wrong: " + historyStub._url);
   // Task N2: divert-reached sub-scene audiences. Audiences whose ink knot is
@@ -901,6 +919,23 @@ waitReady().then(() => {
   for (const tid of ["inkdesc", "qdesc", "idesc", "kdesc", "sdesc", "adesc"]) {
     if (elById.get(tid).textContent !== "T7-SENTINEL-" + tid) {
       throw new Error("tabdesc block cleared by a render/switchTab: " + tid);
+    }
+  }
+  // Task: character-tag filter robustness + ordering. The Inventory "Character
+  // tag" dropdown must decode raw CharacterTag ids to human-readable names even
+  // when inventory.json finishes loading before quests.json (buildInvFilterUI()
+  // runs at initInventory — before QUEST is guaranteed to be set, so enumName
+  // has to fall back to inventory.json's own enums), and its options must be
+  // ordered most-used tag first down to single-item tags. Reproduce that exact
+  // failure mode on the live app: build the filter with QUEST unset.
+  const tagOpts = vm.runInContext("(() => { const saved = QUEST; const el = document.getElementById('itag'); el.children.length = 0; QUEST = null; buildInvFilterUI(); const out = Array.from(el.children).map((o) => o.textContent); QUEST = saved; return out; })()", sandbox);
+  if (tagOpts.length < 2) throw new Error("character tag dropdown not built: " + JSON.stringify(tagOpts));
+  const tagBare = tagOpts.slice(1).filter((t) => /^\d+\s*\(\d+\)$/.test(t));
+  if (tagBare.length) throw new Error("character tag dropdown shows raw ids: " + tagBare.join(", "));
+  const tagCounts = tagOpts.slice(1).map((t) => +/\((\d+)\)$/.exec(t)[1]);
+  for (let i = 1; i < tagCounts.length; i++) {
+    if (tagCounts[i - 1] < tagCounts[i]) {
+      throw new Error("character tag dropdown not ordered most-used first: " + tagOpts.join(" · "));
     }
   }
   subpathBootCheck();

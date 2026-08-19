@@ -2493,8 +2493,17 @@ window.stExplorer = { renderDialogue, tokensOf };
 let QUEST = null; // dist/quests.json
 
 function enumName(e, val) {
-  const list = (QUEST ? QUEST.enums[e] : null) || [];
-  for (const [v, n] of list) if (v == val) return n;
+  const lists = [];
+  if (QUEST && QUEST.enums && QUEST.enums[e]) lists.push(QUEST.enums[e]);
+  if (INV && INV.enums && INV.enums[e]) lists.push(INV.enums[e]);
+  for (const list of lists) {
+    if (Array.isArray(list)) {
+      for (const [v, n] of list) if (String(v) === String(val)) return n;
+    } else {
+      const n = list[String(val)];
+      if (n != null) return n;
+    }
+  }
   return String(val);
 }
 function enumNames(e, vals) {
@@ -2739,6 +2748,7 @@ function questHaystack(id, q) {
   for (const rw of q.rw.s.concat(q.rw.f)) h.push(rewardText(rw));
   for (const uo of q.un) h.push(uo.id);
   if (QUEST.unlock_knots[id]) h.push(...QUEST.unlock_knots[id]);
+  if (QUEST.hint_knots && QUEST.hint_knots[id]) h.push(...QUEST.hint_knots[id]);
   for (const c of q.cd) h.push(condName(c));
   for (const s of q.fu) if (s) h.push(s);
   for (const mo of q.mo) {
@@ -3142,6 +3152,7 @@ function openQuestDetail(id) {
   }
 
   const lock = QUEST.unlock_knots[id];
+  const hint = QUEST.hint_knots ? QUEST.hint_knots[id] : null;
   if (lock && lock.length) {
     section("Unlocked in ink");
     rows(lock, (k) => ["knot", `<a class="knotlink" data-knot="${esc(k)}">${esc(k)}</a>`]);
@@ -3149,8 +3160,19 @@ function openQuestDetail(id) {
     section("Unlocked in ink");
     const p = document.createElement("p");
     p.className = "qdesc muted";
-    p.textContent = "Never unlocked by any ink knot (variant or dead content).";
+    p.textContent = hint && hint.length
+      ? "Never unlocked by any ink knot — the quest id only appears as a HintModification hint on choices (see below)."
+      : "Never unlocked by any ink knot (variant or dead content).";
     panel.appendChild(p);
+  }
+
+  if (hint && hint.length) {
+    section("Hinted in ink");
+    const p = document.createElement("p");
+    p.className = "qdesc muted";
+    p.textContent = "The quest id is referenced by the HintModification call on choices in these knots. A hint alone never grants the quest — unless the same knot also unlocks it, the quest is never obtained in-game (incomplete or legacy content).";
+    panel.appendChild(p);
+    rows(hint, (k) => ["knot", `<a class="knotlink" data-knot="${esc(k)}">${esc(k)}</a>`]);
   }
 
   if (q.fu && q.fu.filter(Boolean).length) {
@@ -3565,7 +3587,7 @@ function buildInvFilterUI() {
   for (const it of Object.values(INV.items)) {
     for (const t of (it.tags || [])) counts[t] = (counts[t] || 0) + 1;
   }
-  const list = Object.entries(counts).sort((a, b) => enumName("CharacterTags", a[0]).localeCompare(enumName("CharacterTags", b[0])));
+  const list = Object.entries(counts).sort((a, b) => b[1] - a[1] || enumName("CharacterTags", a[0]).localeCompare(enumName("CharacterTags", b[0])));
   for (const [v, c] of list) {
     const o = document.createElement("option");
     o.value = v; o.textContent = `${enumName("CharacterTags", v)}  (${c})`; tag.appendChild(o);
