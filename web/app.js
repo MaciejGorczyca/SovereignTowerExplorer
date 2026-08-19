@@ -3608,6 +3608,17 @@ function invSourceChips(it) {
   return chips.join("");
 }
 
+function durText(dr) {
+  if (!dr) return "";
+  const sign = dr > 0 ? "−" : "+";
+  return `duration ${sign}${Math.abs(dr)}`;
+}
+
+function invDurChip(it) {
+  if (it.type !== "MOUNT" || !it.dr) return "";
+  return `<span class="badge dur ${it.dr > 0 ? "pos" : "neg"}">${durText(it.dr)}</span>`;
+}
+
 function renderInvResults() {
   if (!INV) { loadingCards($("icards")); return; }
   const list = visibleItems().sort((a, b) => invName(a[1]).localeCompare(invName(b[1])) || a[0].localeCompare(b[0]));
@@ -3651,7 +3662,7 @@ function invCard(stem, it) {
       <span class="badge type-${esc(it.type.toLowerCase())}">${esc(it.type)}</span>
       <span class="qid">${esc(it.cid)}</span></div>
     <div class="prev">${it.n ? esc(tkey(it.d)).slice(0, 160) : ""}</div>
-    <div class="meta">${cost}${stCh}${tags}${effBadge}${invSourceChips(it)}</div>`;
+    <div class="meta">${cost}${stCh}${invDurChip(it)}${tags}${effBadge}${invSourceChips(it)}</div>`;
   el.addEventListener("click", open);
   el.addEventListener("keydown", (e) => { if (e.key === "Enter") open(); });
   return el;
@@ -3682,7 +3693,7 @@ function openInvDetail(stem) {
   for (const c of [
     it.ex ? "exclusive" : "", it.hs ? "hidden stats" : "",
     it.cp ? "complex passive (+PASSIVE)" : "", it.rr ? "requires refreshes" : "",
-    it.ba ? "+" + it.ba + " armor" : "", it.dr ? "duration −" + it.dr : "",
+    it.ba ? "+" + it.ba + " armor" : "", durText(it.dr),
     it.nu && it.nu > 1 ? it.nu + " uses" : "",
   ].filter(Boolean)) {
     const s = document.createElement("span"); s.className = "chip"; s.textContent = c; chips.appendChild(s);

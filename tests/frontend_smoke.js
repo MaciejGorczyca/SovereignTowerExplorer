@@ -907,6 +907,21 @@ waitReady().then(() => {
   if (noDlgCard.innerHTML.indexOf("(no dialogue)") < 0) {
     throw new Error("audience card missing no-dialogue fallback: " + noDlgCard.innerHTML);
   }
+  // Task T6b: mount cards carry a signed duration chip ("duration −N" for
+  // quest-time reduction, "duration +N" when the mount lengthens it, e.g.
+  // guignole's duration_reduction = -1); non-mount items never get the chip.
+  const pegasusCard = vm.runInContext("invCard('pegasus', INV.items.pegasus)", sandbox);
+  if (!/duration −3/.test(pegasusCard.innerHTML)) {
+    throw new Error("mount card missing duration chip: " + pegasusCard.innerHTML);
+  }
+  const guignoleCard = vm.runInContext("invCard('guignole', INV.items.guignole)", sandbox);
+  if (!/duration \+1/.test(guignoleCard.innerHTML)) {
+    throw new Error("negative-reduction mount card missing +duration chip: " + guignoleCard.innerHTML);
+  }
+  const demonHeartCard = vm.runInContext("invCard('demon_heart', INV.items.demon_heart)", sandbox);
+  if (/duration/.test(demonHeartCard.innerHTML)) {
+    throw new Error("relic card wrongly got a duration chip: " + demonHeartCard.innerHTML);
+  }
 
   // Task T7: tab description blocks survive every render + tab switch. The six
   // .tabdesc sentinels planted before boot must still hold after init()'s

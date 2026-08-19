@@ -305,6 +305,8 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
 .badge.st.pos { color: var(--green); }
 .badge.st.neg { color: var(--red); }
 .badge.cost { color: var(--blue); }
+.badge.dur.pos { color: var(--green); }
+.badge.dur.neg { color: var(--red); }
 .badge.sp-forge { color: var(--acc); }
 .badge.sp-stables { color: var(--green); }
 .badge.sp-witch { color: var(--blue); }
