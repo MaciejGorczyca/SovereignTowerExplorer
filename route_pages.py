@@ -7,7 +7,8 @@ link is a real, bot-crawlable 200 response on GitHub Pages (and on plain
 scheme; in short, each route is a trailing-slash directory backed by an
 `index.html` shell:
 
-    /                            -> dist/index.html        (copied web asset)
+    /                            -> dist/index.html        (SEO shell; the copied
+                                          web asset is overwritten with one)
     /dialogues/                  -> dialogues/index.html
     /dialogues/<knot>/           -> dialogues/<knot>/index.html
     /quests/<id>/                -> quests/<id>/index.html
@@ -309,11 +310,15 @@ ENTITY_BITS = {
 def jsonld_graph(site_base, canonical, tab_rel, tab_label, entity_name):
     """One @graph with a WebSite node (only when SITE_BASE is set, so the build
     stays deterministic and default builds carry no absolute URLs) and a
-    BreadcrumbList for the current route."""
+    BreadcrumbList for the current route. The root/home page (empty tab_rel)
+    carries only the WebSite node — it *is* the breadcrumb root, so emitting a
+    home→home trail would be self-redundant."""
     graph = []
     if site_base:
         graph.append({"@type": "WebSite", "@id": site_base,
                       "name": SITE_NAME, "url": site_base})
+    if not tab_rel:
+        return {"@context": "https://schema.org", "@graph": graph}
     home = site_base or "/"
     items = [
         {"@type": "ListItem", "position": 1, "name": SITE_NAME, "item": home},
@@ -383,10 +388,16 @@ TAB_DESCS = {
                "firing conditions, the ink knots that emit them and the quests that grant them.",
     "audiences": "The 511 narrated Audience scenes and 34 AudienceRequest resources of "
                  "Sovereign Tower, with every gating condition that makes a scene play: "
-                 "story and knight requirements, hardcoded cycles, quest follow-ups, "
-                 "doleance and special schedulers, filler packs, county introductions and "
-                 "ultimatum follow-ups.",
+               "story and knight requirements, hardcoded cycles, quest follow-ups, "
+               "doleance and special schedulers, filler packs, county introductions and "
+               "ultimatum follow-ups.",
 }
+
+# home-page meta description (keyword-bearing, mirrors the project summary)
+HOME_DESC = ("Sovereign Tower Explorer is a dependency-free, browser-based viewer for "
+             "the Godot game Sovereign Tower — 922 dialogue knots, 312 quests, 149 items, "
+              "24 knights, 71 special instructions and 511 audiences, fully cross-linked "
+              "and filterable.")
 
 
 def _route_urls(datasets, site_base):
@@ -457,6 +468,14 @@ def write_routes(out_dir, datasets, site_base=""):
         p = out / rel_dir
         p.mkdir(parents=True, exist_ok=True)
         (p / "index.html").write_text(html_text, encoding="utf-8")
+
+    # root page: build_app.copy_web_assets copies the bare web/index.html template
+    # verbatim, so the home "/" was the only route with no description/canonical/
+    # OG/JSON-LD. Emit it here with the same SEO shell every other route gets; its
+    # canonical points at itself (the home "/", which /dialogues/ also aliases to).
+    write("", render_page(
+        template, SITE_NAME, HOME_DESC, abs_url(site_base, ""),
+        site_base, "", SITE_NAME, "website", None, 0))
 
     # tab pages (the /dialogues/ alias canonicalises to the root)
     for tab, tdir, label in TABS:
