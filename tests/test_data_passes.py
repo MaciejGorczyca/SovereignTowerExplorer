@@ -176,10 +176,10 @@ class InventoryDataPassTest(unittest.TestCase):
 
     def test_volume(self):
         st = self.inv["stats"]
-        self.assertEqual(st["items"], 149)
+        self.assertEqual(st["items"], 152)
         self.assertEqual(st["by_type"]["RELIC"], 65)
         self.assertEqual(st["by_type"]["MOUNT"], 29)
-        self.assertEqual(st["by_type"]["CONSUMABLE"], 44)
+        self.assertEqual(st["by_type"]["CONSUMABLE"], 47)
         self.assertEqual(st["by_type"]["MEAL"], 6)
         self.assertEqual(st["by_type"]["QUEST_ITEM"], 5)
 
@@ -316,7 +316,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         st = aud["stats"]
         self.assertEqual(st["audiences"], 511)
         self.assertEqual(st["requests"], 34)
-        self.assertEqual(st["with_conditions"], 18)
+        self.assertEqual(st["with_conditions"], 19)
         self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["with_county_intro"], 7)
@@ -516,7 +516,7 @@ class AudiencesDataPassTest(unittest.TestCase):
             "knight_leaving_dulahan_human": ("dulahan", "human"),
             "knight_leaving_dulahan_cursed_helmet": ("dulahan", "possessed"),
             "knight_leaving_edith_possessed": ("edith", "possessed"),
-            "gwendan_humble_candidacy": ("gwendan", "humbled"),
+            "knight_leaving_gwendan_humble": ("gwendan", "humbled"),
         }
         for stem, (knight, variant) in variants.items():
             with self.subTest(audience=stem):
