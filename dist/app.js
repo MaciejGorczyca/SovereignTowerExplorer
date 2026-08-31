@@ -2022,6 +2022,11 @@ function originSection(name) {
       : `<span class="chip">${esc(kn)}</span>`).join(" ");
     add(`Reached from knots: <span class="readers">${chips}</span>`);
   }
+  if (k.code && k.code.length) {
+    for (const [loc, snippet] of k.code) {
+      add(`Played via <b>game code</b> in <code>${esc(loc)}</code> — <span class="mut">${esc(snippet)}</span>`);
+    }
+  }
   if (!box.childNodes.length) return null;
   const frag = document.createDocumentFragment();
   frag.appendChild(sec);

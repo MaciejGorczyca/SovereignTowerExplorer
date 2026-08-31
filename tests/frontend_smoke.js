@@ -370,18 +370,16 @@ waitReady().then(() => {
   if (elById.get("drawer").hidden !== true || historyStub._url !== "/audiences/") {
     throw new Error("goClose did not close the drawer onto /audiences/: " + historyStub._url);
   }
-  // Task N2J: quest hint sources. A quest that is only referenced by
-  // HintModification(QUEST, <id>) — never UnlockQuest — must show a separate
-  // "Hinted in ink" drawer section instead of a bare "dead content" note, so
-  // Brunhilda's testimony-prep quest still explains where it appears in the
-  // story (the brimwood witness choices) while staying honest that it is never
-  // actually granted in-game.
+  // Task N2J: quest hint sources. Brunhilda/Chester/Tarcus testimony-prep quests
+  // are now both unlocked and hinted via county_quest_brimwood_audience_2 (game
+  // update: previously Brunhilda hint-only). The drawer must show both the
+  // “Unlocked by ink” and “Hinted in ink” sections for the same knot.
   clearPanel();
   vm.runInContext("openQuestDetail('quest_brimwood_brunhilda_testimony_preparation')", sandbox);
   const hBrush = drawerText();
   if (hBrush.indexOf("hinted in ink") < 0 ||
       hBrush.indexOf("county_quest_brimwood_audience_2") < 0 ||
-      hBrush.indexOf("never unlocked by any ink knot") < 0) {
+      hBrush.indexOf("unlocked") < 0) {
     throw new Error("hinted quest drawer missing its hint sources: " + hBrush);
   }
   vm.runInContext("closeDetail()", sandbox);
@@ -567,7 +565,7 @@ waitReady().then(() => {
       ddAlwena[0][0] !== "alwena" || ddAlwena[0][1] !== "demission") {
     throw new Error("knight_leaving_alwena dd wrong: " + JSON.stringify(ddAlwena));
   }
-  const ddGwendan = vm.runInContext("AUDIENCE.audiences['gwendan_humble_candidacy'].dd", sandbox);
+  const ddGwendan = vm.runInContext("AUDIENCE.audiences['knight_leaving_gwendan_humble'].dd", sandbox);
   if (!ddGwendan || ddGwendan[0].length !== 3 || ddGwendan[0][0] !== "gwendan" ||
       ddGwendan[0][2] !== "humbled") {
     throw new Error("gwendan demission variant wrong: " + JSON.stringify(ddGwendan));

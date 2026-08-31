@@ -1429,6 +1429,26 @@ def main():
     for v in game_side_referenced_vars(game_root, list(index["variables"])):
         index["variables"].setdefault(v, {"reads": 0, "writes": 0})["gs"] = True
     prof.tick("game-side variable scan")
+    # code-played knots: which knots are referenced in game code via _play_dialogue /
+    # StoryController.goto (the new “code” channel for intro / cutscene knots that
+    # have no audience/quest/special gate). Mirrors the audience code channel.
+    _code_knots = 0
+    _knot_plays_map = {}
+    try:
+        from code_plays import collect_code_plays as _collect_code_plays
+        _knot_plays_map, _aud_plays = _collect_code_plays(game_root, set(index["knots"].keys()), set())
+        for _knot, _plays in _knot_plays_map.items():
+            if _knot not in index["knots"]:
+                continue
+            _kdata = index["knots"][_knot]
+            if _kdata.get("c") == "game_api_function":
+                continue
+            # keep up to 3 sites per knot (definition + play line)
+            _kdata["code"] = [[f"{_rel}:{_ln}", _snip] for _rel, _ln, _snip in _plays[:3]]
+            _code_knots += 1
+    except Exception as _e:
+        print(f"WARNING: code-played knot scan failed: {_e}", file=sys.stderr)
+    prof.tick("code-played knot scan")
     index["funcs"] = {}
     for kname, kdata in index["knots"].items():
         for f in kdata["funcs"]:
@@ -1442,6 +1462,7 @@ def main():
         "choices": sum(k["choices"] for k in index["knots"].values()),
         "speakers": len(index["speakers"]),
         "variables": len(index["variables"]),
+        "code_played": _code_knots,
     }
 
     # list of knot names per category (frontend grouping) -> keep categories as counts only
