@@ -3739,15 +3739,9 @@ function openInvDetail(stem) {
     const p = document.createElement("p");
     p.className = "qdesc muted";
     p.textContent = hasPsv
-      ? "What the '+ PASSIVE' actually does (decoded from decompiled game code — special_cases.gd / tag_library.tscn / quests_manager.gd / equipment scripts):"
-      : "This item carries a '+ PASSIVE' — the game flags it as complex but the effect is not yet decoded.";
+      ? "What the passive actually does:"
+      : "This item carries a '+ PASSIVE' — effect not yet decoded.";
     panel.appendChild(p);
-    if (hasPsv) {
-      const legend = document.createElement("p");
-      legend.className = "qdesc muted";
-      legend.innerHTML = "Score is internal outcome points; the game UI shows <b>×100</b> (gauge_controller.gd:103, knight_score_recap.gd:21). So <b>+1 ≈ +100 pts</b>, <b>+100 ≈ +10,000 pts</b>. Thresholds (quest.gd:29): Success &gt;0 (&gt;0 pts), Great &gt;5 (&gt;500 pts), Critical ≥10 (≥1,000 pts, gauge shows 2,000).";
-      panel.appendChild(legend);
-    }
     for (const { tag, note } of (it.psv || [])) {
       const line = document.createElement("div");
       line.className = "trankrow";
@@ -4129,15 +4123,6 @@ function openKnightDetail(stem) {
   }
 
   section("Features");
-  {
-    const hasE = ["k","u","r"].some((g) => (k.feat[g]||[]).some((f)=>f.e));
-    if (hasE) {
-      const legend = document.createElement("p");
-      legend.className = "qdesc muted";
-      legend.innerHTML = "Passive effects are internal quest score (<b>×100</b> in UI — e.g. +1 ≈ +100 pts, +100 ≈ +10,000 pts; Success &gt;0, Great &gt;5, Critical ≥10).";
-      panel.appendChild(legend);
-    }
-  }
   for (const [group, label] of [["k", "Known"], ["u", "Unknown (to discover)"], ["r", "Intendant rumors"]]) {
     if (!(k.feat[group] || []).length) continue;
     const h = document.createElement("h4"); h.className = "qsec small"; h.textContent = label; panel.appendChild(h);
