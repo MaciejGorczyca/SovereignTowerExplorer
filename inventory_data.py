@@ -67,19 +67,128 @@ DEFAULTS = {
 # Mechanical "complex passive" effects. `has_complex_passive` only flags the
 # item; what the passive actually does lives in the tag special-cases in
 # systems/autoloads/special_cases.gd (score / damage / reward hooks keyed by
-# the CharacterTag the item grants). This curated map mirrors those hooks so
-# the viewer can explain the passive instead of showing a bare flag.
+# the CharacterTag the item grants) and in systems/autoloads/tag_library.tscn
+# (efficient/inefficient quest-type/condition lists giving ±1). This curated
+# map mirrors those hooks plus quests_manager / quest / equipment dynamic
+# handlers so the viewer can explain the passive instead of showing a bare flag.
+# All descriptions verified against decompiled GDScript (see file:line refs).
 PASSIVE_NOTES = {
-    "WISH_GRANTING_LAMP": "+100 success score on every quest.",
-    "DEADLY_WEAPON": "+100 success score on assassination quests.",
-    "AMBER_EYE": "+8 success score on quests already completed before.",
-    "DEMON_DECOCTION": "+100 success score on quests already completed before.",
-    "SADDISTIC": "+1 success score on quests involving killing.",
-    "SERRATED_BLADE": "+1 success score on quests involving killing.",
-    "GRANNYS_HERBAL_TEA": "+1/−1 success score mirroring the quest's people-satisfaction reward.",
-    "FINE_WINE": "+1/−1 success score mirroring the quest's nobles-satisfaction reward.",
-    "POTION_OF_FIRE_BREATHING": "+2 damage.",
-    "PACK_OF_SERPENT_OIL_VIALS": "Funds rewards scale up with quest duration.",
+    # --- special_cases.gd: score handlers (check_for_special_cases_for_score) ---
+    "WISH_GRANTING_LAMP": "+100 success score on every quest (special_cases.gd:25). Community notes +10k but code is +100.",
+    "DEADLY_WEAPON": "+100 on Assassination quests (special_cases.gd:17); Efficient (+1) on Hunt / Assassination / Duel (tag_library.tscn).",
+    "AMBER_EYE": "+8 on quests already completed before (special_cases.gd:31).",
+    "DEMON_DECOCTION": "+100 on quests already completed before (special_cases.gd:296).",
+    "SADDISTIC": "+1 when quest involves killing (special_cases.gd:93); Efficient (+1) on Intimidation, Inefficient (−1) on Help (tag_library).",
+    "SERRATED_BLADE": "+1 when quest involves killing (special_cases.gd:268).",
+    "GRANNYS_HERBAL_TEA": "+1/−1 mirroring people-satisfaction reward (special_cases.gd:276, clamp −1..1).",
+    "FINE_WINE": "+1/−1 mirroring nobles-satisfaction reward (special_cases.gd:286).",
+    "KIND_HEARTED": "+1/−1 mirroring people-satisfaction reward (special_cases.gd:39).",
+    "NOBLE_SOUL": "+1/−1 mirroring nobles-satisfaction reward (special_cases.gd:49).",
+    "TRUE_NOBLE_SOUL": "+1/−1 mirroring sum of all satisfaction rewards (special_cases.gd:59).",
+    "POTION_OF_FIRE_BREATHING": "+2 damage (special_cases.gd:329).",
+    "PACK_OF_SERPENT_OIL_VIALS": "Funds rewards scale with duration: bonus = 1 + Σ(i+1)/10 for i in 0..duration-1 (special_cases.gd:356).",
+    # --- remaining score handlers ---
+    "LONER": "+1 when sent alone (special_cases.gd:9, assigned_knights==1).",
+    "COASTAL": "+1 when location is coastal (special_cases.gd:259).",
+    "BRIZH_CONNOISSEUR": "+1 when county is brizh (special_cases.gd:250).",
+    "MUTE": "−3 on Diplomacy quests (special_cases.gd:218).",
+    "PATIENT": "+1 when duration >1 (special_cases.gd:133).",
+    "TIMID": "−1 when sent alone (special_cases.gd:141).",
+    "BRUTAL": "+1.5 on Hunt/Confrontation/Duel/Assassination, else −1.5 (special_cases.gd:158).",
+    "TRUE_DRAGON_KNIGHT": "+0.5, doubled to +1.0 on Hunt/Confrontation/Duel/Assassination (special_cases.gd:149).",
+    "REVOLUTIONAR": "Score = clamp((people − nobles)×0.2, −2..2) (special_cases.gd:123).",
+    "NOBILITY_PRIMES": "Score = clamp((nobles − people)×0.2, −2..2) (special_cases.gd:182).",
+    "LOYAL": "Score = clamp(avg affinity×0.25, −2..2) when sent with others (special_cases.gd:167).",
+    "SPEEDSTER": "+0.5 per reduced duration point (special_cases.gd:192).",
+    "OVERWORKED": "−0.5 per extra duration point (special_cases.gd:201).",
+    "BELIEVER": "+scholars×0.025 when scholars ≥10 (special_cases.gd:209).",
+    "TANK": "+armor×0.08 (special_cases.gd:226).",
+    "RESOURCEFULL": "+WITS×0.08 (special_cases.gd:232).",
+    "GAMBLER": "+LUCK×0.1 (special_cases.gd:238).",
+    "PROBLEM_SOLVER": "+STRENGTH×0.1 (special_cases.gd:244).",
+    # --- efficiency-only tags (tag_library.tscn) used as item passives ---
+    # These give Efficient (+1) / Inefficient (−1) via TagLibrary.get_efficiency_tags_for_quest (quest.gd:218).
+    "ABACUS_CLEAVER": "Efficient (+1) on Diplomacy quests (tag_library.tscn).",
+    "HUNTING_BOW": "Efficient (+1) on Hunt quests (tag_library.tscn). User note +100 but code is +1 via efficiency.",
+    "ARSENIC_VIAL": "Efficient (+1) on Assassination (tag_library.tscn). User note +100 but code is +1 via efficiency.",
+    "ASSASSIN_DAGGER": "Efficient (+1) on Assassination (tag_library.tscn).",
+    "PERFUME": "Efficient (+1) on Diplomacy (tag_library.tscn). User note +100 but code is +1.",
+    "ILLICIT_PIMENTO": "Efficient (+1) when Unethical condition (tag_library.tscn).",
+    "CRAB_ARMOR": "Efficient (+1) when Water condition (tag_library.tscn); also +3 armor.",
+    "KRAKENS_BANE": "Efficient (+1) when Water condition (tag_library.tscn).",
+    "SPELL_BOOK": "Efficient (+1) when Magic Involved (tag_library.tscn).",
+    "DRAKE_KILLING_BOW": "Efficient (+1) when Dragon condition (tag_library.tscn).",
+    "EYE_OF_PETRIFICATION": "Efficient (+1) on Duel (tag_library.tscn).",
+    "GLASS_BLADE": "Efficient (+1) when Ghost condition (tag_library.tscn).",
+    "DEMON_BANE": "Efficient (+1) when Ghost or At Night (tag_library.tscn).",
+    "DEMONIC_SWORD": "Efficient (+1) when Magic Involved; stats scale with death_count (demonic_sword.gd): each listed stat = death_count.",
+    "NET": "Efficient (+1) when Water or Big Creature (tag_library.tscn).",
+    "PIKE": "Efficient (+1) when Flying Creature (tag_library.tscn).",
+    "PONZI": "Efficient (+1) when Investigation (tag_library.tscn).",
+    "VIRGO_SWORD": "Efficient (+1) when Crowd or Intimidation (tag_library.tscn).",
+    "DURANDAL": "Efficient (+1) on Competition (tag_library.tscn).",
+    "SIVKO_BURKO": "Efficient (+1) on Competition (tag_library.tscn).",
+    "TROJAN": "Efficient (+1) when Cute Creature (tag_library.tscn).",
+    "BUTTERMILK": "Efficient (+1) when People Involved (tag_library.tscn).",
+    "PEOPLE_FRIEND": "Efficient (+1) when People Involved (tag_library.tscn).",
+    "SPICED_HYPOCRAS": "Efficient (+1) on Diplomacy (tag_library.tscn).",
+    "DUALIST_SWORD": "Efficient (+1) on Duel (tag_library.tscn).",
+    "AGRO": "Efficient (+1) when Heavy Lifting (tag_library.tscn).",
+    # --- damage / reward handlers (same tag pool) ---
+    "PERFECT_ARMOR": "Damage: −100 to others' damage if ally has it; +0.75×base×(n−1) if self has it (special_cases.gd:312).",
+    "BODYGUARD": "Damage −1 to allies on same quest (special_cases.gd:314).",
+    "SHORT_TARGET": "Damage −1 (special_cases.gd:322).",
+    "INTANGIBLE": "Damage −ceil(base/2) (special_cases.gd:325).",
+    "EXTREMELY_CLUMSY": "Damage +2 when quest outcome is failure (special_cases.gd:317).",
+    "FIRE_LADY": "Damage +1 when Water condition (special_cases.gd:325).",
+    "CONDUCTOR": "Damage +1 when Water condition (special_cases.gd:327).",
+    "IN_DEBT": "Funds −15% with 50% chance (special_cases.gd:339).",
+    "OFFICE_WORKER": "Funds scale with duration like Pack of Serpent Oil (special_cases.gd:347).",
+    # --- quest-manager / affinity / dynamic-stat handlers ---
+    "KELPIE": "Duration −1 when location is coastal (quests_manager.gd:172), stacking with base duration_reduction 1.",
+    "BAYARD": "Duration floor: Bayard's reduction is used as minimum overriding slower knights (quests_manager.gd:174). Base duration −2.",
+    "UNICORN_TEARS": "Survival: if armor reaches 0, set to 1 instead (quests_manager.gd:236).",
+    "AMBROSIA": "Affinity +1.5 when sent on any quest (quest.gd:130).",
+    "SWORD_OF_THE_LAKE": "+3 STRENGTH only for pure of heart: Angelica, Humble Gwendan (reformed), Goberto, Ari (sword_of_the_lake.gd:9).",
+    "KRIS_BLADE": "Randomizes LUCK: sets LUCK to 0–15 minus base LUCK (kris_blade.gd:5).",
+    "DUBIOUS_MIXTURE": "Randomizes WITS to 0–15 minus base WITS (dubious_mixture.gd:5).",
+    "GUIGNOLE": "Randomizes AGILITY to 0–15 minus base AGILITY (guignole.gd:5).",
+    "RISPE": "Efficient (+1) when Big Creature (tag_library.tscn).",
+    # fallback mount-type tags (no score effect, kept for completeness)
+    "EQUINE": "Mount type — no direct quest score effect.",
+    "NON_EQUINE": "Mount type — no direct quest score effect.",
+    "FLYING_MOUNT": "Efficient (+1) when Flying Creature, Climbing or Need Flying Mount (tag_library.tscn).",
+}
+
+# Back-compat alias used by older tests
+PASSIVE_EFFECTS = PASSIVE_NOTES
+
+# Extra mount/quest-manager passives keyed by item stem (not tag) for items whose
+# duration/bonus logic is not tag-granted via special_cases but via equipment fields.
+ITEM_PASSIVE_EXTRAS = {
+    "kelpie": "Coastal duration −1 stacks with the item's base duration −1.",
+    "bayard": "Bayard duration floor logic (see KELPIE entry).",
+    "rispe": "Duration −3 base (mount).",
+    "agro": "Duration −1 base.",
+    "ponzi": "Duration −1 base.",
+    "trojan": "Duration −1 base.",
+    "sivko-burko": "Duration −2 base.",
+    "crab_armor": "Base +3 armor.",
+    "spell_book": "Efficient on Magic Involved; see SPELL_BOOK.",
+    "lake_sword": "See SWORD_OF_THE_LAKE — dynamic +3 STR conditional.",
+    "kris_blade": "See KRIS_BLADE — random LUCK.",
+    "guignole": "See GUIGNOLE — random AGILITY.",
+    "dubious_mixture": "See DUBIOUS_MIXTURE — random WITS.",
+    "demonic_sword": "See DEMONIC_SWORD — stats = death_count.",
+    "wish_granting_lamp": "See WISH_GRANTING_LAMP.",
+    "potion_of_fire_breathing": "See POTION_OF_FIRE_BREATHING.",
+    "pack_of_serpent_oil_vials": "See PACK_OF_SERPENT_OIL_VIALS; base duration −1.",
+    "buttermilk": "See BUTTERMILK.",
+    "arsenic_vial": "See ARSENIC_VIAL.",
+    "hunting_bow": "See HUNTING_BOW.",
+    "strong_perfume": "See PERFUME.",
+    "unicorn_tears": "See UNICORN_TEARS.",
+    "ambrosia": "See AMBROSIA.",
 }
 
 ID_FIELD = {
@@ -396,9 +505,12 @@ def load_equipment():
                 char_tags = ENUMS_TABLE.get("CharacterTags", {})
                 psv = []
                 for t in item["tags"]:
-                    note = PASSIVE_NOTES.get(char_tags.get(t, ""))
+                    tag_name = char_tags.get(t, str(t))
+                    note = PASSIVE_NOTES.get(tag_name)
                     if note:
-                        psv.append({"tag": char_tags.get(t, t), "note": note})
+                        psv.append({"tag": tag_name, "note": note})
+                    else:
+                        psv.append({"tag": tag_name, "note": "Complex passive — effect not yet decoded (see special_cases.gd / tag_library.tscn)."})
                 if psv:
                     item["psv"] = psv
             items[stem] = item

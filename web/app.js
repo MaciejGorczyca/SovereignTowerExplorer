@@ -3734,15 +3734,24 @@ function openInvDetail(stem) {
   rows(it.st.map((v, i) => [INV_STATS[i], v]), ([a, b]) => [a, `<b class="stat${b > 0 ? " pos" : b < 0 ? " neg" : ""}">${b > 0 ? "+" : ""}${b}</b>`]);
 
   if (it.cp) {
-    section("Complex passive");
+    const hasPsv = (it.psv || []).length;
+    section(hasPsv ? "Passive effects" : "Complex passive");
     const p = document.createElement("p");
     p.className = "qdesc muted";
-    p.textContent = "This item carries a passive ability beyond its listed stat bonuses — the game flags it as a '+ PASSIVE'.";
+    p.textContent = hasPsv
+      ? "What the '+ PASSIVE' actually does (decoded from decompiled game code — special_cases.gd / tag_library.tscn / quests_manager.gd / equipment scripts):"
+      : "This item carries a '+ PASSIVE' — the game flags it as complex but the effect is not yet decoded.";
     panel.appendChild(p);
     for (const { tag, note } of (it.psv || [])) {
       const line = document.createElement("div");
       line.className = "trankrow";
       line.innerHTML = `<span class="chip tag">${esc(tag)}</span> <span class="muted">${esc(note)}</span>`;
+      panel.appendChild(line);
+    }
+    if (!hasPsv) {
+      const line = document.createElement("div");
+      line.className = "trankrow";
+      line.innerHTML = `<span class="chip tag">complex</span> <span class="muted">No decoded effect found</span>`;
       panel.appendChild(line);
     }
   }
@@ -4123,7 +4132,8 @@ function openKnightDetail(stem) {
       let name = f.n || "?";
       if (f.t === 1 || f.t === 2) name += " (" + (f.p ? "likes" : "dislikes") + ")";
       const d = f.d ? ` <span class="kfeat-d">${esc(tkey(f.d))}</span>` : "";
-      box.innerHTML = `<b class="kfeat-n">${esc(KFEAT_LABELS[f.t] || "feature")}</b> — ${esc(name)}${d}`;
+      const e = f.e ? ` <span class="muted"> — ${esc(f.e)}</span>` : "";
+      box.innerHTML = `<b class="kfeat-n">${esc(KFEAT_LABELS[f.t] || "feature")}</b> — ${esc(name)}${d}${e}`;
       panel.appendChild(box);
     }
   }
@@ -4211,7 +4221,8 @@ function openKnightDetail(stem) {
       if (evo.armor) bits.push(`<span class="chip neg">armor ${evo.armor > 0 ? "+" : ""}${evo.armor}</span>`);
       for (const f of evo.features || []) {
         const d = f.d ? ` <span class="kfeat-d">${esc(tkey(f.d))}</span>` : "";
-        bits.push(`<span class="chip">${esc(KFEAT_LABELS[f.t] || "feature")}: ${esc(f.n || "?")}${d}</span>`);
+        const e = f.e ? ` <span class="muted">${esc(f.e)}</span>` : "";
+        bits.push(`<span class="chip">${esc(KFEAT_LABELS[f.t] || "feature")}: ${esc(f.n || "?")}${d}${e}</span>`);
       }
       if (evo.relic) {
         const byCid2 = invalidItemsByCid();

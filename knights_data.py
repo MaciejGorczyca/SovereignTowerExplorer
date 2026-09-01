@@ -311,11 +311,11 @@ def build_evolutions(tf, props, enums, stem, finder_evos=None):
             ref = props.get(d["feature"])
             if isinstance(ref, dict) and "_sub" in ref:
                 fp = tf.sub_props(ref["_sub"])
-                evo["features"] = [{
-                    "t": fp.get("type", 0),
-                    "n": tag_names.get(fp.get("character_tag"), fp.get("character_tag")),
-                    "d": fp.get("description", ""),
-                }]
+                ename = tag_names.get(fp.get("character_tag"), fp.get("character_tag"))
+                ef = {"t": fp.get("type", 0), "n": ename, "d": fp.get("description", "")}
+                if ename in _KNIGHT_PASSIVE_NOTES:
+                    ef["e"] = _KNIGHT_PASSIVE_NOTES[ename]
+                evo["features"] = [ef]
         if d.get("relic"):
             rstem = _ext_stem(tf, props.get(d["relic"]))
             if rstem:
@@ -339,11 +339,75 @@ def build_evolutions(tf, props, enums, stem, finder_evos=None):
     return out
 
 
+# Passive effect notes for CharacterTags granted by knights (same source as
+# inventory_data.PASSIVE_NOTES, mirrored here so knights.json can surface the
+# actual mechanical effect of each known/unknown characteristic). Values are
+# verified against special_cases.gd / quests_manager.gd / quest.gd.
+_KNIGHT_PASSIVE_NOTES = {
+    "LONER": "+1 when sent alone (special_cases.gd:9).",
+    "DEADLY_WEAPON": "+100 on Assassination (special_cases.gd:17).",
+    "WISH_GRANTING_LAMP": "+100 on every quest (special_cases.gd:25).",
+    "AMBER_EYE": "+8 on already completed quests (special_cases.gd:31).",
+    "DEMON_DECOCTION": "+100 on already completed quests (special_cases.gd:296).",
+    "KIND_HEARTED": "+1/−1 mirroring people reward (special_cases.gd:39).",
+    "NOBLE_SOUL": "+1/−1 mirroring nobles reward (special_cases.gd:49).",
+    "TRUE_NOBLE_SOUL": "+1/−1 mirroring sum of all satisfaction rewards (special_cases.gd:59).",
+    "SYPHON": "Bonus = Edith's bonus_for_kills (0.25 per kill) (special_cases.gd:73).",
+    "CHEESE_LOVER": "+1 if carrier also has CHEESY (special_cases.gd:85).",
+    "SADDISTIC": "+1 when killing (special_cases.gd:93).",
+    "SERRATED_BLADE": "+1 when killing (special_cases.gd:268).",
+    "GRANNYS_HERBAL_TEA": "+1/−1 mirroring people reward (special_cases.gd:276).",
+    "FINE_WINE": "+1/−1 mirroring nobles reward (special_cases.gd:286).",
+    "LASTING_IMPRESSION": "+1 on locations Gideon previously succeeded (special_cases.gd:101, Gideon only).",
+    "TIME_PERCEPTION": "+1 on quests Epicrate completed (special_cases.gd:112, Epicrate only).",
+    "REVOLUTIONAR": "Score = clamp((people−nobles)×0.2, −2..2) (special_cases.gd:123).",
+    "PATIENT": "+1 when duration >1 (special_cases.gd:133).",
+    "TIMID": "−1 when sent alone (special_cases.gd:141).",
+    "TRUE_DRAGON_KNIGHT": "+0.5, doubled on Hunt/Confrontation/Duel/Assassination (special_cases.gd:149).",
+    "BRUTAL": "+1.5 on combat quests, else −1.5 (special_cases.gd:158).",
+    "LOYAL": "Score = clamp(avg affinity×0.25, −2..2) with others (special_cases.gd:167).",
+    "NOBILITY_PRIMES": "Score = clamp((nobles−people)×0.2, −2..2) (special_cases.gd:182).",
+    "SPEEDSTER": "+0.5 per reduced duration point (special_cases.gd:192).",
+    "OVERWORKED": "−0.5 per extra duration point (special_cases.gd:201).",
+    "BELIEVER": "+scholars×0.025 when scholars ≥10 (special_cases.gd:209).",
+    "MUTE": "−3 on Diplomacy (special_cases.gd:218).",
+    "TANK": "+armor×0.08 (special_cases.gd:226).",
+    "RESOURCEFULL": "+WITS×0.08 (special_cases.gd:232).",
+    "GAMBLER": "+LUCK×0.1 (special_cases.gd:238).",
+    "PROBLEM_SOLVER": "+STRENGTH×0.1 (special_cases.gd:244).",
+    "BRIZH_CONNOISSEUR": "+1 when county is brizh (special_cases.gd:250).",
+    "COASTAL": "+1 when coastal (special_cases.gd:259).",
+    "KELPIE": "Duration −1 when coastal (quests_manager.gd:172).",
+    "BAYARD": "Duration floor via Bayard logic (quests_manager.gd:174).",
+    "UNICORN_TEARS": "Survival: armor 0 → 1 (quests_manager.gd:236).",
+    "AMBROSIA": "Affinity +1.5 when sent (quest.gd:130).",
+    "PERFECT_ARMOR": "Damage −100 to allies, or +0.75×base×(n−1) self (special_cases.gd:319).",
+    "BODYGUARD": "Damage −1 to allies (special_cases.gd:314).",
+    "SHORT_TARGET": "Damage −1 (special_cases.gd:322).",
+    "INTANGIBLE": "Damage −ceil(base/2) (special_cases.gd:325).",
+    "EXTREMELY_CLUMSY": "Damage +2 on failure (special_cases.gd:317).",
+    "FIRE_LADY": "Damage +1 when Water (special_cases.gd:325).",
+    "CONDUCTOR": "Damage +1 when Water (special_cases.gd:327).",
+    "POTION_OF_FIRE_BREATHING": "Damage +2 (special_cases.gd:329).",
+    "IN_DEBT": "Funds −15% with 50% chance (special_cases.gd:339).",
+    "OFFICE_WORKER": "Funds scale with duration (special_cases.gd:347).",
+    "PACK_OF_SERPENT_OIL_VIALS": "Funds scale with duration (special_cases.gd:356).",
+    "POACHER": "25% chance +1 Merchants on success (special_cases.gd:365).",
+    "NOBLES_DEFENDER": "25% chance +1 Nobles on success (special_cases.gd:372).",
+    "SCHOLAR": "25% chance +1 Scholars on success (special_cases.gd:379).",
+    "IDOL": "25% chance +1 People on success (special_cases.gd:386).",
+    "FORTUNATE": "50% chance to improve outcome by one tier (special_cases.gd:401).",
+    "PROTAGONIST": "+1 when bearer already has highest score (special_cases.gd:416).",
+    "CHEESY": "Enables CHEESE_LOVER bonus when paired.",
+}
+
+
 def decode_features(tf, refs, enums):
-    """CharacterFeature refs -> [{t, n, p?, d?}].
+    """CharacterFeature refs -> [{t, n, p?, d?, e?}].
 
     t: 0=characteristic, 1=quest-type preference, 2=condition preference.
     n = enum display name; p = LIKE(1)/DISLIKE(0) for preferences; d = loc key.
+    e = decoded passive effect note (for t==0 when known).
     """
     features = []
     for ref in refs or []:
@@ -360,6 +424,8 @@ def decode_features(tf, refs, enums):
             feat["p"] = props.get("preference_type", 0)
         else:
             feat["n"] = enums.get("CharacterTags", {}).get(props.get("character_tag"), props.get("character_tag"))
+            if feat["n"] in _KNIGHT_PASSIVE_NOTES:
+                feat["e"] = _KNIGHT_PASSIVE_NOTES[feat["n"]]
         if props.get("description"):
             feat["d"] = props["description"]
         features.append(feat)
