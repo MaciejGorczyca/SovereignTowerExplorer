@@ -130,7 +130,7 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
   background: var(--panel2); border: 1px solid var(--line); border-radius: 99px;
   padding: 1px 8px; font-size: 11px;
 }
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 10px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
 
 .card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
