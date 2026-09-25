@@ -1173,6 +1173,20 @@ def copy_web_assets(out_dir: Path) -> None:
         src = web / name
         if src.exists():
             (out_dir / name).write_bytes(src.read_bytes())
+    # Google Search Console verification files (googleXXXX.html) must be
+    # served from the site root; keeping them in web/ carries them into
+    # every build (and every route_pages.py run) automatically.
+    for src in sorted(web.glob("google*.html")):
+        (out_dir / src.name).write_bytes(src.read_bytes())
+    # the shell template carries %%TOKENS%% for the data volumes (see
+    # route_pages.site_stat_tokens); fill them from the just-written JSONs so
+    # the homepage meta/tab descriptions can never go stale.
+    from route_pages import fill_stat_tokens, load_datasets, site_stat_tokens
+    shell = out_dir / "index.html"
+    shell.write_text(
+        fill_stat_tokens(shell.read_text(encoding="utf-8"),
+                         site_stat_tokens(load_datasets(out_dir))),
+        encoding="utf-8")
 
 
 HELP_TEXT = """\

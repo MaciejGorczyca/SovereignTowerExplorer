@@ -365,39 +365,90 @@ def render_page(template, title, description, canonical, site_base, tab_rel,
 
 
 # tab-page meta descriptions (keyword-bearing; the in-DOM tabdesc blocks in
-# web/index.html carry the longer versions)
+# web/index.html carry the longer versions). %%TOKENS%% are filled per build
+# from the emitted JSONs via fill_stat_tokens(), so the counts can never go
+# stale when the game data grows.
 TAB_DESCS = {
-    "dialogues": "Browse all 922 dialogue knots of Sovereign Tower — 91 speakers, "
-                 "3,477 choices, 1,368 variables across 17 categories: county quests, "
+    "dialogues": "Browse all %%KNOTS%% dialogue knots of Sovereign Tower — %%SPEAKERS%% speakers, "
+                 "%%CHOICES%% choices, %%VARIABLES%% variables across 17 categories: county quests, "
                  "scripted quests, grievances, candidacies, endings, reactions and the "
-                 "free-time dialogues of the 24 knights, with filters, cross-links and "
+                 "free-time dialogues of the %%KNIGHTS%% knights, with filters, cross-links and "
                  "full transcripts.",
-    "quests": "All 312 quest contracts of Sovereign Tower with their stat requirements, "
-              "conditions, deadlines and rewards — 91 with an unexpected outcome, 69 with "
-              "modifier variants, each linked to its unlock knot, follow-up audience and "
-              "preferred knights.",
-    "inventory": "All 149 equipment resources of Sovereign Tower — 65 relics, 29 mounts, "
-                 "44 consumables, 6 meals and 5 quest items — with stat bonuses, tags, "
-                 "purchase requirements and every quest, shop or story knot that grants them.",
-    "knights": "The 24 playable knights of Sovereign Tower with mastered stats, affinity "
+    "quests": "All %%QUESTS%% quest contracts of Sovereign Tower with their stat requirements, "
+              "conditions, deadlines and rewards — %%QUESTS_UNEXPECTED%% with an unexpected outcome, "
+              "%%QUEST_MODIFIERS%% with modifier variants, each linked to its unlock knot, follow-up "
+              "audience and preferred knights.",
+    "inventory": "All %%ITEMS%% equipment resources of Sovereign Tower — %%RELICS%% relics, %%MOUNTS%% mounts, "
+                 "%%CONSUMABLES%% consumables, %%MEALS%% meals and %%QUEST_ITEMS%% quest items — with stat "
+                 "bonuses, tags, purchase requirements and every quest, shop or story knot that grants them.",
+    "knights": "The %%KNIGHTS%% playable knights of Sovereign Tower with mastered stats, affinity "
                "and demission profiles, known and rumored features, preferred equipment, "
                "liked meals and sovereign tags, pair conversations, evolution paths and "
                "every quest and story knot they appear in.",
-    "special": "The 71 SpecialInstruction game-director switches of Sovereign Tower — "
+    "special": "The %%SPECIALS%% SpecialInstruction game-director switches of Sovereign Tower — "
                "knight evolution states, background toggles and raise flags — with their "
                "firing conditions, the ink knots that emit them and the quests that grant them.",
-    "audiences": "The 511 narrated Audience scenes and 34 AudienceRequest resources of "
+    "audiences": "The %%AUDIENCES%% narrated Audience scenes and %%REQUESTS%% AudienceRequest resources of "
                  "Sovereign Tower, with every gating condition that makes a scene play: "
-               "story and knight requirements, hardcoded cycles, quest follow-ups, "
-               "doleance and special schedulers, filler packs, county introductions and "
-               "ultimatum follow-ups.",
+                 "story and knight requirements, hardcoded cycles, quest follow-ups, "
+                 "doleance and special schedulers, filler packs, county introductions and "
+                 "ultimatum follow-ups.",
 }
 
 # home-page meta description (keyword-bearing, mirrors the project summary)
 HOME_DESC = ("Sovereign Tower Explorer is a dependency-free, browser-based viewer for "
-             "the Godot game Sovereign Tower — 922 dialogue knots, 312 quests, 149 items, "
-              "24 knights, 71 special instructions and 511 audiences, fully cross-linked "
-              "and filterable.")
+             "the Godot game Sovereign Tower — %%KNOTS%% dialogue knots, %%QUESTS%% quests, "
+             "%%ITEMS%% items, %%KNIGHTS%% knights, %%SPECIALS%% special instructions and "
+             "%%AUDIENCES%% audiences, fully cross-linked and filterable.")
+
+
+def site_stat_tokens(datasets):
+    """Display volumes for the %%TOKENS%% in HOME_DESC / TAB_DESCS / web/index.html,
+    derived from the emitted JSONs (thousands-separated, matching house style)."""
+    def fmt(n):
+        return "{:,}".format(int(n or 0))
+    index = datasets.get("index") or {}
+    istats = index.get("stats") or {}
+    quests = datasets.get("quests") or {}
+    qstats = quests.get("stats") or {}
+    inventory = datasets.get("inventory") or {}
+    invstats = inventory.get("stats") or {}
+    by_type = invstats.get("by_type") or {}
+    knights = datasets.get("knights") or {}
+    kstats = knights.get("stats") or {}
+    special = datasets.get("special") or {}
+    sstats = special.get("stats") or {}
+    audiences = datasets.get("audiences") or {}
+    astats = audiences.get("stats") or {}
+    return {
+        "KNOTS": fmt(len(index.get("knots") or {})),
+        "SPEAKERS": fmt(istats.get("speakers",
+                                   len(index.get("speakers") or {}))),
+        "CHOICES": fmt(istats.get("choices")),
+        "VARIABLES": fmt(istats.get("variables")),
+        "QUESTS": fmt(len(quests.get("quests") or {})),
+        "QUESTS_UNEXPECTED": fmt(qstats.get("with_unexpected")),
+        "QUEST_MODIFIERS": fmt(sum(len(q.get("mo") or [])
+                                   for q in (quests.get("quests") or {}).values())),
+        "ITEMS": fmt(len(inventory.get("items") or {})),
+        "RELICS": fmt(by_type.get("RELIC")),
+        "MOUNTS": fmt(by_type.get("MOUNT")),
+        "CONSUMABLES": fmt(by_type.get("CONSUMABLE")),
+        "MEALS": fmt(by_type.get("MEAL")),
+        "QUEST_ITEMS": fmt(by_type.get("QUEST_ITEM")),
+        "KNIGHTS": fmt(kstats.get("total",
+                                  len(knights.get("knights") or {}))),
+        "SPECIALS": fmt(len(special.get("instructions") or {})),
+        "AUDIENCES": fmt(len(audiences.get("audiences") or {})),
+        "REQUESTS": fmt(len(audiences.get("requests") or {})),
+    }
+
+
+def fill_stat_tokens(text, tokens):
+    """Replace every %%TOKEN%% in text with its per-build display volume."""
+    for key, value in tokens.items():
+        text = text.replace("%%" + key + "%%", value)
+    return text
 
 
 def _route_urls(datasets, site_base):
@@ -441,9 +492,12 @@ def write_robots(out_dir, site_base):
 
 
 def _template_text(out_dir):
-    """The shared shell markup: the copied out_dir/index.html (build output) or,
-    standalone, the hand-edited web/index.html next to this script."""
-    candidates = [Path(out_dir) / "index.html", SCRIPT_DIR / "web" / "index.html"]
+    """The shared shell markup: the hand-edited web/index.html next to this
+    script (always the bare template), falling back to the copied
+    out_dir/index.html. The out_dir copy is NOT preferred: after a build it is
+    the already-rendered home shell, and re-rendering from it would inject the
+    head block a second time (duplicate meta/canonical/JSON-LD on reruns)."""
+    candidates = [SCRIPT_DIR / "web" / "index.html", Path(out_dir) / "index.html"]
     for c in candidates:
         if c.is_file():
             return c.read_text(encoding="utf-8")
@@ -455,7 +509,11 @@ def write_routes(out_dir, datasets, site_base=""):
     """Emit every route shell under out_dir; returns the number of pages written."""
     out = Path(out_dir)
     site_base = normalize_site_base(site_base or DEFAULT_SITE_BASE)
-    template = _template_text(out)
+    tokens = site_stat_tokens(datasets)
+    template = fill_stat_tokens(_template_text(out), tokens)
+    home_desc = fill_stat_tokens(HOME_DESC, tokens)
+    tab_descs = {tdir: fill_stat_tokens(desc, tokens)
+                 for tdir, desc in TAB_DESCS.items()}
     if 'href="style.css"' not in template or '<script src="app.js"></script>' not in template:
         raise SystemExit("ERROR: %s is not the explorer shell template (missing "
                          "style.css/app.js tags)." % (out / "index.html"))
@@ -474,7 +532,7 @@ def write_routes(out_dir, datasets, site_base=""):
     # OG/JSON-LD. Emit it here with the same SEO shell every other route gets; its
     # canonical points at itself (the home "/", which /dialogues/ also aliases to).
     write("", render_page(
-        template, SITE_NAME, HOME_DESC, abs_url(site_base, ""),
+        template, SITE_NAME, home_desc, abs_url(site_base, ""),
         site_base, "", SITE_NAME, "website", None, 0))
 
     # tab pages (the /dialogues/ alias canonicalises to the root)
@@ -483,7 +541,7 @@ def write_routes(out_dir, datasets, site_base=""):
         canonical = abs_url(site_base, "" if tdir == "dialogues" else rel)
         title = "%s — %s" % (label, SITE_NAME)
         write(rel, render_page(
-            template, title, TAB_DESCS[tdir], canonical, site_base, rel, label,
+            template, title, tab_descs[tdir], canonical, site_base, rel, label,
             "website", None, 1))
 
     # detail pages, per dataset key (sorted for byte-identical rebuilds)

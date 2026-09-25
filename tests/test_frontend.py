@@ -2,8 +2,7 @@
 
 `node --check` catches syntax errors in the shipped dist/app.js; the smoke
 script (tests/frontend_smoke.js) boots the full app in a VM with a minimal DOM
-stub, renders every tab's data, and calls renderDialogue() across all 922
-knots expecting zero throws. Skips when node is not installed.
+stub, renders every tab's data, and calls renderDialogue() across all knots expecting zero throws. Skips when node is not installed.
 """
 import shutil
 import subprocess
