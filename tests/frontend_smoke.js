@@ -170,7 +170,7 @@ function waitReady() {
         "ENDINGS && ENDINGS.types ? Object.keys(ENDINGS.types).length : 0", sandbox);
       const audReady = vm.runInContext(
         "AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats.audiences : 0", sandbox);
-      if (stats && knotCount === stats.knots && dlgReady === 235 && endReady === 6 && audReady === 511) {
+      if (stats && knotCount === stats.knots && dlgReady === 235 && endReady === 8 && audReady === 508) {
         return resolve(stats);
       }
       if (Date.now() > DEADLINE) {
@@ -243,7 +243,7 @@ waitReady().then(() => {
   const kn = vm.runInContext("KNIGHTS && KNIGHTS.stats ? KNIGHTS.stats.total : 0", sandbox);
   const sp = vm.runInContext("SPECIAL && SPECIAL.stats ? SPECIAL.stats.total : 0", sandbox);
   const aud = vm.runInContext("AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats : null", sandbox);
-  if (!aud || aud.audiences !== 511 || aud.requests !== 34) {
+  if (!aud || aud.audiences !== 508 || aud.requests !== 34) {
     throw new Error("AUDIENCE dataset did not load (stats=" + JSON.stringify(aud) + ")");
   }
   vm.runInContext("renderAudienceResults()", sandbox);
@@ -499,21 +499,15 @@ waitReady().then(() => {
   if (drawerText().indexOf("knight gimmick") < 0) {
     throw new Error("edith gimmick drawer missing the code row: " + drawerText());
   }
-  // Task N5: legacy-orphan flag. The four `*_classic_recruitment` + two
-  // `brizh_*_grievance_first_meeting` audiences are never queued by any channel
-  // in the shipped game; they carry `unused` + a `unote` rendered as a
-  // Conditions row ("Legacy resource: …"), counted in the gating badge + acond
-  // filter, shown as a card badge and indexed into audience search.
+  // Task N5: legacy-orphan flag. The two `brizh_*_grievance_first_meeting`
+  // audiences are never queued by any channel in the shipped game (the four
+  // `*_classic_recruitment` scenes were removed from the game); they carry
+  // `unused` + a `unote` rendered as a Conditions row ("Legacy resource: …"),
+  // counted in the gating badge + acond filter, shown as a card badge and
+  // indexed into audience search.
   const unusedCount = vm.runInContext(
     "Object.keys(AUDIENCE.audiences).filter((s) => AUDIENCE.audiences[s].unused).length", sandbox);
-  if (unusedCount !== 6) throw new Error("unused audiences != 6: " + unusedCount);
-  const classicRows = vm.runInContext(
-    "audienceConditionRows('rowan_classic_recruitment', AUDIENCE.audiences['rowan_classic_recruitment'])", sandbox);
-  if (!classicRows.length || classicRows[0].indexOf("Legacy resource") < 0 ||
-      classicRows[0].indexOf("request recruitment") < 0 ||
-      classicRows[0].indexOf("shipped game") < 0) {
-    throw new Error("classic recruitment unused row wrong: " + JSON.stringify(classicRows));
-  }
+  if (unusedCount !== 2) throw new Error("unused audiences != 2: " + unusedCount);
   const brizhRows = vm.runInContext(
     "audienceConditionRows('brizh_nobles_grievance_first_meeting', AUDIENCE.audiences['brizh_nobles_grievance_first_meeting'])", sandbox);
   if (!brizhRows.length || brizhRows[0].indexOf("orphan knot") < 0) {
@@ -523,16 +517,16 @@ waitReady().then(() => {
     "audienceConditionCount('brizh_scholars_grievance_first_meeting', AUDIENCE.audiences['brizh_scholars_grievance_first_meeting'])", sandbox) < 1) {
     throw new Error("legacy orphan has no gating condition after N5");
   }
-  if (!vm.runInContext("ahay('sagadin_classic_recruitment', AUDIENCE.audiences['sagadin_classic_recruitment']).indexOf('legacy') >= 0", sandbox)) {
+  if (!vm.runInContext("ahay('brizh_nobles_grievance_first_meeting', AUDIENCE.audiences['brizh_nobles_grievance_first_meeting']).indexOf('legacy') >= 0", sandbox)) {
     throw new Error("legacy orphan not matched by legacy search");
   }
   const legCondFilter = vm.runInContext(
-    "(() => { ASTATE.cond = true; const r = visibleAudiences().some(([s]) => s === 'belladona_classic_recruitment'); ASTATE.cond = false; return r; })()", sandbox);
+    "(() => { ASTATE.cond = true; const r = visibleAudiences().some(([s]) => s === 'brizh_scholars_grievance_first_meeting'); ASTATE.cond = false; return r; })()", sandbox);
   if (!legCondFilter) throw new Error("legacy orphan not matched by the gating filter");
   const unusedCard = vm.runInContext(
-    "audCard('rowan_classic_recruitment', AUDIENCE.audiences['rowan_classic_recruitment'])", sandbox);
+    "audCard('brizh_nobles_grievance_first_meeting', AUDIENCE.audiences['brizh_nobles_grievance_first_meeting'])", sandbox);
   if (unusedCard.innerHTML.indexOf("legacy") < 0) {
-    throw new Error("classic recruitment card missing legacy badge: " + unusedCard.innerHTML);
+    throw new Error("orphan card missing legacy badge: " + unusedCard.innerHTML);
   }
   clearPanel();
   vm.runInContext("openAudienceDetail('brizh_scholars_grievance_first_meeting')", sandbox);
@@ -543,7 +537,7 @@ waitReady().then(() => {
   // channel 10: knight death-follow-up audiences carry a dd link and search in
   // the audience haystack (both tabs consume the reversed field)
   const ddCount = vm.runInContext("AUDIENCE.stats.with_death_followup", sandbox);
-  if (ddCount !== 7) throw new Error("with_death_followup != 7: " + ddCount);
+  if (ddCount !== 8) throw new Error("with_death_followup != 8: " + ddCount);
   const ddUrsula = vm.runInContext(
     "AUDIENCE.audiences['ursula_new_gimmick_low_corruption'].dd", sandbox);
   if (!ddUrsula || ddUrsula.length !== 1 || ddUrsula[0][0] !== "ursule" ||
@@ -730,11 +724,11 @@ waitReady().then(() => {
   }
   vm.runInContext("openDetail('angelica_affinity_2')", sandbox);
 
-  // Task K: ending sources (endings.json). The six ending-type cutscenes, the
-  // 31 per-character vignettes and the two code-played specials render as knot-
-  // drawer "Where it comes from" rows and are indexed into the knot haystack.
+  // Task K: ending sources (endings.json). The eight ending-type cutscenes,
+  // the 31 per-character vignettes and the two code-played specials render as
+  // knot-drawer "Where it comes from" rows and are indexed into the knot haystack.
   const endReady = vm.runInContext("ENDINGS && Object.keys(ENDINGS.types).length", sandbox);
-  if (endReady !== 6 ||
+  if (endReady !== 8 ||
       vm.runInContext("Object.keys(ENDINGS.vignettes).length", sandbox) !== 31 ||
       vm.runInContext("Object.keys(ENDINGS.specials).length", sandbox) !== 2) {
     throw new Error("ENDINGS catalog wrong");

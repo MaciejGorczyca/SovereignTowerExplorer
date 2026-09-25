@@ -364,6 +364,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/arron_standard_or_babydragon_leaving_roundtable/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/audacity_ambush_ending_cutscene/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/audacity_ending_cutscene/</loc>
   </url>
   <url>
@@ -1414,6 +1417,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/emperor_cutscene/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/emperor_cutscene_kind/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/end_dialog_generic/</loc>
   </url>
   <url>
@@ -1747,6 +1753,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/intro_worker_grievance/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/kind_diplomacy_ending_cutscene/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/kind_ending_cutscene/</loc>
   </url>
   <url>
@@ -1754,6 +1763,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/knight_leaving_alwena/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/knight_leaving_alwena_death/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/knight_leaving_angelica/</loc>
@@ -3646,10 +3658,16 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_dragonknight_tarcus_strategy/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_emperor_ambush/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_emperor_clash_of_knights/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_emperor_war_against_empire/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_emperor_war_make_diplomacy/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_ultimatum_emperor_world_domination/</loc>
@@ -4396,6 +4414,12 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/SOUTHBAY_TARCUS_INTERVENTION/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/SWITCH_ENDING_AMBUSH_PATH/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/SWITCH_ENDING_DIPLOMACY_PATH/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/SWITCH_ENDING_MARRY_PATH/</loc>
   </url>
   <url>
@@ -4466,6 +4490,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/alwena_come_back/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/alwena_near_death_announcement/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/angelica_come_back/</loc>
@@ -4556,9 +4583,6 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/belladona_audience_request_recruitment/</loc>
-  </url>
-  <url>
-    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/belladona_classic_recruitment/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/belthorn_grievance_emergency/</loc>
@@ -5611,9 +5635,6 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rowan_audience_request_recruitment/</loc>
   </url>
   <url>
-    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rowan_classic_recruitment/</loc>
-  </url>
-  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rozenn_first_grievance/</loc>
   </url>
   <url>
@@ -5674,9 +5695,6 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rupin_audience_request_recruitment/</loc>
   </url>
   <url>
-    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rupin_classic_recruitment/</loc>
-  </url>
-  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/rupin_criminal_underground_grievance_1/</loc>
   </url>
   <url>
@@ -5711,9 +5729,6 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/sagadin_audience_request_recruitment/</loc>
-  </url>
-  <url>
-    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/sagadin_classic_recruitment/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedgrievance_hildegard_singing/</loc>

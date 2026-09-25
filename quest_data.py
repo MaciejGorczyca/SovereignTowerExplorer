@@ -814,26 +814,16 @@ def load_director_audiences():
     return director
 
 
-def load_special_interventions():
-    """Parse the CyclesManager "SpecialInterventionsManager" node audiences ->
-    {audience ink path: [notes]}.
-
-    These narrated scenes (channel 9 of the audience-condition research) are
-    played directly by the game director's second manager node — not by quests,
-    ink doleance calls, requests or special instructions. Every node prop value
-    is an audience's ink path (StringName); the notes below hand-write the guard
-    logic of `special_interventions_manager.gd` (`check_for_audiences_phase_
-    special_intervention` at :44 and `check_for_audience_phase_end_special_
-    intervention` at :77) as human-readable "Special intervention: …" rows
-    (same convention as the director `dir` notes and special.json's `cond`).
-    """
-    tscn = os.path.join(GAME, "systems/autoloads/cycles_manager.tscn")
-    if not os.path.exists(tscn):
+def _parse_tscn_node_strname_props(tscn_path, node_name):
+    """Parse `name = &"..."` / `name = [...]` props of one `[node name="..."]`
+    block in a .tscn file -> {prop name: [StringName values]} ({} when the
+    file or the node is absent, or the node carries no such props)."""
+    if not os.path.exists(tscn_path):
         return {}
-    lines = open(tscn, encoding="utf-8").read().splitlines()
+    lines = open(tscn_path, encoding="utf-8").read().splitlines()
     start = None
     for i, line in enumerate(lines):
-        if line.startswith('[node name="SpecialInterventionsManager"'):
+        if line.startswith('[node name="%s"' % node_name):
             start = i + 1
             break
     if start is None:
@@ -849,6 +839,37 @@ def load_special_interventions():
         values = re.findall(r'&"([^"]+)"', m.group(2))
         if values:
             props[m.group(1)] = values
+    return props
+
+
+def load_special_interventions():
+    """Parse the SpecialInterventionManager node audiences ->
+    {audience ink path: [notes]}.
+
+    These narrated scenes (channel 9 of the audience-condition research) are
+    played directly by the game director's intervention manager node — not by
+    quests, ink doleance calls, requests or special instructions. The notes
+    below hand-write the guard logic of
+    `scenes/audience/audience_special_intervention_manager.gd`
+    (`check_for_audiences_phase_special_intervention` at :40 and
+    `check_for_audience_phase_end_special_intervention` at :85) as
+    human-readable "Special intervention: …" rows (same convention as the
+    director `dir` notes and special.json's `cond`).
+
+    Source: the manager node's props live inline in
+    `scenes/audience/audience_container.tscn` (node
+    "SpecialInterventionManager"); older game snapshots carried them on the
+    "SpecialInterventionsManager" node of
+    `systems/autoloads/cycles_manager.tscn` instead, which is kept as a
+    fallback. When the new location yields props it wins outright.
+    """
+    props = _parse_tscn_node_strname_props(
+        os.path.join(GAME, "scenes/audience/audience_container.tscn"),
+        "SpecialInterventionManager")
+    if not props:
+        props = _parse_tscn_node_strname_props(
+            os.path.join(GAME, "systems/autoloads/cycles_manager.tscn"),
+            "SpecialInterventionsManager")
     if not props:
         return {}
 
@@ -894,6 +915,13 @@ def load_special_interventions():
         "victoria_betrayal":
             "Special intervention: Victoria's betrayal — fires at the phase end once "
             "Victoria has betrayed, and only once.",
+        "arlin_knight_freed_intervention":
+            "Special intervention: Arlin's freed-knight intervention — plays at "
+            "the phase start once the seduced knight has been freed.",
+        "investigation_faillure_audience":
+            "Special intervention: the traitor-plot demon-failure dialogue — "
+            "plays at the phase start once the traitor-plot demon investigation "
+            "has failed.",
         "nobles_intro":
             "Special intervention: the nobles' introduction — the only scene "
             "scheduled at cycle zero (the very first cycle).",
@@ -1329,29 +1357,17 @@ def load_unused_audiences():
     """Mark the legacy/orphan audience resources the shipped game never queues.
 
     Channel 15 of the audience-condition research: the final no-conditions
-    audit's legacy-orphan family. Two flavors, both dead:
-
-    - the four `*_classic_recruitment` resources (`doleances` folder) — their
-      ink path never got a compiled knot (superseded by the request recruitment
-      mechanic; the follower `*_request` / `*_audience_request_recruitment`
-      resources replaced them), and
-    - the two `brizh_*_grievance_first_meeting` resources — real knots that
-      exist in the compiled story but no channel (doleance / divert / quest /
-      request / special / director / code) ever references.
+    audit's legacy-orphan family — the two `brizh_*_grievance_first_meeting`
+    resources, real knots that exist in the compiled story but no channel
+    (doleance / divert / quest / request / special / director / code) ever
+    references. (The four `*_classic_recruitment` resources were removed from
+    the game entirely.)
 
     Honest display is a `unused` flag + `unote` note rendered as an audience
     Conditions row and card badge. Values are {stem: note} — the additive
     `unused`/`unote` audience fields.
     """
     return {
-        "belladona_classic_recruitment": "legacy recruitment — superseded by the "
-            "belladonna request recruitment; never scheduled in the shipped game",
-        "rowan_classic_recruitment": "legacy recruitment — superseded by the "
-            "rowan request recruitment; never scheduled in the shipped game",
-        "rupin_classic_recruitment": "legacy recruitment — superseded by the "
-            "rupin request recruitment; never scheduled in the shipped game",
-        "sagadin_classic_recruitment": "legacy recruitment — superseded by the "
-            "sagadin request recruitment; never scheduled in the shipped game",
         "brizh_nobles_grievance_first_meeting": "orphan knot — never referenced "
             "by any scheduler; not played in the shipped game",
         "brizh_scholars_grievance_first_meeting": "orphan knot — never referenced "

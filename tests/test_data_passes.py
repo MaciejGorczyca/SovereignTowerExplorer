@@ -75,13 +75,13 @@ class QuestsDataPassTest(unittest.TestCase):
         cls.quests = _passes()["quests"]
 
     def test_volume(self):
-        self.assertEqual(self.quests["stats"]["quests"], 312)
+        self.assertEqual(self.quests["stats"]["quests"], 314)
         # 91 = 82 quests whose SpecialOutcome is an ExtResource file + 9 that
         # inline the outcome as a SubResource in the quest .tres itself
         self.assertEqual(self.quests["stats"]["with_unexpected"], 91)
-        # "511 audiences" = every audience resource under content/audiences,
+        # "508 audiences" = every audience resource under content/audiences,
         # each carrying its ink knot, folder and decoded firing requirements
-        self.assertEqual(len(self.quests["audiences"]), 511)
+        self.assertEqual(len(self.quests["audiences"]), 508)
         self.assertEqual(self.quests["stats"]["audiences"],
                          len(self.quests["audiences"]))
         # stats counters stay self-consistent with the records
@@ -253,8 +253,8 @@ class SpecialDataPassTest(unittest.TestCase):
     def test_volume_and_join(self):
         special = _passes()["special"]
         st = special["stats"]
-        self.assertEqual(st["total"], 71)
-        self.assertEqual(st["in_ink"], 50)
+        self.assertEqual(st["total"], 73)
+        self.assertEqual(st["in_ink"], 52)
         self.assertEqual(st["in_quests"], 19)
         self.assertEqual(st["knights"], 12)
         # every quest link resolves to a real quest; every knot to a real knot
@@ -314,14 +314,14 @@ class AudiencesDataPassTest(unittest.TestCase):
     def test_volume_and_join(self):
         aud = _passes()["audiences"]
         st = aud["stats"]
-        self.assertEqual(st["audiences"], 511)
+        self.assertEqual(st["audiences"], 508)
         self.assertEqual(st["requests"], 34)
         self.assertEqual(st["with_conditions"], 19)
         self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["with_county_intro"], 7)
         self.assertEqual(st["with_ultimatum"], 6)
-        self.assertEqual(st["knotless"], 4)
+        self.assertEqual(st["knotless"], 0)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
         for stem, a in aud["audiences"].items():
@@ -329,16 +329,12 @@ class AudiencesDataPassTest(unittest.TestCase):
 
     def test_audience_knots_resolve(self):
         aud = _passes()["audiences"]
-        # every ink_path must be a real knot except the 4 known dead refs
-        KNOWN_MISSING = {
-            "belladona_classic_recruitment", "rowan_classic_recruitment",
-            "rupin_classic_recruitment", "sagadin_classic_recruitment",
-        }
+        # every ink_path must be a real knot (the 4 legacy
+        # `*_classic_recruitment` dead refs were removed from the game, so
+        # there are no known-missing cases left)
         bad = [s for s, a in aud["audiences"].items()
-               if a["k"] and a["k"] not in self.index["knots"]
-               and s not in KNOWN_MISSING]
+               if a["k"] and a["k"] not in self.index["knots"]]
         self.assertEqual(bad, [])
-        self.assertEqual(len(KNOWN_MISSING - set(aud["audiences"])), 0)
 
     def test_rq_well_formed(self):
         aud = _passes()["audiences"]
@@ -438,11 +434,14 @@ class AudiencesDataPassTest(unittest.TestCase):
 
     def test_intervention_sources(self):
         aud = _passes()["audiences"]
-        # the SpecialInterventionsManager node (channel 9) covers the two
-        # ultimatum second encounters, the four king/dragon allied plots, the
-        # traitor's-plot intro + murder, Dulahan's human form, Victoria's
-        # betrayal, the nobles' cycle-zero intro, the wolf candidacy, Arlin's
-        # reunited-reaction and all 15 courier scenes
+        # the SpecialInterventionManager node (channel 9; props now live on
+        # the audience_container.tscn node, previously on cycles_manager.tscn)
+        # covers the two ultimatum second encounters, the four king/dragon
+        # allied plots, the traitor's-plot intro + murder, Dulahan's human
+        # form, Victoria's betrayal, the nobles' cycle-zero intro, the wolf
+        # candidacy, Arlin's reunited-reaction and all 15 courier scenes
+        # (several ink paths were renamed in the move, but the 28 audience
+        # resources carrying the notes are unchanged)
         self.assertEqual(aud["stats"]["with_intervention"], 28)
         for stem in (
             "kingslayer_ultimatum_before_the_storm",
@@ -474,9 +473,10 @@ class AudiencesDataPassTest(unittest.TestCase):
         aud = _passes()["audiences"]
         knights = _passes()["knights"]
         # channel 10: the knight resources' death_follow_up_audiences_names
-        self.assertEqual(aud["stats"]["with_death_followup"], 7)
+        self.assertEqual(aud["stats"]["with_death_followup"], 8)
         for stem, knight in (
             ("angelica_death_announcement", "angelica"),
+            ("alwena_near_death_announcement", "alwena"),
             ("gideon_death_announcement", "gideon"),
             ("goberto_death_announcement", "goberto"),
             ("gwendan_death_announcement", "gwendan"),
@@ -648,15 +648,11 @@ class AudiencesDataPassTest(unittest.TestCase):
     def test_unused_legacy_sources(self):
         aud = _passes()["audiences"]
         # channel 15: legacy/orphan audience resources the shipped game never
-        # queues. The four `*_classic_recruitment` scenes are dead (their ink
-        # path never got a compiled knot; the request recruitment mechanic
-        # superseded them) and the two `brizh_*_grievance_first_meeting` knots
-        # exist in the compiled story but no channel ever references them.
+        # queues. The four `*_classic_recruitment` scenes were removed from
+        # the game entirely; only the two `brizh_*_grievance_first_meeting`
+        # knots remain — they exist in the compiled story but no channel ever
+        # references them.
         expect = {
-            "belladona_classic_recruitment",
-            "rowan_classic_recruitment",
-            "rupin_classic_recruitment",
-            "sagadin_classic_recruitment",
             "brizh_nobles_grievance_first_meeting",
             "brizh_scholars_grievance_first_meeting",
         }
@@ -670,11 +666,8 @@ class AudiencesDataPassTest(unittest.TestCase):
                 self.assertTrue(note, stem)
                 self.assertIn("shipped game", note, (stem, note))
         for stem in expect:
-            if stem.startswith("brizh"):
+            with self.subTest(audience=stem):
                 self.assertIn("orphan knot",
-                              aud["audiences"][stem]["unote"], stem)
-            else:
-                self.assertIn("request recruitment",
                               aud["audiences"][stem]["unote"], stem)
         # the successors live in the request catalog
         successors = {
@@ -837,18 +830,21 @@ class EndingsDataPassTest(unittest.TestCase):
         self.end = _passes()["endings"]
 
     def test_types(self):
-        # the six ending types in enum order, each mapping to a real
-        # ending-category knot; the five switcheable types carry their
+        # the eight ending types in enum order, each mapping to a real
+        # ending-category knot; the seven switcheable types carry their
         # SWITCH_ENDING_*_PATH instruction, DEMON_STATE a corruption note.
         types = self.end["types"]
-        self.assertEqual(len(types), 6)
+        self.assertEqual(len(types), 8)
         self.assertEqual(list(types),
                          ["WAR", "PEACE_TREATY", "MARRY", "SURRENDER",
-                          "TOWER_DESTRUCTION", "DEMON_STATE"])
+                          "TOWER_DESTRUCTION", "DEMON_STATE",
+                          "DIPLOMACY", "AMBUSH"])
         self.assertEqual({t["cut"] for t in types.values()},
                          {"tyranny_ending_cutscene", "wisdom_ending_cutscene",
                           "audacity_ending_cutscene", "kind_ending_cutscene",
-                          "tower_destruction_ending_cutscene", "demon_state_ending"})
+                          "tower_destruction_ending_cutscene", "demon_state_ending",
+                          "kind_diplomacy_ending_cutscene",
+                          "audacity_ambush_ending_cutscene"})
         for name, t in types.items():
             self.assertIn(t["cut"], self.index["knots"], name)
             self.assertEqual(self.index["knots"][t["cut"]]["c"], "ending", name)
@@ -885,16 +881,16 @@ class EndingsDataPassTest(unittest.TestCase):
             self.assertIn(knot, self.index["knots"])
 
     def test_all_ending_knots_covered_by_source(self):
-        # the 41 ending-category knots: the 6 cutscenes + 31 vignettes + 2
-        # specials = 39; the remaining 2 (carina_ending_act_1/2_reaction) are
+        # the 43 ending-category knots: the 8 cutscenes + 31 vignettes + 2
+        # specials = 41; the remaining 2 (carina_ending_act_1/2_reaction) are
         # blacksmith reaction dialogs already catalogued in dialogues.json
         ending_knots = {n for n, k in self.index["knots"].items()
                         if k["c"] == "ending"}
         covered = ({t["cut"] for t in self.end["types"].values()}
                    | set(self.end["vignettes"].values())
                    | set(self.end["specials"]))
-        self.assertEqual(len(ending_knots), 41)
-        self.assertEqual(len(covered), 39)
+        self.assertEqual(len(ending_knots), 43)
+        self.assertEqual(len(covered), 41)
         leftover = ending_knots - covered
         self.assertEqual(leftover, {"carina_ending_act_1_reaction",
                                     "carina_ending_act_2_reaction"})

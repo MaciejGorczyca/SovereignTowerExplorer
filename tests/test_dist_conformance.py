@@ -118,13 +118,21 @@ class LocaleParityTest(unittest.TestCase):
         if not locales_dir.is_dir():
             self.skipTest("no dist/locales dir present")
         en_knots = set(self.idx["knots"])
+        # fr ships one extra knot with no en counterpart (game data)
+        FR_ONLY = {"conversation_ligia_angelica"}
         for path in sorted(locales_dir.glob("*.json")):
             with open(path, encoding="utf-8") as f:
                 import json
                 loc = json.load(f)
             with self.subTest(locale=path.name):
-                self.assertEqual(set(loc), en_knots,
-                                 "%s knot set must match index.json" % path.name)
+                if path.name == "fr.json":
+                    self.assertEqual(set(loc) - en_knots, FR_ONLY,
+                                     "fr.json unexpected extra knots")
+                    self.assertEqual(en_knots - set(loc), set(),
+                                     "fr.json missing knots")
+                else:
+                    self.assertEqual(set(loc), en_knots,
+                                     "%s knot set must match index.json" % path.name)
 
     def test_locale_tokens_structurally_valid(self):
         locales_dir = DIST / "locales"
@@ -181,9 +189,9 @@ class DatasetsTest(unittest.TestCase):
         #   - Brimwood testimony preps (Brunhilda/Chester/Tarcus) are now both
         #     unlocked and hinted via county_quest_brimwood_audience_2 (game
         #     update: previously Brunhilda hint-only, siblings not even hinted).
-        #   - the pinemaze emergency is hinted by its grievance knot but never
-        #     unlocked (its sibling tortosa emergency is properly unlocked, so
-        #     this is the outlier, not a general grievance pattern).
+        #   - the pinemaze emergency is hinted by its grievance knot and, since
+        #     the game update, also unlocked by it (its sibling tortosa
+        #     emergency is likewise unlocked by its own grievance knot).
         q = self.quests
         for qid in ("quest_brimwood_brunhilda_testimony_preparation",
                     "quest_brimwood_chester_testimony_preparation",
@@ -192,7 +200,9 @@ class DatasetsTest(unittest.TestCase):
                              ["county_quest_brimwood_audience_2"])
             self.assertEqual(q["hint_knots"].get(qid),
                              ["county_quest_brimwood_audience_2"])
-        self.assertNotIn("quest_pinemaze_emergency", q["unlock_knots"])
+        self.assertEqual(
+            q["unlock_knots"].get("quest_pinemaze_emergency"),
+            ["pinemaze_grievance_emergency"])
         self.assertEqual(
             q["hint_knots"].get("quest_pinemaze_emergency"),
             ["pinemaze_grievance_emergency"])
@@ -299,13 +309,11 @@ class DatasetsTest(unittest.TestCase):
              "lost_child_plotline_groveshire_gavault_confrontation",
              "intervention_tarcus_county_quest_kutnar_first_audience"})
         # channel 15: exactly the legacy/orphan audiences carry `unused`
+        # (the four `*_classic_recruitment` scenes were removed from the game;
+        # only the two brizh orphan knots remain)
         self.assertEqual(
             {s for s, a in self.quests["audiences"].items() if a.get("unused")},
-            {"belladona_classic_recruitment",
-             "rowan_classic_recruitment",
-             "rupin_classic_recruitment",
-             "sagadin_classic_recruitment",
-             "brizh_nobles_grievance_first_meeting",
+            {"brizh_nobles_grievance_first_meeting",
              "brizh_scholars_grievance_first_meeting"})
 
     def test_audiences_json_schema(self):
@@ -474,11 +482,11 @@ class DatasetsTest(unittest.TestCase):
 
     def test_endings_schema(self):
         e = self.endings
-        # the six ending types each cross-reference a real ending-category knot
+        # the eight ending types each cross-reference a real ending-category knot
         types = e["types"]
         self.assertEqual(set(types), {"WAR", "PEACE_TREATY", "MARRY",
                                       "SURRENDER", "TOWER_DESTRUCTION",
-                                      "DEMON_STATE"})
+                                      "DEMON_STATE", "DIPLOMACY", "AMBUSH"})
         for name, t in types.items():
             with self.subTest(type=name):
                 self.assertEqual(set(t), {"cut", "switch"} if name != "DEMON_STATE"
@@ -502,14 +510,14 @@ class DatasetsTest(unittest.TestCase):
         for knot, note in e["specials"].items():
             self.assertIn(knot, self.index["knots"])
             self.assertTrue(isinstance(note, str) and note)
-        # 39 of the 41 ending knots are covered by the catalog; the remaining
+        # 41 of the 43 ending knots are covered by the catalog; the remaining
         # two (carina's act-1/2 reactions) are reaction dialogs in dialogues.json
         covered = (set(t["cut"] for t in types.values())
                    | set(vignettes.values()) | set(e["specials"]))
         ending_knots = {n for n, k in self.index["knots"].items()
                         if k["c"] == "ending"}
-        self.assertEqual(len(ending_knots), 41)
-        self.assertEqual(len(covered), 39)
+        self.assertEqual(len(ending_knots), 43)
+        self.assertEqual(len(covered), 41)
         self.assertEqual(ending_knots - covered,
                          {"carina_ending_act_1_reaction",
                           "carina_ending_act_2_reaction"})
