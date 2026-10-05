@@ -293,7 +293,7 @@ fieldset input[list] { width: 100%; margin-bottom: 8px; }
 .cond.endif { opacity: .6; }
 
 /* ---- quests ---- */
-.card .qid { font-family: var(--mono); font-size: 10px; font-style: normal; color: var(--mut); margin-left: 6px; }
+.card .qid { font-family: var(--mono); font-size: 10px; font-style: normal; color: var(--mut); margin-left: 6px; word-break: break-all; }
 .card .prev b { color: var(--acc); font-weight: 600; }
 .badge.cat { color: var(--blue); }
 .badge.loc { color: var(--green); }
