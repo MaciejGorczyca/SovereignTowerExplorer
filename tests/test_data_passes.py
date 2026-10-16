@@ -321,11 +321,29 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["with_county_intro"], 7)
         self.assertEqual(st["with_ultimatum"], 7)
+        self.assertEqual(st["with_satisfaction"], 4)
         self.assertEqual(st["knotless"], 0)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
         for stem, a in aud["audiences"].items():
             self.assertEqual(a, self.quests["audiences"][stem], stem)
+
+    def test_satisfaction_rewards(self):
+        # the SatisfactionManager queues one reward doleance per population
+        # category once its satisfaction reaches 50 (game_state.tscn map +
+        # HIGH_SATSIFACTION_THRESHOLD in satisfaction_manager.gd)
+        aud = _passes()["audiences"]
+        sat = {s: a["sat"] for s, a in aud["audiences"].items() if a.get("sat")}
+        self.assertEqual(sat, {
+            "scriptedquest_reverse_civil_war_event_merchants_gratification":
+                ["merchants", 50],
+            "scriptedquest_reverse_civil_war_event_noble_gratification":
+                ["nobles", 50],
+            "scriptedquest_reverse_civil_war_event_people_gratification":
+                ["people", 50],
+            "scriptedquest_reverse_civil_war_event_scholars_gratification":
+                ["scholars", 50],
+        })
 
     def test_audience_knots_resolve(self):
         aud = _passes()["audiences"]
@@ -558,7 +576,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         aud = _passes()["audiences"]
         # channel 13: the content/filler_audiences FillerAudience wrappers
         # grouped by the FillerAudiencesManager pack arrays of cycles_manager.tscn
-        self.assertEqual(aud["stats"]["with_filler"], 235)
+        self.assertEqual(aud["stats"]["with_filler"], 236)
         for stem, a in aud["audiences"].items():
             fl = a.get("fl")
             if fl:
@@ -571,6 +589,11 @@ class AudiencesDataPassTest(unittest.TestCase):
         self.assertEqual(clover[0], "clovermont")
         academician = aud["audiences"]["brizh_scholars_grievance_copy_cats"]["fl"]
         self.assertEqual(academician[0], "academician")
+        # the joint Laik-Valley/Beaconsbury grievance is a singular (non-pack)
+        # FillerAudiencesManager export: it joins once BOTH groveshire and
+        # kutnar are rallied, whichever rallies second
+        joint = aud["audiences"]["laik_valley_grievance_with_beaconsburry"]["fl"]
+        self.assertEqual(joint, ["groveshire+kutnar", 1, None])
         # the representative packs need no ink unlocker; the region packs are
         # unlocked by the first-grievance knots (UnlockFillerAudiencesPack)
         unlocks = {}
@@ -756,6 +779,11 @@ class DialoguesDataPassTest(unittest.TestCase):
         self.assertIn("reformed", gwendan["re"])
         ursule = d["ursule_affinity_4_if_died"]["aff"]
         self.assertEqual((ursule["k"], ursule["rank"]), ("ursule", 9))
+        # edith's purified affinity dict (a new game update addition) gates
+        # her rank-8 dialog behind the purified state
+        edith5 = d["edith_affinity_5_purified"]["aff"]
+        self.assertEqual((edith5["k"], edith5["rank"]), ("edith", 8))
+        self.assertIn("purified", edith5["re"])
         # every affinity gate resolves to a real knight and a sane rank
         for ink, e in d.items():
             a = e.get("aff")
@@ -869,6 +897,22 @@ class EndingsDataPassTest(unittest.TestCase):
         for kid, knot in v.items():
             self.assertIn(knot, self.index["knots"], (kid, knot))
             self.assertEqual(self.index["knots"][knot]["c"], "ending", (kid, knot))
+
+    def test_epilogues(self):
+        # the 17 tower-destruction per-character epilogues, routed by the
+        # character ink id of the TowerDestructionEpilogue scene map
+        # (reformed Gwendan via gwendan_humble, unreformed via gwendan_classic)
+        ep = self.end["epilogues"]
+        self.assertEqual(len(ep), 17)
+        self.assertEqual(ep["tower_destruction_epilogue_alwena_reaction"], "alwena")
+        self.assertEqual(ep["tower_destruction_epilogue_gwendan_humble_reaction"],
+                         "gwendan_humble")
+        self.assertEqual(ep["tower_destruction_epilogue_gwendan_reaction"],
+                         "gwendan_classic")
+        self.assertEqual(ep["tower_destruction_epilogue_ursula_reaction"], "ursule")
+        for knot, cid in ep.items():
+            self.assertIn(knot, self.index["knots"], cid)
+            self.assertTrue(isinstance(cid, str) and cid)
 
     def test_specials(self):
         # the two code-played ending knots (Hildegard's song + the demon room)

@@ -298,6 +298,12 @@ class DatasetsTest(unittest.TestCase):
                     self.assertTrue(cd[0], stem)
                     self.assertIsInstance(cd[1], str)
                     self.assertTrue(cd[1], stem)
+                sat = a.get("sat")
+                if sat:
+                    self.assertEqual(len(sat), 2, stem)
+                    self.assertIn(sat[0], ("merchants", "nobles",
+                                           "people", "scholars"), stem)
+                    self.assertIsInstance(sat[1], int, stem)
                 if a.get("unused"):
                     self.assertEqual(a["unused"], True, stem)
                     unote = a.get("unote")
@@ -317,6 +323,14 @@ class DatasetsTest(unittest.TestCase):
             {s for s, a in self.quests["audiences"].items() if a.get("unused")},
             {"brizh_nobles_grievance_first_meeting",
              "brizh_scholars_grievance_first_meeting"})
+        # channel 16: exactly the four high-satisfaction reward doleances
+        # carry `sat` (SatisfactionManager map in game_state.tscn)
+        self.assertEqual(
+            {s for s, a in self.quests["audiences"].items() if a.get("sat")},
+            {"scriptedquest_reverse_civil_war_event_merchants_gratification",
+             "scriptedquest_reverse_civil_war_event_noble_gratification",
+             "scriptedquest_reverse_civil_war_event_people_gratification",
+             "scriptedquest_reverse_civil_war_event_scholars_gratification"})
 
     def test_audiences_json_schema(self):
         aud = self.audiences
@@ -512,6 +526,14 @@ class DatasetsTest(unittest.TestCase):
         for knot, note in e["specials"].items():
             self.assertIn(knot, self.index["knots"])
             self.assertTrue(isinstance(note, str) and note)
+        # the 17 tower-destruction epilogues route by character ink id onto
+        # real knots (reformed Gwendan via gwendan_humble, else gwendan_classic)
+        epilogues = e["epilogues"]
+        self.assertEqual(len(epilogues), 17)
+        for knot, cid in epilogues.items():
+            with self.subTest(epilogue=knot):
+                self.assertTrue(isinstance(cid, str) and cid)
+                self.assertIn(knot, self.index["knots"])
         # 41 of the 43 ending knots are covered by the catalog; the remaining
         # two (carina's act-1/2 reactions) are reaction dialogs in dialogues.json
         covered = (set(t["cut"] for t in types.values())

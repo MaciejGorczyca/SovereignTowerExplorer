@@ -574,7 +574,7 @@ waitReady().then(() => {
   // first-grievance knots unlock them (UnlockFillerAudiencesPack), and the
   // pack name indexes in the audience haystack + the knot drawer's row
   const fillerCount = vm.runInContext("AUDIENCE.stats.with_filler", sandbox);
-  if (fillerCount !== 235) throw new Error("with_filler != 235: " + fillerCount);
+  if (fillerCount !== 236) throw new Error("with_filler != 236: " + fillerCount);
   const flClover = vm.runInContext("AUDIENCE.audiences['clovermont_grievance_emergency'].fl", sandbox);
   if (!flClover || flClover.length !== 3 || flClover[0] !== "clovermont") {
     throw new Error("clovermont filler fl wrong: " + JSON.stringify(flClover));
@@ -599,6 +599,21 @@ waitReady().then(() => {
   }
   vm.runInContext("openAudienceDetail('clovermont_grievance_emergency')", sandbox);
   vm.runInContext("openDetail('clovermont_grievance_bakery_problem')", sandbox);
+  // the joint Laik-Valley/Beaconsbury grievance is a singular (non-pack)
+  // export: it renders both unlock packs and the both-rallied condition
+  const flJoint = vm.runInContext("AUDIENCE.audiences['laik_valley_grievance_with_beaconsburry'].fl", sandbox);
+  if (!flJoint || flJoint[0] !== "groveshire+kutnar") {
+    throw new Error("joint filler fl wrong: " + JSON.stringify(flJoint));
+  }
+  const flJointSrc = vm.runInContext("fillerSource('laik_valley_grievance_with_beaconsburry', AUDIENCE.audiences['laik_valley_grievance_with_beaconsburry'])", sandbox);
+  if (flJointSrc.indexOf("Groveshire") < 0 || flJointSrc.indexOf("Kutnar") < 0 ||
+      flJointSrc.indexOf("both counties are rallied") < 0 ||
+      flJointSrc.indexOf("belthorne_beaconsbury_first_grievance") < 0 ||
+      flJointSrc.indexOf("laik_valley_volga_camp_first_grievance") < 0) {
+    throw new Error("joint fillerSource render missing: " + flJointSrc);
+  }
+  vm.runInContext("openAudienceDetail('laik_valley_grievance_with_beaconsburry')", sandbox);
+  vm.runInContext("openDetail('laik_valley_grievance_with_beaconsbury')", sandbox);
   // channel 6: county-introduction audiences carry a ci link (county ink id +
   // name key), render a source note, index in the audience haystack and in the
   // knot drawer's audience rows, and surface in the stats
@@ -641,6 +656,26 @@ waitReady().then(() => {
   const umInKnot = vm.runInContext("(() => { const r = knotAudiences().get('ultimatum_kingslayer_failure'); return r ? r.some(x => x.stem === 'kingslayer_ultimatum_faillure' && x.um && x.um[0] === 'kingslayer_ultimatum') : false; })()", sandbox);
   if (!umInKnot) throw new Error("um not carried into knotAudiences");
   vm.runInContext("openAudienceDetail('kingslayer_ultimatum_faillure')", sandbox);
+  // channel 16: high-satisfaction reward audiences carry a sat link (population
+  // category + threshold), render a source note, index in the audience haystack
+  // and in the knot drawer rows, and surface in the stats
+  const satCount = vm.runInContext("AUDIENCE.stats.with_satisfaction", sandbox);
+  if (satCount !== 4) throw new Error("with_satisfaction != 4: " + satCount);
+  const satSch = vm.runInContext("AUDIENCE.audiences['scriptedquest_reverse_civil_war_event_scholars_gratification'].sat", sandbox);
+  if (!satSch || satSch.length !== 2 || satSch[0] !== "scholars" || satSch[1] !== 50) {
+    throw new Error("scholars gratification sat wrong: " + JSON.stringify(satSch));
+  }
+  const satRows = vm.runInContext("audienceConditionRows('scriptedquest_reverse_civil_war_event_scholars_gratification', AUDIENCE.audiences['scriptedquest_reverse_civil_war_event_scholars_gratification']).join(' | ')", sandbox);
+  if (satRows.indexOf("Scholars") < 0 || satRows.indexOf("50") < 0) {
+    throw new Error("satisfaction conditions missing gates: " + satRows);
+  }
+  const satInKnot = vm.runInContext("(() => { const r = knotAudiences().get('scriptedquest_reverse_civil_war_event_scholars_gratification'); return r ? r.some(x => x.sat && x.sat[0] === 'scholars') : false; })()", sandbox);
+  if (!satInKnot) throw new Error("sat not carried into knotAudiences");
+  if (!vm.runInContext("ahay('scriptedquest_reverse_civil_war_event_scholars_gratification', AUDIENCE.audiences['scriptedquest_reverse_civil_war_event_scholars_gratification']).indexOf('satisfaction') >= 0", sandbox)) {
+    throw new Error("satisfaction not in audience haystack");
+  }
+  vm.runInContext("openAudienceDetail('scriptedquest_reverse_civil_war_event_scholars_gratification')", sandbox);
+  vm.runInContext("openDetail('scriptedquest_reverse_civil_war_event_scholars_gratification')", sandbox);
   // Task C (Conditions consolidation): every gating channel lands in the shared
   // audienceGates rows — the enberg intro now shows its rq gate AND county-intro
   // source, the ultimatum scene shows quest follow-ups + um context, a hardcoded
@@ -755,6 +790,28 @@ waitReady().then(() => {
   if (hildegardHtml.indexOf("HILDEGARD_SONG") < 0) {
     throw new Error("hildegard special note missing: " + hildegardHtml);
   }
+  // the 17 tower-destruction per-character epilogues route by character ink id
+  // and render their slot rule (roundtable / always-last / romance-gated)
+  if (vm.runInContext("Object.keys(ENDINGS.epilogues || {}).length", sandbox) !== 17) {
+    throw new Error("ENDINGS epilogues wrong");
+  }
+  const epiHtml = vm.runInContext("endingSourceHtml('tower_destruction_epilogue_gideon_reaction')", sandbox);
+  if (epiHtml.indexOf("Tower-destruction epilogue") < 0 || epiHtml.indexOf("Gideon") < 0 ||
+      epiHtml.indexOf("roundtable") < 0) {
+    throw new Error("epilogue row missing: " + epiHtml);
+  }
+  const epiAlways = vm.runInContext("endingSourceHtml('tower_destruction_epilogue_epicrates_reaction')", sandbox);
+  if (epiAlways.indexOf("always plays last") < 0) {
+    throw new Error("epilogue always-slot note missing: " + epiAlways);
+  }
+  const epiUrs = vm.runInContext("endingSourceHtml('tower_destruction_epilogue_ursula_reaction')", sandbox);
+  if (epiUrs.indexOf("highly corrupted") < 0) {
+    throw new Error("epilogue ursula note missing: " + epiUrs);
+  }
+  if (!vm.runInContext("hay(INDEX.knots.tower_destruction_epilogue_gideon_reaction).indexOf('tower destruction epilogue') >= 0", sandbox)) {
+    throw new Error("epilogue source not in knot haystack");
+  }
+  vm.runInContext("openDetail('tower_destruction_epilogue_gideon_reaction')", sandbox);
   if (!vm.runInContext("hay(INDEX.knots.ursula_ending).indexOf('ending vignette') >= 0", sandbox)) {
     throw new Error("ending source not in knot haystack");
   }

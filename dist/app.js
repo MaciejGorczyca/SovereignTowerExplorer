@@ -1232,7 +1232,7 @@ function knotAudiences() {
     for (const [stem, a] of Object.entries(AUDIENCE.audiences)) {
       if (!a.k) continue;
       if (!_knotAud.has(a.k)) _knotAud.set(a.k, []);
-      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [], um: a.um || [], umc: a.umc || [], unused: a.unused || false, unote: a.unote || "" });
+      _knotAud.get(a.k).push({ stem, f: a.f, c: a.c || [], rq: a.rq || [], cyc: a.cyc || [], dir: a.dir || [], dd: a.dd || [], fl: a.fl || [], ci: a.ci || [], um: a.um || [], umc: a.umc || [], sat: a.sat || [], unused: a.unused || false, unote: a.unote || "" });
     }
   }
   return _knotAud || new Map();
@@ -1602,7 +1602,8 @@ function dialogueSourceHtml(name) {
   return bits.join(" — ");
 }
 // knot -> the ending context that plays it (endings.json): a per-character
-// game-end vignette, a main ending-type cutscene, or a code-played special.
+// game-end vignette, a main ending-type cutscene, a code-played special, or a
+// tower-destruction per-character epilogue.
 let _knotEnd = null;
 function knotEndings() {
   if (_knotEnd) return _knotEnd;
@@ -1620,6 +1621,10 @@ function knotEndings() {
       if (!INDEX.knots[knot]) continue;
       _knotEnd.set(knot, { type: "special", note });
     }
+    for (const [knot, id] of Object.entries(ENDINGS.epilogues || {})) {
+      if (!INDEX.knots[knot]) continue;
+      _knotEnd.set(knot, { type: "epilogue", key: id });
+    }
   }
   return _knotEnd || new Map();
 }
@@ -1633,14 +1638,19 @@ function endingCharName(id) {
 }
 // human-readable "where it comes from" for an ending knot (the `endings.json`
 // catalog): the vignette gate, the type cutscene + its switching special
-// instruction, or the code-played special note. Returns HTML ("" when the knot
-// is not an ending cutscene/vignette).
+// instruction, the tower-destruction epilogue slot, or the code-played special
+// note. Returns HTML ("" when the knot is not an ending cutscene/vignette).
 function endingSourceHtml(name) {
   const e = knotEndings().get(name);
   if (!e) return "";
   if (e.type === "vignette") {
     const nm = `<b>${esc(endingCharName(e.key))}</b>`;
     return `Ending vignette of ${nm} — plays at the end while ${nm} is alive and at the roundtable (recruited, for servants)`;
+  }
+  if (e.type === "epilogue") {
+    const stem = e.key.startsWith("gwendan") ? "gwendan" : e.key;
+    const nm = `<b>${esc(endingCharName(stem))}</b>`;
+    return `Tower-destruction epilogue of ${nm} — played at game end by the tower_destruction_ending_epilogue scene, ${esc(epilogueGate(e.key))}`;
   }
   if (e.type === "cutscene") {
     const t = e.t || {};
@@ -1651,6 +1661,19 @@ function endingSourceHtml(name) {
   }
   return `Played by ${esc(e.note)}`;
 }
+// which tower-destruction epilogue slot a character id plays in
+// (tower_destruction_ending_epilogue.gd `_ready`): roundtable knights by ink
+// id, romanced non-knights, then always alwena → arlin → epicrates.
+function epilogueGate(id) {
+  if (id === "alwena" || id === "arlin" || id === "epicrates") {
+    return "always plays last, after the knight and romanced-character epilogues";
+  }
+  if (id === "ursule") return "plays unless Ursula is highly corrupted";
+  if (id === "gwendan_humble") return "plays when Gwendan is reformed";
+  if (id === "gwendan_classic") return "plays when Gwendan is not reformed";
+  if (id === "lady_tower" || id === "rowan") return "plays when romanced";
+  return "plays while at the roundtable at game end";
+}
 // searchable text for an ending knot (mirror of dialogueHayText): indexed into
 // the knot haystack so the Dialogues search matches vignettes/cutscenes.
 function endingHayText(name) {
@@ -1659,6 +1682,9 @@ function endingHayText(name) {
   const h = ["ending", "game end", "ending cutscene"];
   if (e.type === "vignette") {
     h.push("ending vignette", e.key, endingCharName(e.key));
+  } else if (e.type === "epilogue") {
+    h.push("tower destruction epilogue", e.key,
+           endingCharName(e.key.startsWith("gwendan") ? "gwendan" : e.key));
   } else if (e.type === "cutscene") {
     h.push(e.key, e.t && e.t.switch, e.t && e.t.note);
   } else {
@@ -1748,20 +1774,37 @@ function fillerPackUnlocks() {
 function fillerSource(stem, a) {
   const fl = a.fl;
   if (!fl || !fl.length) return "";
+  // the joint Laik-Valley/Beaconsbury grievance belongs to two packs at once
+  // (fl "groveshire+kutnar"): it joins the rotation once BOTH counties are
+  // rallied, whichever rallies second (filler_audiences_manager.gd).
+  if (String(fl[0]) === "groveshire+kutnar") {
+    const bits = [`Joint filler scene of the <b>Groveshire</b> and <b>Kutnar</b> packs`];
+    if (fl[1] != null) bits.push(`targeted at the ${esc(FILLER_POP_LABELS[fl[1]] || ("population " + fl[1]))}`);
+    if (fl[2] != null) bits.push(`corruption tier ${esc(String(fl[2]))}`);
+    const unlock = [...new Set([...(fillerPackUnlocks().get("groveshire") || []), ...(fillerPackUnlocks().get("kutnar") || [])])];
+    if (unlock.length) bits.push(`unlocked by <span class="readers">${fillerKnotChips(unlock)}</span>`);
+    bits.push(`joins the rotation once <b>both counties are rallied</b> (whichever rallies second)`);
+    bits.push("random pick to fill a cycle, corruption-weighted");
+    return bits.join(" — ");
+  }
   const bits = [`Filler scene of the <b>${esc(String(fl[0]))}</b> pack`];
   if (fl[1] != null) bits.push(`targeted at the ${esc(FILLER_POP_LABELS[fl[1]] || ("population " + fl[1]))}`);
   if (fl[2] != null) bits.push(`corruption tier ${esc(String(fl[2]))}`);
   const unlock = fillerPackUnlocks().get(fl[0]);
   if (unlock && unlock.length) {
-    const chips = [...new Set(unlock)].map((k) => INDEX.knots[k]
-      ? `<a class="chip knobtn knotlink" data-knot="${esc(k)}">${esc(k)}</a>`
-      : `<span class="chip">${esc(k)}</span>`).join(" ");
-    bits.push(`unlocked by <span class="readers">${chips}</span>`);
+    bits.push(`unlocked by <span class="readers">${fillerKnotChips([...new Set(unlock)])}</span>`);
   } else {
     bits.push("available from the start");
   }
   bits.push("random pick to fill a cycle, corruption-weighted");
   return bits.join(" — ");
+}
+// knot-name chips for filler-pack unlockers (first-grievance knots calling
+// UnlockFillerAudiencesPack); known knots link into the Dialogues tab.
+function fillerKnotChips(knots) {
+  return knots.map((k) => INDEX.knots[k]
+    ? `<a class="chip knobtn knotlink" data-knot="${esc(k)}">${esc(k)}</a>`
+    : `<span class="chip">${esc(k)}</span>`).join(" ");
 }
 // human-readable "where it comes from" for a county-introduction audience (the
 // `ci` field): the county whose narrated intro this is, and how the ActManager
@@ -1806,8 +1849,9 @@ function codeGateHtml(cd) {
 // the quests that fire it as a follow-up (rev.qf), the requests that unlock it,
 // the doleance schedulers, the special instructions that schedule it, the
 // director/intervention scenes (dir), knight death/demission triggers (dd), the
-// filler pack (fl), county introductions (ci), ultimatum follow-ups (um), the
-// code-scheduled knight events (code) and the legacy-orphan flags (unused, N5).
+// filler pack (fl), county introductions (ci), ultimatum follow-ups (um),
+// high-satisfaction reward scenes (sat), code-scheduled knight events (code)
+// and the legacy-orphan flags (unused, N5).
 // Each entry is { kind, html }; `kind` lets the knot drawer drop the rows that
 // already have dedicated knot-level lines (quest follow-ups, special triggers).
 // This is the "base" set — the scheduling channels the audience resource
@@ -1862,6 +1906,11 @@ function baseAudienceGates(stem, a) {
   if (ci) gates.push({ kind: "ci", html: ci });
   const um = ultimatumSource(a);
   if (um) gates.push({ kind: "um", html: um });
+  if (a.sat && a.sat.length) {
+    const cat = String(a.sat[0]);
+    const label = cat ? cat[0].toUpperCase() + cat.slice(1) : cat;
+    gates.push({ kind: "sat", html: `Queued when <b>${esc(label)}</b> satisfaction reaches <b>${esc(a.sat[1])}</b> — the SatisfactionManager schedules this reward scene for the next cycle (plays at most once)` });
+  }
   for (const cd of a.code || []) gates.push({ kind: "code", html: codeGateHtml(cd) });
   if (a.unused) {
     gates.push({ kind: "unused", html: `<b>Legacy resource:</b> ${esc(a.unote || "never scheduled in the shipped game")}` });
@@ -4676,6 +4725,10 @@ function aHaystack(stem, a) {
     if (fl[2] != null) h.push("corruption tier " + fl[2]);
     for (const k of fillerPackUnlocks().get(fl[0]) || []) h.push("unlocked by " + k, k);
   }
+  if (a.sat && a.sat.length) {
+    const cat = String(a.sat[0]);
+    h.push("satisfaction", "satisfaction reward", cat, "reaches " + a.sat[1]);
+  }
   for (const g of divertInRows(stem, a)) h.push(g.html.replace(/<[^>]+>/g, " "));
   for (const cd of a.code || []) {
     h.push((CODE_SOURCE_LABELS[cd[0]] || "code-scheduled"), cd[0], cd[1]);
@@ -4785,6 +4838,11 @@ function audCard(stem, a) {
   }
   if (a.um && a.um.length) {
     badges.push(`<span class="badge cyc" title="ultimatum follow-up — ${esc(a.um[0])}, hard deadline cycle ${esc(a.um[1])}">ultimatum · ${esc(a.um[0])}</span>`);
+  }
+  if (a.sat && a.sat.length) {
+    const cat = String(a.sat[0]);
+    const label = cat ? cat[0].toUpperCase() + cat.slice(1) : cat;
+    badges.push(`<span class="badge cyc" title="satisfaction reward — queued when ${esc(cat)} satisfaction reaches ${esc(a.sat[1])}">satisfaction · ${esc(label)}</span>`);
   }
   const rqstems = reqsFor(stem);
   if (rqstems.length) badges.push(`<span class="badge req" title="${esc(rqstems.join(", "))}">request · ${esc(rqstems.join(", "))}</span>`);
@@ -4940,6 +4998,13 @@ function openAudienceDetail(stem) {
       const p = document.createElement("div");
       p.className = "what-hint";
       p.textContent = "Unlocked packs fill random free cycle slots during a cycle fill (weighted toward the current corruption tier); one audience is picked per pack and removed once played.";
+      w.appendChild(p);
+    }
+    if (a.sat && a.sat.length) {
+      const p = document.createElement("div");
+      p.className = "what-hint";
+      const cat = String(a.sat[0]);
+      p.textContent = `Reward scenes are queued by the SatisfactionManager once ${cat} satisfaction reaches ${a.sat[1]}; each plays at most once.`;
       w.appendChild(p);
     }
     panel.appendChild(w);

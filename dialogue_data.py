@@ -100,6 +100,7 @@ AFF_VARIANT_NOTE = {
     "kind_dialogues": "while Arron is kind (with-egg state)",
     "body_possession_dialogues": "while Dulahan is body-possessed",
     "possessed_affinity_dialogues": "while Edith is demon-possessed",
+    "purified_affinity_dialogues": "while Edith is purified",
     "reformed_new_dialogues": "while Gwendan is reformed/humbled",
     "unreformed_new_dialogues": "after Gwendan repays her debt (unreformed)",
     "post_stables_open_affinity_dialogues": "once the stables room is unlocked",
@@ -399,6 +400,7 @@ def load_descriptors():
             # keeps its first (lowest-rank) gate.
             for field in ("affinity_dialogues", "violent_dialogues", "kind_dialogues",
                           "body_possession_dialogues", "possessed_affinity_dialogues",
+                          "purified_affinity_dialogues",
                           "reformed_new_dialogues", "unreformed_new_dialogues",
                           "post_stables_open_affinity_dialogues"):
                 note = AFF_VARIANT_NOTE.get(field)

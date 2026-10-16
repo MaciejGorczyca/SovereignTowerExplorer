@@ -1148,6 +1148,17 @@ def load_ultimatums(idx):
     return out
 
 
+# FillerAudience exports that are NOT pack arrays: singular scenes the
+# FillerAudiencesManager appends directly under a joint condition. Currently
+# just `laik_valley_beaconsburry_audience` (the joint Laik-Valley/Beaconsbury
+# grievance, misspelled in-game): appended when the "groveshire" pack unlocks
+# if Kutnar is already rallied, or when "kutnar" unlocks if Groveshire is
+# (filler_audiences_manager.gd `_unlock_audience_pack`) — i.e. once BOTH
+# counties are rallied, whichever rallies second. The pack label names both
+# unlock packs; the frontend renders the joint condition from it.
+FILLER_SINGULAR = {
+    "laik_valley_beaconsburry_audience": "groveshire+kutnar",
+}
 # FillerAudiencesManager pack arrays of systems/autoloads/cycles_manager.tscn
 # -> the runtime unlock name. The four "representatives" packs are always
 # available from the start (filler_audiences_manager.gd `set_up()`); every
@@ -1189,16 +1200,18 @@ FILLER_PACK_NAMES = {
 def load_filler_packs():
     """Parse the filler-audience packs -> {audience stem: [pack, pop_cat, corruption]}.
 
-    Channel 13 of the audience-condition research: the 236
+    Channel 13 of the audience-condition research: the
     `content/filler_audiences/*.tres` FillerAudience wrappers (each wrapping one
     `content/audiences/filler/` scene) grouped by the
     `[node name="FillerAudiencesManager"]` pack arrays of cycles_manager.tscn.
     The pack name is the runtime unlock name of `_unlock_audience_pack`
     (filler_audiences_manager.gd:63): the four "representatives" packs are
     always available from the start, the rest are unlocked when the ink calls
-    UnlockFillerAudiencesPack (the first-grievance knots). Values are
-    `[pack, targeted_pop_category, corruption_score]` where the two ints are
-    baked only when the wrapper sets them (defaults are the game's 0 / PEOPLE).
+    UnlockFillerAudiencesPack (the first-grievance knots). Singular (non-array)
+    exports listed in FILLER_SINGULAR join under a joint pack label instead.
+    Values are `[pack, targeted_pop_category, corruption_score]` where the two
+    ints are baked only when the wrapper sets them (defaults are the game's
+    0 / PEOPLE).
     """
     d = f"{GAME}/content/filler_audiences"
     if not os.path.isdir(d):
@@ -1236,11 +1249,13 @@ def load_filler_packs():
         line = lines[i].strip()
         if line.startswith("["):
             break
-        m = re.match(r"^([A-Za-z0-9_]+)\s*=\s*(\[.*\])\s*$", line)
+        m = re.match(r"^([A-Za-z0-9_]+)\s*=\s*(\[.*\]|ExtResource\(\"\d+\"\))\s*$", line)
         if not m:
             continue
         pack = FILLER_PACK_NAMES.get(m.group(1))
-        if not pack:
+        if pack is None:
+            pack = FILLER_SINGULAR.get(m.group(1))
+        if pack is None:
             continue
         for w in [os.path.splitext(os.path.basename(ext[j]))[0]
                   for j in re.findall(r'ExtResource\("(\d+)"\)', m.group(2))]:
@@ -1252,6 +1267,36 @@ def load_filler_packs():
                 info["tpc"] if isinstance(info["tpc"], int) else None,
                 info["cs"] if isinstance(info["cs"], int) else None,
             ]
+    return out
+
+
+def load_satisfaction_rewards():
+    """Parse the high-satisfaction reward audiences -> {stem: [category, threshold]}.
+
+    The SatisfactionManager (`systems/autoloads/satisfaction_manager.gd`) queues
+    one doleance audience per population category whenever a satisfaction update
+    leaves that category at or above HIGH_SATSIFACTION_THRESHOLD (the mapped
+    `high_satisfaction_reward_audiences` of the SatisfactionManager node in
+    `systems/autoloads/game_state.tscn`, queued for the next cycle via
+    `cycles_manager.add_audience_in_x_cycle`, which also caps each scene at one
+    play). Values are `[lowercase category, int threshold]`.
+    """
+    tscn = os.path.join(GAME, "systems/autoloads/game_state.tscn")
+    gd = os.path.join(GAME, "systems/autoloads/satisfaction_manager.gd")
+    if not (os.path.exists(tscn) and os.path.exists(gd)):
+        return {}
+    m = re.search(r"high_satisfaction_reward_audiences\s*=\s*\{(.*?)\}",
+                  open(tscn, encoding="utf-8").read(), re.S)
+    if not m:
+        return {}
+    t = re.search(r"const\s+HIGH_SATSIFACTION_THRESHOLD\s*:\s*int\s*=\s*(\d+)",
+                  open(gd, encoding="utf-8").read())
+    if not t:
+        return {}
+    threshold = int(t.group(1))
+    out = {}
+    for cat, stem in re.findall(r'"(\w+)"\s*:\s*"([\w_]+)"', m.group(1)):
+        out[stem] = [cat, threshold]
     return out
 
 
@@ -1382,7 +1427,9 @@ def load_audience_catalog(idx):
     keys], rq: [decoded requirements], cyc/scheduled cycles, dir: director +
     special-intervention notes, dd: knight death-follow-up / demission links,
     fl: [filler pack, targeted population, corruption score], ci: [county ink
-    id, name key] when the audience is a county introduction, code: code-
+    id, name key] when the audience is a county introduction, sat: [population
+    category, satisfaction threshold] when the audience is a high-satisfaction
+    reward scene, code: code-
     scheduled knight-event pairs, unused+unote: legacy-orphan flags} — the
     reverse lookup the knot drawer needs ("how does this knot fire, and under
     what conditions?").
@@ -1397,6 +1444,7 @@ def load_audience_catalog(idx):
     demissions = load_knight_demissions()
     filler = load_filler_packs()
     county_intros = load_county_introductions()
+    satisfaction = load_satisfaction_rewards()
     ultimatums = load_ultimatums(idx)
     code_scheduled = load_code_scheduled()
     unused = load_unused_audiences()
@@ -1435,6 +1483,9 @@ def load_audience_catalog(idx):
             fl = filler.get(stem)
             if fl:
                 entry["fl"] = fl
+            sat = satisfaction.get(stem)
+            if sat:
+                entry["sat"] = sat
             ci = county_intros.get(stem)
             if ci:
                 entry["ci"] = ci

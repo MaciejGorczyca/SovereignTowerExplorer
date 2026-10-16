@@ -21,24 +21,34 @@ Sources:
    `ending_path` (shared descriptor parser in `dialogue_data.load_ending_paths`),
    routed by character ink id into the `vignettes` map.
 4. Hand-verified code sites: the `HILDEGARD_SONG` special instruction plays
-   `hildegard_singing_ending` (signals_event_bus.gd:200 → cinematic_skip_overlay.gd:3),
-   and the demon-room scene (scenes/rooms/dialogue_rooms/demon_ending_dialogue.gd:15)
-   plays `demon_back_in_time_ending_proposal` — both noted in `specials`.
+    `hildegard_singing_ending` (signals_event_bus.gd:200 → cinematic_skip_overlay.gd:3),
+    and the demon-room scene (scenes/rooms/dialogue_rooms/demon_ending_dialogue.gd:15)
+    plays `demon_back_in_time_ending_proposal` — both noted in `specials`.
+5. `scenes/rooms/dialogue_rooms/tower_destruction_ending_epilogue.tscn` — the
+    `epilogue_dialogues` map (character ink id → epilogue knot) the
+    TowerDestructionEpilogue scene plays in sequence at game end on the
+    TOWER_DESTRUCTION ending (roundtable knights by ink id — reformed Gwendan
+    via `gwendan_humble`, unreformed via `gwendan_classic`, highly-corrupted
+    Ursula skipped — then romanced non-knights, then always
+    alwena → arlin → epicrates), routed into `epilogues` ({knot: id}).
 
 Output shape (dist/endings.json):
   types:     { "<TYPE>": {"cut": <knot>, "switch"?: <SWITCH_ENDING_*_PATH>, "note"?: ...} }
-             the six ending types: WAR / PEACE_TREATY / MARRY / SURRENDER /
-             TOWER_DESTRUCTION each carry their switching special instruction;
-             DEMON_STATE carries a `note` (the corruption-gated epilogue).
+              the six ending types: WAR / PEACE_TREATY / MARRY / SURRENDER /
+              TOWER_DESTRUCTION each carry their switching special instruction;
+              DEMON_STATE carries a `note` (the corruption-gated epilogue).
   vignettes: { "<character_ink_id>": "<ending_knot>", ... } — the per-character
-             vignette played at game end while the character is alive and at the
-             roundtable (recruited, for servants).
+              vignette played at game end while the character is alive and at the
+              roundtable (recruited, for servants).
   specials:  { "<ending_knot>": "<play-source note>", ... } — ending knots played
-             by code outside the ServantEndingCutscene.
+              by code outside the ServantEndingCutscene.
+  epilogues: { "<epilogue_knot>": "<character_ink_id>", ... } — the
+              tower-destruction per-character epilogues (§5 above).
 """
 
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -53,6 +63,8 @@ GAME = str(DEFAULT_GAME_ROOT)
 
 ACT_MANAGER_TSNC = "systems/autoloads/act_manager.tscn"
 SPECIAL_MANAGER_GD = "systems/autoloads/special_instruction_manager.gd"
+EPILOGUE_TSNC = ("scenes/rooms/dialogue_rooms/"
+                 "tower_destruction_ending_epilogue.tscn")
 
 # the two ending knots played by code outside the ServantEndingCutscene (knot-
 # source research §1.4): Hildegard's song via the HILDEGARD_SONG special
@@ -111,6 +123,25 @@ def load_ending_types():
     return types
 
 
+def load_tower_epilogues():
+    """{epilogue knot: character ink id} from the TowerDestructionEpilogue scene.
+
+    The `epilogue_dialogues` dict of tower_destruction_ending_epilogue.tscn maps
+    each played character id (`&"gideon"` …) onto its epilogue knot
+    (`&"tower_destruction_epilogue_gideon_reaction"`); the scene plays them in
+    sequence at game end (tower_destruction_ending_epilogue.gd `_ready`).
+    """
+    path = f"{GAME}/{EPILOGUE_TSNC}"
+    if not os.path.exists(path):
+        return {}
+    text = open(path, encoding="utf-8").read()
+    m = re.search(r"epilogue_dialogues\s*=\s*\{(.*?)\}", text, re.S)
+    if not m:
+        return {}
+    return {knot: cid
+            for cid, knot in re.findall(r'&"([^"]+)"\s*:\s*&"([^"]+)"', m.group(1))}
+
+
 def build_endings(out_dir, game_root=None):
     """Write dist/endings.json and return the data dict."""
     if game_root is not None:
@@ -120,18 +151,21 @@ def build_endings(out_dir, game_root=None):
     types = load_ending_types()
     vignettes = load_ending_paths()
     specials = dict(ENDING_SPECIALS)
+    epilogues = load_tower_epilogues()
 
     data = {
         "types": types,
         "vignettes": {kid: vignettes[kid] for kid in sorted(vignettes)},
         "specials": specials,
+        "epilogues": {knot: epilogues[knot] for knot in sorted(epilogues)},
     }
     out_path = Path(out_dir) / "endings.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
     print(f"Endings: {len(types)} ending types · {len(data['vignettes'])} "
-          f"character vignettes · {len(specials)} code-played specials")
+          f"character vignettes · {len(specials)} code-played specials · "
+          f"{len(epilogues)} tower-destruction epilogues")
     return data
 
 
