@@ -75,13 +75,13 @@ class QuestsDataPassTest(unittest.TestCase):
         cls.quests = _passes()["quests"]
 
     def test_volume(self):
-        self.assertEqual(self.quests["stats"]["quests"], 314)
+        self.assertEqual(self.quests["stats"]["quests"], 315)
         # 91 = 82 quests whose SpecialOutcome is an ExtResource file + 9 that
         # inline the outcome as a SubResource in the quest .tres itself
         self.assertEqual(self.quests["stats"]["with_unexpected"], 91)
-        # "508 audiences" = every audience resource under content/audiences,
+        # "517 audiences" = every audience resource under content/audiences,
         # each carrying its ink knot, folder and decoded firing requirements
-        self.assertEqual(len(self.quests["audiences"]), 508)
+        self.assertEqual(len(self.quests["audiences"]), 517)
         self.assertEqual(self.quests["stats"]["audiences"],
                          len(self.quests["audiences"]))
         # stats counters stay self-consistent with the records
@@ -176,9 +176,9 @@ class InventoryDataPassTest(unittest.TestCase):
 
     def test_volume(self):
         st = self.inv["stats"]
-        self.assertEqual(st["items"], 152)
-        self.assertEqual(st["by_type"]["RELIC"], 65)
-        self.assertEqual(st["by_type"]["MOUNT"], 29)
+        self.assertEqual(st["items"], 154)
+        self.assertEqual(st["by_type"]["RELIC"], 66)
+        self.assertEqual(st["by_type"]["MOUNT"], 30)
         self.assertEqual(st["by_type"]["CONSUMABLE"], 47)
         self.assertEqual(st["by_type"]["MEAL"], 6)
         self.assertEqual(st["by_type"]["QUEST_ITEM"], 5)
@@ -236,7 +236,7 @@ class KnightsDataPassTest(unittest.TestCase):
         st = self.knights["stats"]
         self.assertEqual(st["total"], 24)
         self.assertEqual(st["ink_linked"], 24)
-        self.assertEqual(st["with_convs"], 23)
+        self.assertEqual(st["with_convs"], 24)
 
     def test_every_knight_has_six_stats(self):
         for stem, k in self.knights["knights"].items():
@@ -253,9 +253,9 @@ class SpecialDataPassTest(unittest.TestCase):
     def test_volume_and_join(self):
         special = _passes()["special"]
         st = special["stats"]
-        self.assertEqual(st["total"], 73)
+        self.assertEqual(st["total"], 74)
         self.assertEqual(st["in_ink"], 52)
-        self.assertEqual(st["in_quests"], 19)
+        self.assertEqual(st["in_quests"], 20)
         self.assertEqual(st["knights"], 12)
         # every quest link resolves to a real quest; every knot to a real knot
         for name, inst in special["instructions"].items():
@@ -314,13 +314,13 @@ class AudiencesDataPassTest(unittest.TestCase):
     def test_volume_and_join(self):
         aud = _passes()["audiences"]
         st = aud["stats"]
-        self.assertEqual(st["audiences"], 508)
+        self.assertEqual(st["audiences"], 517)
         self.assertEqual(st["requests"], 34)
         self.assertEqual(st["with_conditions"], 19)
         self.assertEqual(st["with_director"], 20)
         self.assertEqual(st["with_intervention"], 28)
         self.assertEqual(st["with_county_intro"], 7)
-        self.assertEqual(st["with_ultimatum"], 6)
+        self.assertEqual(st["with_ultimatum"], 7)
         self.assertEqual(st["knotless"], 0)
         # the audience catalog must not drift from the quests.json copy
         self.assertEqual(set(aud["audiences"]), set(self.quests["audiences"]))
@@ -558,7 +558,7 @@ class AudiencesDataPassTest(unittest.TestCase):
         aud = _passes()["audiences"]
         # channel 13: the content/filler_audiences FillerAudience wrappers
         # grouped by the FillerAudiencesManager pack arrays of cycles_manager.tscn
-        self.assertEqual(aud["stats"]["with_filler"], 234)
+        self.assertEqual(aud["stats"]["with_filler"], 235)
         for stem, a in aud["audiences"].items():
             fl = a.get("fl")
             if fl:
@@ -702,12 +702,13 @@ class DialoguesDataPassTest(unittest.TestCase):
         self.knights = _passes()["knights"]
 
     def test_volume(self):
-        # 82 affinity + 76 conversation dialogue resources + 1 inline
-        # (candidature_alwena) + 76 reactions = 235 free-time dialogs
+        # 88 affinity + 93 conversation dialogue resources + 1 inline
+        # (candidature_alwena) + 76 reactions = 258 files-side, minus the
+        # mirrored ari_goberto/goberto_ari pair sharing one key = 257 dialogs
         st = self.dlg["stats"]
-        self.assertEqual(st["all"], 235)
-        self.assertEqual(st["affinity"], 82)
-        self.assertEqual(st["conversation"], 77)
+        self.assertEqual(st["all"], 257)
+        self.assertEqual(st["affinity"], 88)
+        self.assertEqual(st["conversation"], 93)
         self.assertEqual(st["reaction"], 76)
         self.assertEqual(len(self.dlg["dialogues"]), st["all"])
         # every entry is one of the three resource folders; all but the 3 known
@@ -897,11 +898,17 @@ class EndingsDataPassTest(unittest.TestCase):
 
 
 def _desc_exists(stem, game_root):
-    """True when a knight/servant descriptor stem exists under the game root."""
+    """True when a character descriptor stem exists under the game root.
+
+    All subfolders of content/character_descriptors are searched (knights,
+    servants, emissaries, counts, citizen_representatives, others) — the game
+    adds new descriptor folders over time (e.g. emissaries/ and counts/ holding
+    blaine and dragon_knight)."""
     import os
-    root = str(game_root)
-    for sub in ("content/character_descriptors/knights",
-                "content/character_descriptors/servants"):
+    root = os.path.join(str(game_root), "content", "character_descriptors")
+    if not os.path.isdir(root):
+        return False
+    for sub in os.listdir(root):
         if os.path.exists(os.path.join(root, sub, stem + ".tres")):
             return True
     return False

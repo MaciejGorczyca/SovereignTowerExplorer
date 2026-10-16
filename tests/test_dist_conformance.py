@@ -118,8 +118,10 @@ class LocaleParityTest(unittest.TestCase):
         if not locales_dir.is_dir():
             self.skipTest("no dist/locales dir present")
         en_knots = set(self.idx["knots"])
-        # fr ships one extra knot with no en counterpart (game data)
-        FR_ONLY = {"conversation_ligia_angelica"}
+        # fr used to ship one extra knot with no en counterpart
+        # (conversation_ligia_angelica); the game has since added it to en,
+        # so the knot sets match again — kept as an (empty) allowlist
+        FR_ONLY = set()
         for path in sorted(locales_dir.glob("*.json")):
             with open(path, encoding="utf-8") as f:
                 import json

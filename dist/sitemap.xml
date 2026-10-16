@@ -208,6 +208,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/angelica_affinity_4_knight_dead/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/angelica_affinity_5/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/angelica_come_back_later/</loc>
   </url>
   <url>
@@ -248,6 +251,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ari_affinity_2/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ari_affinity_3/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ari_come_back_later/</loc>
@@ -820,6 +826,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/chester_affinity_2/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/chester_affinity_3/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/chester_come_back_later/</loc>
   </url>
   <url>
@@ -961,6 +970,15 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_angelica_zolta/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ari_goberto/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ari_ligia/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ari_oliver/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ari_rowan/</loc>
   </url>
   <url>
@@ -968,6 +986,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_belladona/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_dragon_knight/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_goberto/</loc>
@@ -982,6 +1003,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_tarcus/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_violent_tarcus/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_arron_wolf/</loc>
   </url>
   <url>
@@ -991,10 +1015,19 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_brunhilda_gideon/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_brunhilda_gwendan/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_brunhilda_gwendan_humble/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_brunhilda_oliver/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_childeric_chester/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_childeric_dulahan/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_childeric_epicrates/</loc>
@@ -1013,6 +1046,15 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_dulahan_victoria/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_edith_belladonna/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_edith_unpossessed_and_purified_gideon/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_edith_unpossessed_and_purified_goberto/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_epicrates_dulahan/</loc>
@@ -1057,7 +1099,16 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_goberto_gwendan/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_gothild_angelica/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_gwendan_humble_belladonna/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_gwendan_humble_victoria/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ligia_angelica/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_ligia_brunhilda/</loc>
@@ -1093,6 +1144,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_rufus_angelica/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_rufus_rowan/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_rufus_victoria/</loc>
   </url>
   <url>
@@ -1103,6 +1157,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_sagadin_ligia/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_silgur_blaine/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/conversation_silgur_ligia/</loc>
@@ -1160,6 +1217,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/county_quest_almor_final_unexpected/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/county_quest_almor_final_unexpected_alwena/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/county_quest_almor_first_audience/</loc>
@@ -1399,6 +1459,12 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_affinity_3_demon_possession/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_affinity_4_demon_possession/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_affinity_5_purified/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_come_back_later/</loc>
   </url>
   <url>
@@ -1406,6 +1472,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_gimmick_introduction_demon_possession/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_gimmick_introduction_purification/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/edith_possessed_come_back_later/</loc>
@@ -1915,6 +1984,12 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/laik_valley_grievance_precious_stones/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/laik_valley_grievance_with_beaconsbury/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/laik_valley_grievance_with_grest/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/laik_valley_volga_camp_first_grievance/</loc>
   </url>
   <url>
@@ -2278,6 +2353,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/rufus_affinity_3/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/rufus_affinity_4/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/rufus_come_back_later/</loc>
   </url>
   <url>
@@ -2422,6 +2500,18 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_nomads_sleeping_in_the_cold_forest/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_reverse_civil_war_event_merchants_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_reverse_civil_war_event_noble_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_reverse_civil_war_event_people_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_reverse_civil_war_event_scholars_gratification/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_the_serpent_knight_back_in_time/</loc>
   </url>
   <url>
@@ -2444,6 +2534,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_traitors_plot_3_ursula_murderer/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_traitors_plot_demon_after_murderer_confrontation_reaction/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/scriptedquest_traitors_plot_demon_quest_accept_reaction/</loc>
@@ -2572,6 +2665,57 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_ending_cutscene/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_alwena_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_angelica_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_arlin_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_brunhilda_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_childeric_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_epicrates_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_gideon_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_goberto_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_gothild_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_gwendan_humble_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_gwendan_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_lady_tower_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_ligia_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_oliver_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_rowan_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_tarcus_reaction/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/tower_destruction_epilogue_ursula_reaction/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/traitors_plot_omniscient_angelica_murderer_reaction/</loc>
   </url>
   <url>
@@ -2618,6 +2762,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ultimatum_kingslayer_victory/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ultimatum_kingslayer_victory_merchants/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/dialogues/ultimatum_the_emperor/</loc>
@@ -3457,6 +3604,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_dulahan_helmet/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_edith_purification/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/quests/quest_enberg_ask_others_suspects/</loc>
   </url>
   <url>
@@ -3740,6 +3890,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/abacus_cleaver/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/absolution/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/agility_potion/</loc>
@@ -4168,6 +4321,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/truffle_cremeux/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/unicorn/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/inventory/unicorn_tears/</loc>
   </url>
   <url>
@@ -4310,6 +4466,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/DULAHAN_HUMAN/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/EDITH_PURIFIED/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/special/EPICRATE_NAME_CLEARED/</loc>
@@ -4915,6 +5074,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/county_quest_almor_final_unexpected/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/county_quest_almor_final_unexpected_alwena/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/county_quest_brimwood_1/</loc>
   </url>
   <url>
@@ -5099,6 +5261,9 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/edith_gimmick_introduction_demon_possession/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/edith_gimmick_introduction_purification/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/enberg_grievance_introduction/</loc>
@@ -5293,6 +5458,9 @@
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/kingslayer_ultimatum_victory/</loc>
   </url>
   <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/kingslayer_ultimatum_victory_merchants/</loc>
+  </url>
+  <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/knight_leaving_alwena/</loc>
   </url>
   <url>
@@ -5420,6 +5588,12 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/laik_valley_grievance_precious_stones/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/laik_valley_grievance_with_beaconsburry/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/laik_valley_grievance_with_grest/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/ligia_candidacy/</loc>
@@ -5780,6 +5954,18 @@
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_nomads_of_kutnar/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_reverse_civil_war_event_merchants_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_reverse_civil_war_event_noble_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_reverse_civil_war_event_people_gratification/</loc>
+  </url>
+  <url>
+    <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_reverse_civil_war_event_scholars_gratification/</loc>
   </url>
   <url>
     <loc>https://maciejgorczyca.github.io/SovereignTowerExplorer/audiences/scriptedquest_the_serpent_knight_back_in_time/</loc>

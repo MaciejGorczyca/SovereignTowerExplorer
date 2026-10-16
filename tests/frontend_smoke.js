@@ -170,7 +170,7 @@ function waitReady() {
         "ENDINGS && ENDINGS.types ? Object.keys(ENDINGS.types).length : 0", sandbox);
       const audReady = vm.runInContext(
         "AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats.audiences : 0", sandbox);
-      if (stats && knotCount === stats.knots && dlgReady === 235 && endReady === 8 && audReady === 508) {
+      if (stats && knotCount === stats.knots && dlgReady === 257 && endReady === 8 && audReady === 517) {
         return resolve(stats);
       }
       if (Date.now() > DEADLINE) {
@@ -243,7 +243,7 @@ waitReady().then(() => {
   const kn = vm.runInContext("KNIGHTS && KNIGHTS.stats ? KNIGHTS.stats.total : 0", sandbox);
   const sp = vm.runInContext("SPECIAL && SPECIAL.stats ? SPECIAL.stats.total : 0", sandbox);
   const aud = vm.runInContext("AUDIENCE && AUDIENCE.stats ? AUDIENCE.stats : null", sandbox);
-  if (!aud || aud.audiences !== 508 || aud.requests !== 34) {
+  if (!aud || aud.audiences !== 517 || aud.requests !== 34) {
     throw new Error("AUDIENCE dataset did not load (stats=" + JSON.stringify(aud) + ")");
   }
   vm.runInContext("renderAudienceResults()", sandbox);
@@ -574,7 +574,7 @@ waitReady().then(() => {
   // first-grievance knots unlock them (UnlockFillerAudiencesPack), and the
   // pack name indexes in the audience haystack + the knot drawer's row
   const fillerCount = vm.runInContext("AUDIENCE.stats.with_filler", sandbox);
-  if (fillerCount !== 234) throw new Error("with_filler != 234: " + fillerCount);
+  if (fillerCount !== 235) throw new Error("with_filler != 235: " + fillerCount);
   const flClover = vm.runInContext("AUDIENCE.audiences['clovermont_grievance_emergency'].fl", sandbox);
   if (!flClover || flClover.length !== 3 || flClover[0] !== "clovermont") {
     throw new Error("clovermont filler fl wrong: " + JSON.stringify(flClover));
@@ -624,7 +624,7 @@ waitReady().then(() => {
   // hard deadline cycle), render a source note, index in the audience haystack
   // and in the knot drawer rows, and surface in the stats
   const umCount = vm.runInContext("AUDIENCE.stats.with_ultimatum", sandbox);
-  if (umCount !== 6) throw new Error("with_ultimatum != 6: " + umCount);
+  if (umCount !== 7) throw new Error("with_ultimatum != 7: " + umCount);
   const umKL = vm.runInContext("AUDIENCE.audiences['kingslayer_ultimatum_faillure'].um", sandbox);
   if (!umKL || umKL.length !== 2 || umKL[0] !== "kingslayer_ultimatum" ||
       umKL[1] !== 23) {
@@ -677,8 +677,8 @@ waitReady().then(() => {
   // reactions their unlock sources; the knot drawer renders all three and the
   // Dialogues-tab "has a free-time dialogue source" filter narrows.
   const dlg = vm.runInContext("DIALOGUE.stats", sandbox);
-  if (dlg.affinity !== 82 || dlg.conversation !== 77 || dlg.reaction !== 76 ||
-      dlg.all !== 235 || !(dlg.with_unl > 80)) {
+  if (dlg.affinity !== 88 || dlg.conversation !== 93 || dlg.reaction !== 76 ||
+      dlg.all !== 257 || !(dlg.with_unl > 80)) {
     throw new Error("DIALOGUE stats wrong: " + JSON.stringify(dlg));
   }
   const aff2 = vm.runInContext("DIALOGUE.dialogues.angelica_affinity_2", sandbox);
